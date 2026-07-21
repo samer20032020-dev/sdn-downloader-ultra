@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">SDN Downloader Ultra</string>
-    <string name="title_activity_main">SDN Downloader Ultra</string>
+    <string name="app_name">SDN Downloader</string>
+    <string name="title_activity_main">SDN Downloader</string>
     <string name="package_name">com.sdn.downloader.ultra</string>
     <string name="custom_url_scheme">com.sdn.downloader.ultra</string>
 </resources>
