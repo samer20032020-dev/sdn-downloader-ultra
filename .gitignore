@@ -4,4 +4,3 @@ tools/
 *.pyc
 __pycache__/
 dist/
-.github/
