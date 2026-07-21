@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDN Downloader ⚡ Ultra Edition - التجربة التفاعلية الحقيقية</title>
+    <meta name="description" content="تنزيل برنامج وتطبيق SDN Downloader Ultra Edition الحقيقي مجاناً برابط مباشر من Google Play وللويندوز.">
+    
+    <!-- Google Fonts & FontAwesome -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- GSAP & ScrollTrigger Animation Engine -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+
+    <style>
+        :root {
+            --bg: #060813;
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --primary: #38bdf8;
+            --primary-glow: rgba(56, 189, 248, 0.35);
+            --accent: #6366f1;
+            --green: #34d399;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --radius: 22px;
+            --transition: all 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Tajawal', 'Outfit', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* Dynamic Canvas Backdrop */
+        #bgCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .content-layer {
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Header Navbar */
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.2rem 8%;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(25px);
+            background: rgba(6, 8, 19, 0.85);
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--text-main);
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, #38bdf8 0%, #4f46e5 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            box-shadow: 0 0 20px var(--primary-glow);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2.2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+
+        .btn-header-play {
+            background: #000;
+            border: 1px solid var(--card-border);
+            color: white;
+            padding: 0.6rem 1.4rem;
+            border-radius: 12px;
+            font-weight: 700;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: var(--transition);
+        }
+
+        .btn-header-play:hover {
+            border-color: var(--green);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(52, 211, 153, 0.3);
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 4.5rem 8% 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .tag-badge {
+            background: rgba(56, 189, 248, 0.08);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            color: var(--primary);
+            padding: 7px 22px;
+            border-radius: 50px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin-bottom: 1.8rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(10px);
+        }
+
+        .hero h1 {
+            font-size: 3.6rem;
+            font-weight: 900;
+            line-height: 1.2;
+            max-width: 920px;
+            margin-bottom: 1.2rem;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #f472b6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            max-width: 740px;
+            margin-bottom: 2.2rem;
+        }
+
+        .download-group {
+            display: flex;
+            gap: 1.2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+
+        .btn-google-play {
+            background: #000;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 0.95rem 2rem;
+            border-radius: 14px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: var(--transition);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .btn-google-play:hover {
+            border-color: var(--green);
+            transform: translateY(-4px);
+            box-shadow: 0 15px 40px rgba(52, 211, 153, 0.35);
+        }
+
+        .btn-download-win {
+            background: linear-gradient(135deg, #38bdf8 0%, #4f46e5 100%);
+            color: white;
+            padding: 0.95rem 2rem;
+            border-radius: 14px;
+            font-size: 1.05rem;
+            font-weight: 800;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 10px 30px var(--primary-glow);
+            transition: var(--transition);
+        }
+
+        .btn-download-win:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 15px 45px rgba(56, 189, 248, 0.5);
+        }
+
+        /* STICKY SCROLL-DRIVEN INTERACTIVE SHOWCASE SECTION */
+        .scroll-showcase-container {
+            height: 320vh;
+            position: relative;
+        }
+
+        .sticky-wrapper {
+            position: sticky;
+            top: 10vh;
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            perspective: 1200px;
+        }
+
+        .showcase-stage-card {
+            position: relative;
+            width: 90%;
+            max-width: 980px;
+            height: 520px;
+            border-radius: 26px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--card-border);
+            padding: 12px;
+            backdrop-filter: blur(25px);
+            box-shadow: 0 40px 110px rgba(0, 0, 0, 0.85);
+            transform-style: preserve-3d;
+            overflow: hidden;
+            transition: border-color 0.4s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .showcase-stage-card:hover {
+            border-color: rgba(56, 189, 248, 0.45);
+        }
+
+        /* Layered Images for Smooth Morph Scrubbing */
+        .showcase-img-layer {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            right: 12px;
+            bottom: 12px;
+            border-radius: 18px;
+            object-fit: contain;
+            width: calc(100% - 24px);
+            height: calc(100% - 24px);
+            opacity: 0;
+            transform: scale(0.92) translateZ(-40px);
+            transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .showcase-img-layer.active {
+            opacity: 1;
+            transform: scale(1) translateZ(0);
+        }
+
+        .interactive-caption-card {
+            margin-top: 1.8rem;
+            background: rgba(6, 8, 19, 0.88);
+            border: 1px solid var(--card-border);
+            padding: 12px 28px;
+            border-radius: 50px;
+            backdrop-filter: blur(20px);
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--primary);
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            transition: all 0.4s ease;
+        }
+
+        /* Features Section */
+        .features {
+            padding: 6rem 8%;
+        }
+
+        .sec-title {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .sec-title h2 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 0.6rem;
+        }
+
+        .sec-title p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .f-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius);
+            padding: 2.2rem;
+            backdrop-filter: blur(20px);
+            transition: var(--transition);
+        }
+
+        .f-card:hover {
+            transform: translateY(-6px);
+            border-color: rgba(56, 189, 248, 0.3);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+
+        .f-icon {
+            width: 54px;
+            height: 54px;
+            border-radius: 14px;
+            background: rgba(56, 189, 248, 0.12);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            margin-bottom: 1.3rem;
+        }
+
+        .f-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 0.7rem;
+            font-weight: 700;
+        }
+
+        .f-card p {
+            color: var(--text-muted);
+            font-size: 1rem;
+            line-height: 1.7;
+        }
+
+        /* Download Options Box */
+        .download-section {
+            padding: 6rem 8%;
+            text-align: center;
+            max-width: 950px;
+            margin: 0 auto;
+        }
+
+        .download-box {
+            background: rgba(255, 255, 255, 0.025);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius);
+            padding: 3.5rem 2rem;
+            backdrop-filter: blur(25px);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+
+        /* Footer */
+        footer {
+            background: rgba(4, 6, 13, 0.95);
+            border-top: 1px solid var(--card-border);
+            padding: 3.5rem 8% 2.5rem;
+        }
+
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.3rem;
+            font-weight: 800;
+        }
+
+        .footer-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .footer-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            padding: 8px 18px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            text-decoration: none;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .footer-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.3rem; }
+            .showcase-stage-card { height: 320px; }
+            .download-group { flex-direction: column; }
+            .nav-links { display: none; }
+            .footer-content { flex-direction: column; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Ambient Canvas Background -->
+    <canvas id="bgCanvas"></canvas>
+
+    <div class="content-layer">
+        <!-- Navigation Bar -->
+        <nav>
+            <a href="#" class="logo">
+                <div class="logo-icon">⚡</div>
+                <span>SDN Downloader <span style="color: var(--primary);">Ultra</span></span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="#interactiveShowcase">العرض التفاعلي</a></li>
+                <li><a href="#features">المميزات</a></li>
+                <li><a href="#download">تنزيل التطبيق</a></li>
+            </ul>
+            <a href="https://play.google.com/store/apps/details?id=com.sdn.downloader.ultra" target="_blank" class="btn-header-play">
+                <i class="fab fa-google-play" style="color: #34d399;"></i> Google Play
+            </a>
+        </nav>
+
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="tag-badge gsap-anim">
+                <i class="fas fa-magic"></i> اسحب للأسفل لاستكشاف العرض الحركي التفاعلي
+            </div>
+            <h1 class="gsap-anim">
+                برنامج وتطبيق تنزيل الفيديوهات <br>
+                <span class="gradient-text">SDN Downloader ⚡ Ultra Edition</span>
+            </h1>
+            <p class="gsap-anim">
+                استمتع بتجربة تنزيل متكاملة على جهازك الشخصي أو هاتفك الذكي عبر متجر Google Play بأقصى سرعة وبدون إعلانات.
+            </p>
+
+            <!-- Multi-Platform Action Buttons -->
+            <div class="download-group gsap-anim">
+                <a href="https://play.google.com/store/apps/details?id=com.sdn.downloader.ultra" target="_blank" class="btn-google-play">
+                    <i class="fab fa-google-play" style="font-size: 1.6rem; color: #34d399;"></i>
+                    <div style="text-align: right; line-height: 1.2;">
+                        <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">حمله مجاناً من</span>
+                        <span style="font-size: 1.1rem; font-weight: 800;">Google Play</span>
+                    </div>
+                </a>
+
+                <a href="mobile_demo.html" target="_blank" class="btn-google-play" style="background: rgba(56, 189, 248, 0.12); border-color: rgba(56, 189, 248, 0.4);">
+                    <i class="fas fa-share-alt" style="font-size: 1.4rem; color: var(--primary);"></i>
+                    <div style="text-align: right; line-height: 1.2;">
+                        <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">تجربة حية لهاتفك</span>
+                        <span style="font-size: 1rem; font-weight: 800; color: var(--primary);">مشاركة Android 📲</span>
+                    </div>
+                </a>
+
+                <a href="dist/SDN_Downloader_Setup.exe" class="btn-download-win" download="SDN_Downloader_Setup.exe">
+                    <i class="fab fa-windows" style="font-size: 1.4rem;"></i>
+                    <span>تنزيل للويندوز (Setup.exe)</span>
+                </a>
+            </div>
+        </section>
+
+        <!-- STICKY SCROLL-DRIVEN INTERACTIVE SHOWCASE SECTION -->
+        <div class="scroll-showcase-container" id="interactiveShowcase">
+            <div class="sticky-wrapper">
+                <div class="showcase-stage-card" id="stageCard">
+                    <!-- Layer 1: Real Main App Interface -->
+                    <img src="assets/real-app-gui.png" class="showcase-img-layer active" id="layer1" alt="SDN Ultra Main Interface">
+                    <!-- Layer 2: Clean Progress Bar (Song title removed) -->
+                    <img src="assets/app-progress-clean.png" class="showcase-img-layer" id="layer2" alt="Clean Download Progress Speed Bar">
+                    <!-- Layer 3: Real Installer Window -->
+                    <img src="assets/app-installer-gui.png" class="showcase-img-layer" id="layer3" alt="SDN Ultra Installer Window">
+                    <!-- Layer 4: Elegant Creative 3D Showcase -->
+                    <img src="assets/creative-showcase.png" class="showcase-img-layer" id="layer4" alt="SDN Ultra 3D Showcase">
+                </div>
+
+                <!-- Interactive Dynamic Caption -->
+                <div class="interactive-caption-card" id="showcaseCaption">
+                    <i class="fas fa-sparkles" style="color: var(--primary);"></i>
+                    <span id="captionText">1. الواجهة الرئيسية الحقيقية لبرنامج SDN Downloader Ultra</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features Section -->
+        <section class="features" id="features">
+            <div class="sec-title gsap-anim">
+                <h2>مميزات تطبيق الكمبيوتر والهاتف</h2>
+                <p>صُممت كل خاصية لتمنحك أسهل وأسرع تجربة تنزيل عبر جميع أجهزتك</p>
+            </div>
+
+            <div class="features-grid">
+                <div class="f-card gsap-anim">
+                    <div class="f-icon"><i class="fas fa-mobile-alt"></i></div>
+                    <h3>متوافق مع الهواتف والكمبيوتر</h3>
+                    <p>استخدم تطبيق الهاتف أو برنامج الكمبيوتر لتنزيل فيديوهاتك وصوتياتك المفضلة بنفس السهولة والسرعة.</p>
+                </div>
+
+                <div class="f-card gsap-anim">
+                    <div class="f-icon"><i class="fas fa-paste"></i></div>
+                    <h3>لصق وجلب فوري</h3>
+                    <p>جلب تلقائي للروابط مباشرة من الحافظة بمجرد فتح التطبيق مع قراءة الدقة وتوفير الخيارات.</p>
+                </div>
+
+                <div class="f-card gsap-anim">
+                    <div class="f-icon"><i class="fas fa-music"></i></div>
+                    <h3>استخراج الصوتيات (MP3)</h3>
+                    <p>تحويل آلي سريع لمقاطع الفيديو إلى ملفات صوتية عالية الجودة بدقة 320kbps.</p>
+                </div>
+
+                <div class="f-card gsap-anim">
+                    <div class="f-icon"><i class="fas fa-layer-group"></i></div>
+                    <h3>دعم كافة المنصات</h3>
+                    <p>تنزيل الفيديوهات من يوتيوب، تيكتوك بدون علامة مائية، إنستغرام، فيسبوك، وSoundCloud.</p>
+                </div>
+
+                <div class="f-card gsap-anim">
+                    <div class="f-icon"><i class="fas fa-shield-alt"></i></div>
+                    <h3>آمن 100% وبدون إعلانات</h3>
+                    <p>تجربة استنزاف صفرية للبيانات وبدون أي إعلانات مزعجة على جميع المنصات.</p>
+                </div>
+
+                <div class="f-card gsap-anim">
+                    <div class="f-icon"><i class="fas fa-tachometer-alt"></i></div>
+                    <h3>سرعة تنزيل فائقة</h3>
+                    <p>اعتماد محرك التنزيل المتطور لاستغلال كامل سرعة الإنترنت لديك دون حدود.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Download Action Section -->
+        <section class="download-section" id="download">
+            <div class="download-box gsap-anim">
+                <h2 style="font-size: 2.2rem; font-weight: 900; margin-bottom: 1rem;">اختر نُسختك للبدء فوراً</h2>
+                <p style="color: var(--text-muted); margin-bottom: 2rem;">التطبيق متاح مجاناً لهواتف الأندرويد وأجهزة الويندوز</p>
+
+                <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                    <a href="https://play.google.com/store/apps/details?id=com.sdn.downloader.ultra" target="_blank" class="btn-google-play">
+                        <i class="fab fa-google-play" style="font-size: 1.6rem; color: #34d399;"></i>
+                        <span>تحميل من Google Play</span>
+                    </a>
+                    <a href="dist/SDN_Downloader_Setup.exe" class="btn-download-win" download="SDN_Downloader_Setup.exe">
+                        <i class="fab fa-windows" style="font-size: 1.4rem;"></i>
+                        <span>تنزيل للويندوز (101 MB)</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Premium Footer -->
+        <footer>
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <div class="logo-icon" style="width: 34px; height: 34px; font-size: 1rem;">⚡</div>
+                    <span>SDN Downloader <span style="color: var(--primary);">Ultra</span></span>
+                </div>
+                <div class="footer-actions">
+                    <a href="https://play.google.com/store/apps/details?id=com.sdn.downloader.ultra" target="_blank" class="footer-btn">
+                        <i class="fab fa-google-play" style="color: #34d399;"></i> متجر Google Play
+                    </a>
+                    <a href="dist/SDN_Downloader_Setup.exe" class="footer-btn" download="SDN_Downloader_Setup.exe">
+                        <i class="fab fa-windows"></i> تنزيل للويندوز
+                    </a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                &copy; 2026 SDN Downloader Ultra Edition. جميع الحقوق محفوظة.
+            </div>
+        </footer>
+    </div>
+
+    <!-- GSAP ScrollTrigger Interactive Scripting -->
+    <script>
+        // Smooth Canvas Ambient Animation
+        const canvas = document.getElementById('bgCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        const particles = Array.from({ length: 45 }, () => ({
+            x: Math.random() * window.innerWidth,
+            y: Math.random() * window.innerHeight,
+            r: Math.random() * 2 + 1,
+            speedY: Math.random() * 0.4 + 0.1,
+            opacity: Math.random() * 0.4 + 0.1
+        }));
+
+        function renderCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                p.y -= p.speedY;
+                if (p.y < 0) p.y = canvas.height;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(56, 189, 248, ${p.opacity})`;
+                ctx.fill();
+            });
+            requestAnimationFrame(renderCanvas);
+        }
+        renderCanvas();
+
+        // GSAP ScrollTrigger Interactive Sequence
+        gsap.registerPlugin(ScrollTrigger);
+
+        // General Fade Animations
+        gsap.utils.toArray('.gsap-anim').forEach((el) => {
+            gsap.from(el, {
+                opacity: 0,
+                y: 35,
+                duration: 0.85,
+                ease: "power2.out",
+                scrollTrigger: {
+                    trigger: el,
+                    start: "top 88%",
+                    toggleActions: "play none none reverse"
+                }
+            });
+        });
+
+        // Sticky Showcase Layer Scrubbing Logic
+        const layers = [
+            document.getElementById('layer1'),
+            document.getElementById('layer2'),
+            document.getElementById('layer3'),
+            document.getElementById('layer4')
+        ];
+
+        const captions = [
+            "1. الواجهة الرئيسية الحقيقية لبرنامج SDN Downloader Ultra",
+            "2. شريط التنزيل المباشر ومتابعة السرعة والتقدم فوراً",
+            "3. مثبت التثبيت السريع بنقرة واحدة (SDN Ultra Installer)",
+            "4. متوافق 100% بين أجهزة الويندوز والهواتف الذكية"
+        ];
+
+        const captionTextElem = document.getElementById('captionText');
+        const stageCard = document.getElementById('stageCard');
+
+        ScrollTrigger.create({
+            trigger: "#interactiveShowcase",
+            start: "top top",
+            end: "bottom bottom",
+            scrub: 0.6,
+            onUpdate: (self) => {
+                const progress = self.progress; // 0 to 1
+                let activeIdx = 0;
+
+                if (progress < 0.25) activeIdx = 0;
+                else if (progress < 0.50) activeIdx = 1;
+                else if (progress < 0.75) activeIdx = 2;
+                else activeIdx = 3;
+
+                // Toggle active layer
+                layers.forEach((l, idx) => {
+                    if (idx === activeIdx) l.classList.add('active');
+                    else l.classList.remove('active');
+                });
+
+                // Update text caption
+                if (captionTextElem.innerText !== captions[activeIdx]) {
+                    captionTextElem.innerText = captions[activeIdx];
+                }
+
+                // Smooth 3D Rotation on scroll
+                const tiltAngle = Math.sin(progress * Math.PI * 2) * 8;
+                gsap.to(stageCard, {
+                    rotateY: tiltAngle,
+                    rotateX: -tiltAngle * 0.5,
+                    duration: 0.4,
+                    ease: "power1.out"
+                });
+            }
+        });
+    </script>
+</body>
+</html>

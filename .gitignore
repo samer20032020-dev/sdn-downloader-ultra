@@ -1,0 +1,7 @@
+build/
+tools/
+*.bmp
+*.pyc
+__pycache__/
+dist/
+.github/
