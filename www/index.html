@@ -299,9 +299,70 @@ input:checked + .slider:before { transform: translateX(20px); }
   padding: 6px 12px; border-radius: 10px; font-family: inherit; font-size: 0.82rem; font-weight: 700; outline: none;
 }
 
+/* Folder Selection Modal */
+.folder-modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(12px); z-index: 99999; align-items: center; justify-content: center; padding: 20px;
+}
+.folder-modal-overlay.active { display: flex; animation: popToast 0.25s ease forwards; }
+
+.folder-modal-card {
+  background: rgba(15, 23, 42, 0.98); border: 1px solid var(--primary-glow);
+  border-radius: var(--radius); padding: 20px; width: 100%; max-width: 380px;
+  display: flex; flex-direction: column; gap: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+}
+.folder-modal-title { font-size: 1.05rem; font-weight: 800; color: #fff; text-align: center; margin-bottom: 4px; }
+
+.folder-opt-btn {
+  background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-main);
+  padding: 12px 16px; border-radius: 14px; font-size: 0.88rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: space-between; cursor: pointer;
+  transition: all 0.2s; font-family: inherit;
+}
+.folder-opt-btn:active { background: rgba(56, 189, 248, 0.2); border-color: var(--primary); }
+
 </style>
 </head>
 <body>
+
+<!-- FOLDER PICKER MODAL -->
+<div class="folder-modal-overlay" id="folderModal">
+  <div class="folder-modal-card">
+    <div class="folder-modal-title">📁 اختيار مجلد الحفظ في الهاتف</div>
+    
+    <button class="folder-opt-btn" onclick="selectPresetFolder('Downloads (التنزيلات)')">
+      <span>📂 مجلد التنزيلات</span>
+      <span style="font-size:0.78rem; color:var(--primary);">Download</span>
+    </button>
+
+    <button class="folder-opt-btn" onclick="selectPresetFolder('Movies (الفيديوهات)')">
+      <span>🎬 مجلد الفيديوهات</span>
+      <span style="font-size:0.78rem; color:var(--primary);">Movies</span>
+    </button>
+
+    <button class="folder-opt-btn" onclick="selectPresetFolder('DCIM (المعرض والتصوير)')">
+      <span>📸 مجلد المعرض</span>
+      <span style="font-size:0.78rem; color:var(--primary);">DCIM</span>
+    </button>
+
+    <button class="folder-opt-btn" onclick="selectPresetFolder('Music (الصوتيات)')">
+      <span>🎵 مجلد الموسيقى</span>
+      <span style="font-size:0.78rem; color:var(--primary);">Music</span>
+    </button>
+
+    <button class="folder-opt-btn" onclick="selectPresetFolder('SDN_Downloads (خاص بالبرنامج)')">
+      <span>⚡ مجلد SDN خاص</span>
+      <span style="font-size:0.78rem; color:var(--primary);">SDN_Folder</span>
+    </button>
+
+    <button class="folder-opt-btn" onclick="promptCustomFolder()">
+      <span>✍️ ادخال اسم مجلد مخصص...</span>
+      <span style="font-size:0.78rem; color:var(--muted);">Custom</span>
+    </button>
+
+    <button class="header-btn" onclick="document.getElementById('folderModal').classList.remove('active')" style="width:100%; margin-top:4px; background:rgba(255,255,255,0.05); font-weight:700;">إلغاء</button>
+  </div>
+</div>
 
 <div class="bg-glow">
   <div class="glow-orb orb-1"></div>
@@ -577,18 +638,48 @@ themeToggle?.addEventListener('change', () => {
 });
 
 /* ── Change Download Folder Handler ── */
+function windowHandleSelectedFolder(path) {
+  if (!path) return;
+  const pathTxt = document.getElementById('savePathTxt');
+  if (pathTxt) pathTxt.innerText = path;
+  localStorage.setItem('customSavePath', path);
+  toast(`📁 تم تحديد مجلد الحفظ: ${path}`);
+  document.getElementById('folderModal')?.classList.remove('active');
+}
+window.handleSelectedFolder = windowHandleSelectedFolder;
+
+function selectPresetFolder(path) {
+  windowHandleSelectedFolder(path);
+}
+
+function promptCustomFolder() {
+  const customName = prompt('أدخل اسم المجلد المفصل لحفظ الفيديو:');
+  if (customName && customName.trim()) {
+    windowHandleSelectedFolder(customName.trim());
+  }
+}
+
 document.getElementById('changeFolderBtn')?.addEventListener('click', () => {
+  if (window.androidInterface?.pickFolder) {
+    try {
+      window.androidInterface.pickFolder();
+      return;
+    } catch(e) {}
+  }
   if (window.pywebview?.api?.choose_folder) {
     window.pywebview.api.choose_folder().then(p => {
-      if (p) {
-        document.getElementById('savePathTxt').innerText = p;
-        toast('📁 تم تغيير مجلد الحفظ');
-      }
+      if (p) windowHandleSelectedFolder(p);
     });
-  } else {
-    toast('📁 مجلد التنزيلات الافتراضي للهاتف (Downloads)');
+    return;
   }
+  document.getElementById('folderModal')?.classList.add('active');
 });
+
+// Restore saved folder path on load
+const savedPath = localStorage.getItem('customSavePath');
+if (savedPath && document.getElementById('savePathTxt')) {
+  document.getElementById('savePathTxt').innerText = savedPath;
+}
 
 /* ── Clear History ── */
 document.getElementById('clearHistoryBtn')?.addEventListener('click', () => {
