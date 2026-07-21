@@ -105,17 +105,15 @@ if res_build.returncode != 0:
     sys.exit(1)
 
 apk_source = os.path.join(android_dir, "app", "build", "outputs", "apk", "debug", "app-debug.apk")
-apk_target = os.path.join(proj_dir, "SDN_Downloader_Ultra.apk")
-dist_apk_target = os.path.join(proj_dir, "dist", "SDN_Downloader_Ultra.apk")
+apk_target = os.path.join(proj_dir, "dist", "SDN_Downloader_Ultra.apk")
 
 if not os.path.exists(apk_source):
     print(f"Generated APK not found at {apk_source}")
     sys.exit(1)
 
 import shutil
+os.makedirs(os.path.dirname(apk_target), exist_ok=True)
 shutil.copyfile(apk_source, apk_target)
-os.makedirs(os.path.dirname(dist_apk_target), exist_ok=True)
-shutil.copyfile(apk_source, dist_apk_target)
 apk_size = os.path.getsize(apk_target)
 print(f"Successfully built real APK: {apk_target} ({apk_size} bytes)")
 
