@@ -393,27 +393,7 @@ input:checked + .slider:before { transform: translateX(20px); }
         </div>
 
         <div class="recent-cards-list" id="recentList">
-          <div class="recent-card-item">
-            <div class="recent-card-left">
-              <div class="platform-icon yt"><i class="fab fa-youtube"></i></div>
-              <div class="item-details">
-                <span class="item-title">خلف كواليس المنتج الجديد</span>
-                <span class="item-meta">1080p - 24 MB</span>
-              </div>
-            </div>
-            <i class="fas fa-check-circle item-status-icon"></i>
-          </div>
-
-          <div class="recent-card-item">
-            <div class="recent-card-left">
-              <div class="platform-icon tt"><i class="fab fa-tiktok"></i></div>
-              <div class="item-details">
-                <span class="item-title">وصفة سريعة - مطبخ سارة</span>
-                <span class="item-meta">720p - 8 MB</span>
-              </div>
-            </div>
-            <i class="fas fa-check-circle item-status-icon"></i>
-          </div>
+          <div class="empty-state" id="emptyRecent" style="text-align:center; color:var(--muted); padding:20px; font-weight:700; font-size:0.85rem;">لا توجد تنزيلات سابقة حتى الآن 🚀</div>
         </div>
       </section>
 
@@ -426,26 +406,7 @@ input:checked + .slider:before { transform: translateX(20px); }
         <button class="header-btn" id="clearHistoryBtn" style="width:auto; padding:0 10px; font-size:0.78rem; color:var(--red);">🗑️ مسح السجل</button>
       </div>
       <div id="fullHistoryList" style="display:flex; flex-direction:column; gap:10px;">
-        <div class="recent-card-item">
-          <div class="recent-card-left">
-            <div class="platform-icon yt"><i class="fab fa-youtube"></i></div>
-            <div class="item-details">
-              <span class="item-title">خلف كواليس المنتج الجديد</span>
-              <span class="item-meta">1080p - 24 MB</span>
-            </div>
-          </div>
-          <i class="fas fa-check-circle item-status-icon"></i>
-        </div>
-        <div class="recent-card-item">
-          <div class="recent-card-left">
-            <div class="platform-icon tt"><i class="fab fa-tiktok"></i></div>
-            <div class="item-details">
-              <span class="item-title">وصفة سريعة - مطبخ سارة</span>
-              <span class="item-meta">720p - 8 MB</span>
-            </div>
-          </div>
-          <i class="fas fa-check-circle item-status-icon"></i>
-        </div>
+        <div class="empty-state" id="emptyHistory" style="text-align:center; color:var(--muted); padding:30px; font-weight:700; font-size:0.9rem;">السجل فارغ حالياً</div>
       </div>
     </div>
 
@@ -820,7 +781,12 @@ document.getElementById('dlBtn').addEventListener('click', () => {
 
 /* ── Recent Items Add ── */
 function addRecentItem(title, quality, type) {
+  document.getElementById('emptyRecent')?.remove();
+  document.getElementById('emptyHistory')?.remove();
+
   const list = document.getElementById('recentList');
+  const hist = document.getElementById('fullHistoryList');
+
   const item = document.createElement('div');
   item.className = 'recent-card-item';
   item.innerHTML = `
@@ -833,7 +799,8 @@ function addRecentItem(title, quality, type) {
     </div>
     <i class="fas fa-check-circle item-status-icon"></i>
   `;
-  list.insertBefore(item, list.firstChild);
+  if (list) list.insertBefore(item, list.firstChild);
+  if (hist) hist.insertBefore(item.cloneNode(true), hist.firstChild);
 }
 
 /* ── Auto Update Checker ── */
