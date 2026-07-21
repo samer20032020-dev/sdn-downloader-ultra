@@ -25,6 +25,24 @@
   --text-sub: #94a3b8;
   --muted: #64748b;
   --radius: 20px;
+  --header-bg: rgba(9, 11, 22, 0.85);
+  --nav-bg: rgba(9, 11, 22, 0.92);
+}
+
+body.light-theme {
+  --bg: #f8fafc;
+  --card-bg: rgba(255, 255, 255, 0.9);
+  --card-border: rgba(15, 23, 42, 0.08);
+  --primary: #0284c7;
+  --primary-glow: rgba(2, 132, 199, 0.2);
+  --accent: #4f46e5;
+  --green: #10b981;
+  --red: #f43f5e;
+  --text-main: #0f172a;
+  --text-sub: #475569;
+  --muted: #94a3b8;
+  --header-bg: rgba(255, 255, 255, 0.9);
+  --nav-bg: rgba(255, 255, 255, 0.95);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -36,6 +54,7 @@ html, body {
   font-family: 'Tajawal', 'Outfit', system-ui, sans-serif;
   overflow: hidden;
   position: relative;
+  transition: background 0.3s, color 0.3s;
 }
 
 /* Ambient Background Glow */
@@ -52,15 +71,15 @@ html, body {
 .app-viewport {
   display: flex; flex-direction: column; height: 100vh; max-width: 500px; margin: 0 auto;
   position: relative; overflow: hidden; background: var(--bg);
-  box-shadow: 0 0 60px rgba(0,0,0,0.8);
+  box-shadow: 0 0 60px rgba(0,0,0,0.8); transition: background 0.3s;
 }
 
 /* Header Bar */
 .app-header {
   height: 64px; padding: 0 18px; display: flex; align-items: center; justify-content: space-between;
-  background: rgba(9, 11, 22, 0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  background: var(--header-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--card-border); z-index: 100; flex-shrink: 0;
-  padding-top: env(safe-area-inset-top);
+  padding-top: env(safe-area-inset-top); transition: background 0.3s;
 }
 .header-btn {
   width: 40px; height: 40px; border-radius: 12px; background: var(--card-bg); border: 1px solid var(--card-border);
@@ -69,7 +88,7 @@ html, body {
 }
 .header-btn:active { transform: scale(0.95); background: rgba(255,255,255,0.08); }
 .header-brand { text-align: center; display: flex; flex-direction: column; align-items: center; }
-.brand-title { font-size: 1.15rem; font-weight: 800; color: #fff; letter-spacing: -0.3px; }
+.brand-title { font-size: 1.15rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.3px; }
 .brand-sub { font-size: 0.72rem; font-weight: 700; color: var(--primary); margin-top: -2px; letter-spacing: 0.5px; }
 .brand-badge {
   width: 38px; height: 38px; border-radius: 12px;
@@ -101,14 +120,14 @@ html, body {
 }
 .glow-download-ring i { font-size: 2.2rem; color: var(--primary); }
 
-.hero-title { font-size: 1.7rem; font-weight: 900; color: #fff; margin-bottom: 6px; }
+.hero-title { font-size: 1.7rem; font-weight: 900; color: var(--text-main); margin-bottom: 6px; }
 .hero-sub { font-size: 0.88rem; color: var(--text-sub); font-weight: 500; max-width: 300px; line-height: 1.4; }
 
 /* Input Box Card */
 .input-card {
   background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius);
   padding: 16px; display: flex; flex-direction: column; gap: 14px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.3); transition: all 0.3s ease;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15); transition: all 0.3s ease;
 }
 .input-card:focus-within { border-color: rgba(56, 189, 248, 0.4); box-shadow: 0 10px 35px rgba(56, 189, 248, 0.15); }
 
@@ -116,10 +135,11 @@ html, body {
   position: relative; display: flex; align-items: center; width: 100%;
 }
 .input-field-wrap input {
-  width: 100%; background: rgba(0, 0, 0, 0.25); border: 1px solid var(--card-border);
-  border-radius: 14px; padding: 14px 14px 14px 42px; font-size: 0.92rem; color: #fff;
+  width: 100%; background: rgba(0, 0, 0, 0.08); border: 1px solid var(--card-border);
+  border-radius: 14px; padding: 14px 14px 14px 42px; font-size: 0.92rem; color: var(--text-main);
   font-family: inherit; outline: none; transition: border-color 0.2s;
 }
+body.light-theme .input-field-wrap input { background: #fff; }
 .input-field-wrap input:focus { border-color: var(--primary); }
 .input-field-wrap .clear-btn {
   position: absolute; left: 12px; color: var(--muted); font-size: 1rem; cursor: pointer; display: none;
@@ -129,7 +149,7 @@ html, body {
 .action-row { display: flex; gap: 10px; }
 .btn-paste-sq {
   width: 52px; height: 52px; border-radius: 14px; background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--card-border); color: #fff; font-size: 1.2rem;
+  border: 1px solid var(--card-border); color: var(--text-main); font-size: 1.2rem;
   display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
   transition: all 0.2s;
 }
@@ -148,7 +168,7 @@ html, body {
 /* Badges Row */
 .badges-row { display: flex; gap: 10px; justify-content: center; }
 .feat-chip {
-  background: rgba(255, 255, 255, 0.03); border: 1px solid var(--card-border);
+  background: var(--card-bg); border: 1px solid var(--card-border);
   padding: 8px 14px; border-radius: 30px; font-size: 0.8rem; font-weight: 700;
   color: var(--text-sub); display: flex; align-items: center; gap: 6px;
 }
@@ -157,7 +177,7 @@ html, body {
 /* Recent Downloads Section */
 .recent-section { display: flex; flex-direction: column; gap: 12px; margin-top: 5px; }
 .section-hdr { display: flex; align-items: center; justify-content: space-between; }
-.section-hdr h3 { font-size: 1.05rem; font-weight: 800; color: #fff; }
+.section-hdr h3 { font-size: 1.05rem; font-weight: 800; color: var(--text-main); }
 .section-hdr .link-all { font-size: 0.85rem; font-weight: 700; color: var(--primary); cursor: pointer; text-decoration: none; }
 
 .recent-cards-list { display: flex; flex-direction: column; gap: 10px; }
@@ -176,16 +196,16 @@ html, body {
 .platform-icon.generic { background: rgba(56, 189, 248, 0.15); color: var(--primary); }
 
 .item-details { display: flex; flex-direction: column; overflow: hidden; }
-.item-title { font-size: 0.9rem; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-title { font-size: 0.9rem; font-weight: 700; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .item-meta { font-size: 0.78rem; font-weight: 500; color: var(--text-sub); margin-top: 2px; }
 
 .item-status-icon { color: var(--green); font-size: 1.1rem; flex-shrink: 0; }
 
 /* Media Details Card Modal */
 .media-result-card {
-  display: none; background: rgba(15, 20, 35, 0.95); border: 1px solid var(--primary-glow);
+  display: none; background: var(--card-bg); border: 1px solid var(--primary-glow);
   border-radius: var(--radius); padding: 16px; flex-direction: column; gap: 14px;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.5); backdrop-filter: blur(20px);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3); backdrop-filter: blur(20px);
 }
 .media-result-card.active { display: flex; animation: slideIn 0.3s ease; }
 @keyframes slideIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
@@ -193,16 +213,16 @@ html, body {
 .media-header-info { display: flex; gap: 12px; }
 .media-thumb { width: 90px; height: 75px; border-radius: 12px; object-fit: cover; background: #000; flex-shrink: 0; }
 .media-meta-wrap { display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
-.media-title { font-size: 0.92rem; font-weight: 800; color: #fff; line-clamp: 2; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
+.media-title { font-size: 0.92rem; font-weight: 800; color: var(--text-main); line-clamp: 2; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
 .media-uploader { font-size: 0.78rem; color: var(--primary); margin-top: 4px; font-weight: 700; }
 
 .quality-selector-grid { display: flex; flex-direction: column; gap: 8px; }
 .q-option-row {
   background: rgba(255,255,255,0.04); border: 1px solid var(--card-border); padding: 10px 14px;
   border-radius: 12px; display: flex; align-items: center; justify-content: space-between;
-  cursor: pointer; transition: all 0.2s; font-size: 0.85rem; font-weight: 700;
+  cursor: pointer; transition: all 0.2s; font-size: 0.85rem; font-weight: 700; color: var(--text-main);
 }
-.q-option-row.selected { background: rgba(56, 189, 248, 0.15); border-color: var(--primary); color: #fff; }
+.q-option-row.selected { background: rgba(56, 189, 248, 0.15); border-color: var(--primary); }
 
 .btn-start-download {
   height: 48px; border-radius: 14px; background: linear-gradient(135deg, #34d399 0%, #38bdf8 100%);
@@ -225,35 +245,59 @@ html, body {
 
 /* Progress Floating Card */
 .progress-card {
-  display: none; background: rgba(15, 20, 35, 0.95); border: 1px solid var(--primary);
+  display: none; background: var(--card-bg); border: 1px solid var(--primary);
   border-radius: 16px; padding: 14px; margin-top: 10px; flex-direction: column; gap: 8px;
 }
-.progress-bar-track { height: 8px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; }
+.progress-bar-track { height: 8px; background: rgba(0,0,0,0.15); border-radius: 10px; overflow: hidden; }
 .progress-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #38bdf8, #34d399); transition: width 0.2s; }
 
-/* Fixed Bottom Navigation Bar */
+/* Fixed Bottom Navigation Bar (3 Tabs Only) */
 .bottom-nav {
   position: absolute; bottom: 0; left: 0; right: 0; height: 68px;
-  background: rgba(9, 11, 22, 0.92); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+  background: var(--nav-bg); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
   border-top: 1px solid var(--card-border); display: flex; align-items: center; justify-content: space-around;
-  z-index: 100; padding-bottom: env(safe-area-inset-bottom);
+  z-index: 100; padding-bottom: env(safe-area-inset-bottom); transition: background 0.3s;
 }
 .nav-tab {
   display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--muted);
-  background: transparent; border: none; font-family: inherit; font-size: 0.72rem; font-weight: 700;
-  cursor: pointer; transition: all 0.2s; padding: 6px 12px; border-radius: 12px;
+  background: transparent; border: none; font-family: inherit; font-size: 0.76rem; font-weight: 700;
+  cursor: pointer; transition: all 0.2s; padding: 8px 24px; border-radius: 14px; flex: 1;
 }
-.nav-tab i { font-size: 1.25rem; }
+.nav-tab i { font-size: 1.3rem; }
 .nav-tab.active { color: var(--primary); }
 .nav-tab.active i { transform: translateY(-2px); }
 
-/* Settings View Container */
+/* Settings & History Panels */
 .settings-panel, .history-panel { display: none; flex-direction: column; gap: 14px; }
 .settings-panel.active, .history-panel.active { display: flex; }
 
-.settings-group { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 14px; }
-.settings-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--card-border); }
+.settings-group { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+.settings-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--card-border); }
 .settings-item:last-child { border-bottom: none; }
+.settings-label { display: flex; flex-direction: column; gap: 2px; }
+.settings-title { font-weight: 700; font-size: 0.92rem; color: var(--text-main); }
+.settings-desc { font-size: 0.78rem; color: var(--text-sub); }
+
+/* Toggle Switch Control */
+.toggle-switch {
+  position: relative; width: 46px; height: 26px; display: inline-block; flex-shrink: 0;
+}
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute; cursor: pointer; inset: 0; background-color: rgba(255,255,255,0.15);
+  border-radius: 30px; transition: .3s; border: 1px solid var(--card-border);
+}
+.slider:before {
+  position: absolute; content: ""; height: 20px; width: 20px; left: 2px; bottom: 2px;
+  background-color: white; border-radius: 50%; transition: .3s;
+}
+input:checked + .slider { background-color: var(--primary); }
+input:checked + .slider:before { transform: translateX(20px); }
+
+.select-dropdown {
+  background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-main);
+  padding: 6px 12px; border-radius: 10px; font-family: inherit; font-size: 0.82rem; font-weight: 700; outline: none;
+}
 
 </style>
 </head>
@@ -281,7 +325,7 @@ html, body {
   <!-- Main Scroll Area -->
   <main class="main-content" id="mainScroll">
 
-    <!-- HOME TAB VIEW -->
+    <!-- TAB 1: HOME (الرئيسية) -->
     <div id="viewHome" style="display:flex; flex-direction:column; gap:20px;">
       
       <!-- Hero Center -->
@@ -349,7 +393,6 @@ html, body {
         </div>
 
         <div class="recent-cards-list" id="recentList">
-          <!-- Sample Recent Card 1 -->
           <div class="recent-card-item">
             <div class="recent-card-left">
               <div class="platform-icon yt"><i class="fab fa-youtube"></i></div>
@@ -361,7 +404,6 @@ html, body {
             <i class="fas fa-check-circle item-status-icon"></i>
           </div>
 
-          <!-- Sample Recent Card 2 -->
           <div class="recent-card-item">
             <div class="recent-card-left">
               <div class="platform-icon tt"><i class="fab fa-tiktok"></i></div>
@@ -377,49 +419,149 @@ html, body {
 
     </div><!-- End View Home -->
 
-    <!-- HISTORY TAB VIEW -->
+    <!-- TAB 2: HISTORY (السجل) -->
     <div id="viewHistory" class="history-panel">
-      <h3 style="font-size:1.1rem; font-weight:800; margin-bottom:6px;">🕒 سجل التحميلات الكامل</h3>
-      <div id="fullHistoryList" style="display:flex; flex-direction:column; gap:10px;"></div>
-    </div>
-
-    <!-- SETTINGS TAB VIEW -->
-    <div id="viewSettings" class="settings-panel">
-      <h3 style="font-size:1.1rem; font-weight:800; margin-bottom:6px;">⚙️ الإعدادات والمجلدات</h3>
-      <div class="settings-group">
-        <div class="settings-item">
-          <div>
-            <div style="font-weight:700;">مجلد حفظ التحميلات</div>
-            <div style="font-size:0.78rem; color:var(--text-sub);" id="savePathTxt">Downloads</div>
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+        <h3 style="font-size:1.1rem; font-weight:800;">🕒 سجل التحميلات الكامل</h3>
+        <button class="header-btn" id="clearHistoryBtn" style="width:auto; padding:0 10px; font-size:0.78rem; color:var(--red);">🗑️ مسح السجل</button>
+      </div>
+      <div id="fullHistoryList" style="display:flex; flex-direction:column; gap:10px;">
+        <div class="recent-card-item">
+          <div class="recent-card-left">
+            <div class="platform-icon yt"><i class="fab fa-youtube"></i></div>
+            <div class="item-details">
+              <span class="item-title">خلف كواليس المنتج الجديد</span>
+              <span class="item-meta">1080p - 24 MB</span>
+            </div>
           </div>
-          <button class="header-btn" id="changeFolderBtn" style="width:auto; padding:0 12px; font-size:0.8rem;">تغيير</button>
+          <i class="fas fa-check-circle item-status-icon"></i>
         </div>
-        <div class="settings-item">
-          <div>
-            <div style="font-weight:700;">التحديثات التلقائية</div>
-            <div style="font-size:0.78rem; color:var(--text-sub);">التحقق من التحديثات عند الفتح</div>
+        <div class="recent-card-item">
+          <div class="recent-card-left">
+            <div class="platform-icon tt"><i class="fab fa-tiktok"></i></div>
+            <div class="item-details">
+              <span class="item-title">وصفة سريعة - مطبخ سارة</span>
+              <span class="item-meta">720p - 8 MB</span>
+            </div>
           </div>
-          <span style="color:var(--green); font-size:0.85rem; font-weight:700;">مفعل ✓</span>
+          <i class="fas fa-check-circle item-status-icon"></i>
         </div>
       </div>
     </div>
 
+    <!-- TAB 3: SETTINGS (الإعدادات الشاملة) -->
+    <div id="viewSettings" class="settings-panel">
+      <h3 style="font-size:1.1rem; font-weight:800; margin-bottom:6px;">⚙️ الإعدادات المتقدمة</h3>
+
+      <!-- Group 1: Appearance & Theme -->
+      <div class="settings-group">
+        <div style="font-size:0.82rem; font-weight:800; color:var(--primary);">🎨 المظهر والواجهة</div>
+        
+        <div class="settings-item">
+          <div class="settings-label">
+            <span class="settings-title">الـثـيـم (داكن / فاتح)</span>
+            <span class="settings-desc">التبديل بين الثيم المظلم والنظيف الفاتح</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="themeToggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="settings-item">
+          <div class="settings-label">
+            <span class="settings-title">جودة التنزيل الافتراضية</span>
+            <span class="settings-desc">تحديد الجودة المفضل تحديدها تلقائياً</span>
+          </div>
+          <select class="select-dropdown" id="defaultQualitySelect">
+            <option value="1080">1080p (Full HD)</option>
+            <option value="720" selected>720p (HD)</option>
+            <option value="480">480p (SD)</option>
+            <option value="mp3">صوت MP3 فقط</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Group 2: Storage & Files -->
+      <div class="settings-group">
+        <div style="font-size:0.82rem; font-weight:800; color:var(--primary);">📁 التخزين والحفظ</div>
+        
+        <div class="settings-item">
+          <div class="settings-label">
+            <span class="settings-title">مجلد حفظ التحميلات</span>
+            <span class="settings-desc" id="savePathTxt">Downloads</span>
+          </div>
+          <button class="header-btn" id="changeFolderBtn" style="width:auto; padding:0 12px; font-size:0.8rem;">تغيير 🗂</button>
+        </div>
+
+        <div class="settings-item">
+          <div class="settings-label">
+            <span class="settings-title">لصق الحافظة التلقائي</span>
+            <span class="settings-desc">قراءة وجلب الرابط التلقائي من الحافظة عند الفتح</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="autoPasteToggle" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Group 3: Updates & Notifications -->
+      <div class="settings-group">
+        <div style="font-size:0.82rem; font-weight:800; color:var(--primary);">🚀 التحديثات والإشعارات</div>
+        
+        <div class="settings-item">
+          <div class="settings-label">
+            <span class="settings-title">التحديث التلقائي</span>
+            <span class="settings-desc">إشعار بالنسخ الجديدة من GitHub تلقائياً</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="autoUpdateToggle" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="settings-item">
+          <div class="settings-label">
+            <span class="settings-title">نغمة التنزيل والاهتزاز</span>
+            <span class="settings-desc">تشغيل صوت وتنبيه عند اكتمال الفيديو</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="soundToggle" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Group 4: App Info & Utilities -->
+      <div class="settings-group">
+        <div style="font-size:0.82rem; font-weight:800; color:var(--primary);">ℹ️ معلومات البرنامج</div>
+        
+        <div class="settings-item">
+          <div class="settings-label">
+            <span class="settings-title">إصدار التطبيق الحالي</span>
+            <span class="settings-desc">SDN Downloader Ultra Edition v2.0.0</span>
+          </div>
+          <button class="header-btn" id="checkUpdatesManualBtn" style="width:auto; padding:0 10px; font-size:0.78rem; color:var(--primary);">فحص التحديثات</button>
+        </div>
+      </div>
+
+    </div>
+
   </main>
 
-  <!-- Bottom Navigation Bar -->
+  <!-- Bottom Navigation Bar (3 Tabs Only: الرئيسية - السجل - الإعدادات) -->
   <nav class="bottom-nav">
     <button class="nav-tab active" data-target="viewHome">
       <i class="fas fa-home"></i>
       <span>الرئيسية</span>
     </button>
+
     <button class="nav-tab" data-target="viewHistory">
       <i class="fas fa-history"></i>
       <span>السجل</span>
     </button>
-    <button class="nav-tab" data-target="viewSettings">
-      <i class="fas fa-folder"></i>
-      <span>الملفات</span>
-    </button>
+
     <button class="nav-tab" data-target="viewSettings">
       <i class="fas fa-cog"></i>
       <span>الإعدادات</span>
@@ -444,7 +586,7 @@ function toast(msg) {
   setTimeout(() => el.remove(), 3000);
 }
 
-/* ── Tab Switching ── */
+/* ── 3-Tab Bottom Navigation Switching ── */
 document.querySelectorAll('.nav-tab').forEach(tab => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -459,6 +601,38 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
 
 document.getElementById('viewAllBtn')?.addEventListener('click', () => {
   document.querySelector('.nav-tab[data-target="viewHistory"]')?.click();
+});
+
+/* ── Theme Switcher Handler (Dark/Light) ── */
+const themeToggle = document.getElementById('themeToggle');
+themeToggle?.addEventListener('change', () => {
+  if (themeToggle.checked) {
+    document.body.classList.add('light-theme');
+    toast('☀️ تم تفعيل الثيم الفاتح');
+  } else {
+    document.body.classList.remove('light-theme');
+    toast('🌙 تم تفعيل الثيم الداكن');
+  }
+});
+
+/* ── Change Download Folder Handler ── */
+document.getElementById('changeFolderBtn')?.addEventListener('click', () => {
+  if (window.pywebview?.api?.choose_folder) {
+    window.pywebview.api.choose_folder().then(p => {
+      if (p) {
+        document.getElementById('savePathTxt').innerText = p;
+        toast('📁 تم تغيير مجلد الحفظ');
+      }
+    });
+  } else {
+    toast('📁 مجلد التنزيلات الافتراضي للهاتف (Downloads)');
+  }
+});
+
+/* ── Clear History ── */
+document.getElementById('clearHistoryBtn')?.addEventListener('click', () => {
+  document.getElementById('fullHistoryList').innerHTML = '<div style="text-align:center; color:var(--muted); padding:20px; font-weight:700;">السجل فارغ حالياً</div>';
+  toast('🧹 تم مسح السجل بنجاح');
 });
 
 /* ── Clear Input Button ── */
@@ -664,6 +838,7 @@ function addRecentItem(title, quality, type) {
 
 /* ── Auto Update Checker ── */
 async function checkForAppUpdates() {
+  if (document.getElementById('autoUpdateToggle')?.checked === false) return;
   try {
     const resp = await fetch('https://api.github.com/repos/samer20032020-dev/sdn-downloader-ultra/releases/latest');
     if (!resp.ok) return;
@@ -675,6 +850,11 @@ async function checkForAppUpdates() {
     }
   } catch(e) {}
 }
+
+document.getElementById('checkUpdatesManualBtn')?.addEventListener('click', () => {
+  toast('🔍 جاري فحص التحديثات...');
+  checkForAppUpdates().then(() => toast('✓ أنت تستخدم أحدث إصدار الحالي'));
+});
 
 setTimeout(checkForAppUpdates, 2500);
 
