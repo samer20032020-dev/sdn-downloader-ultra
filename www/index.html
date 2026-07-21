@@ -598,14 +598,22 @@ input:checked + .slider:before { transform: translateX(20px); }
 let gData = null, gOpt = null, gBusy = false;
 const CURRENT_VERSION = '2.0.0';
 
-/* ── Toast Handler ── */
+/* ── Toast Handler (Single Instance & Anti-Spam) ── */
+let toastTimer = null;
 function toast(msg) {
   const box = document.getElementById('toastBox');
+  if (!box) return;
+  box.innerHTML = '';
+  if (toastTimer) clearTimeout(toastTimer);
+
   const el = document.createElement('div');
   el.className = 'toast-msg';
   el.innerText = msg;
   box.appendChild(el);
-  setTimeout(() => el.remove(), 3000);
+
+  toastTimer = setTimeout(() => {
+    el.remove();
+  }, 2500);
 }
 
 /* ── 3-Tab Bottom Navigation Switching ── */
@@ -909,9 +917,21 @@ async function checkForAppUpdates() {
   } catch(e) {}
 }
 
-document.getElementById('checkUpdatesManualBtn')?.addEventListener('click', () => {
+let isCheckingUpdate = false;
+document.getElementById('checkUpdatesManualBtn')?.addEventListener('click', async () => {
+  if (isCheckingUpdate) return;
+  isCheckingUpdate = true;
+  const btn = document.getElementById('checkUpdatesManualBtn');
+  if (btn) btn.disabled = true;
+
   toast('🔍 جاري فحص التحديثات...');
-  checkForAppUpdates().then(() => toast('✓ أنت تستخدم أحدث إصدار الحالي'));
+  await checkForAppUpdates();
+  toast('✓ أنت تستخدم أحدث إصدار الحالي');
+
+  setTimeout(() => {
+    isCheckingUpdate = false;
+    if (btn) btn.disabled = false;
+  }, 2500);
 });
 
 setTimeout(checkForAppUpdates, 2500);
