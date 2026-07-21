@@ -1808,6 +1808,20 @@ window.addEventListener('wheel', (e) => {
   drawWave();
 })();
 
+/* ── Android Share Sheet Listener ── */
+window.handleSharedUrl = function(sharedUrl) {
+  if (!sharedUrl) return;
+  const inp = document.getElementById('urlInp');
+  if (inp) {
+    inp.value = sharedUrl;
+    inp.dispatchEvent(new Event('input'));
+    toast('🔗 تم جلب الرابط المشارك تلقائياً');
+    setTimeout(() => { if (typeof doFetch === 'function') doFetch(); }, 300);
+  }
+};
+
+/* ── GitHub Auto-Update Checker ── */
+const CURRENT_APP_VERSION = '2.0.0';
 let currentUpdateInfo = null;
 
 function showUpdateBadge(info) {
@@ -1821,6 +1835,9 @@ function showUpdateBadge(info) {
   const upSub = document.getElementById('upSub');
   if (upTitle) upTitle.innerText = `تحديث جديد (v${info.latest_version}) متوفر!`;
   if (upSub) upSub.innerText = info.notes || 'يتوفر إصدار جديد يتضمن تحسينات ومميزات جديدة.';
+  
+  toast(`🚀 يتوفر تحديث جديد (v${info.latest_version}) للتطبيق!`);
+  openUpdateModal();
 }
 
 function openUpdateModal() {
@@ -1828,14 +1845,46 @@ function openUpdateModal() {
   if (modal) modal.classList.add('on');
 }
 
+async function checkGitHubUpdates() {
+  if (window.pywebview?.api?.check_for_updates) {
+    window.pywebview.api.check_for_updates(CURRENT_APP_VERSION).then(showUpdateBadge).catch(()=>{});
+  } else {
+    try {
+      const resp = await fetch('https://api.github.com/repos/samer20032020-dev/sdn-downloader-ultra/releases/latest');
+      if (!resp.ok) return;
+      const release = await resp.json();
+      const latestTag = (release.tag_name || '').replace(/^v/, '');
+      
+      if (latestTag && latestTag !== CURRENT_APP_VERSION) {
+        const apkAsset = (release.assets || []).find(a => a.name.endsWith('.apk'));
+        const downloadUrl = apkAsset ? apkAsset.browser_download_url : release.html_url;
+        
+        showUpdateBadge({
+          has_update: true,
+          latest_version: release.tag_name,
+          notes: release.body || 'إصدار جديد متوفر للتنزيل والمميزات الجديدة.',
+          download_url: downloadUrl
+        });
+      }
+    } catch(e) {}
+  }
+}
+
 document.getElementById('btnApplyUpdate')?.addEventListener('click', () => {
   document.getElementById('updateModal')?.classList.remove('on');
-  if (window.pywebview && window.pywebview.api) {
-    window.pywebview.api.apply_app_update(currentUpdateInfo ? currentUpdateInfo.download_url : null);
+  const dlUrl = currentUpdateInfo ? currentUpdateInfo.download_url : 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
+  if (window.pywebview?.api?.apply_app_update) {
+    window.pywebview.api.apply_app_update(dlUrl);
+  } else {
+    window.open(dlUrl, '_blank');
   }
 });
 
+// Auto-check for updates 2.5 seconds after app launch
+setTimeout(checkGitHubUpdates, 2500);
+
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
 </script>
 </body>
 </html>
