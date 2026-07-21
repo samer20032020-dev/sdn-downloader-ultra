@@ -98,8 +98,8 @@ class ExtensionHTTPHandler(BaseHTTPRequestHandler):
         except Exception as e:
             self.wfile.write(json.dumps({'status': 'error', 'msg': str(e)}).encode('utf-8'))
 
-CURRENT_APP_VERSION = "2.1"
-GITHUB_REPO = "samer20032020-dev/SDN-Downloader"
+CURRENT_APP_VERSION = "2.0.0"
+GITHUB_REPO = "samer20032020-dev/sdn-downloader-ultra"
 
 class DownloaderBridgeAPI:
     def __init__(self):

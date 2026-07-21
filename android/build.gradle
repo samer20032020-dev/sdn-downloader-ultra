@@ -38,5 +38,11 @@ subprojects {
 }
 
 task clean(type: Delete) {
-    delete rootProject.buildDir
+    delete fileTree(rootProject.buildDir) {
+        exclude 'reports/**'
+    }
 }
+
+
+
+

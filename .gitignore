@@ -4,3 +4,9 @@ tools/
 *.pyc
 __pycache__/
 dist/
+node_modules/
+.agents/
+.vscode/
+.github/
+*.apk
+

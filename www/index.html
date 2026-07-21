@@ -734,6 +734,17 @@ window.handleSharedUrl = function(sharedUrl) {
   }
 };
 
+// Check for pending shared URL on startup
+try {
+  if (window.pendingSharedUrl) {
+    window.handleSharedUrl(window.pendingSharedUrl);
+    window.pendingSharedUrl = null;
+  } else if (window.androidInterface?.getSharedUrl) {
+    const sUrl = window.androidInterface.getSharedUrl();
+    if (sUrl) window.handleSharedUrl(sUrl);
+  }
+} catch(e) {}
+
 /* ── Web Media Fetch Fallback ── */
 async function fetchWebMediaInfo(url) {
   const cobaltEndpoints = [
@@ -855,6 +866,19 @@ document.getElementById('dlBtn').addEventListener('click', () => {
 
   if (window.pywebview?.api?.start_download) {
     window.pywebview.api.start_download(downloadUrl, gOpt, 'none');
+  } else if (window.androidInterface?.downloadFile) {
+    const mimeType = gOpt.type === 'audio' ? 'audio/mpeg' : 'video/mp4';
+    const subFolder = localStorage.getItem('customSavePath') || 'Downloads';
+    const success = window.androidInterface.downloadFile(downloadUrl, filename, mimeType, subFolder);
+    if (success) {
+      toast('⚡ بدأ التنزيل في شريط إشعارات الهاتف');
+      addRecentItem(gData.title, gOpt.label, gOpt.type === 'audio' ? 'tt' : 'yt');
+      document.getElementById('progFill').style.width = '100%';
+      document.getElementById('progPct').innerText = '100%';
+      document.getElementById('progStatus').innerText = '🚀 تم إرسال التحميل للهاتف!';
+    } else {
+      toast('❌ فشل بدء التنزيل في الهاتف');
+    }
   } else {
     const a = document.createElement('a');
     a.href = downloadUrl;
