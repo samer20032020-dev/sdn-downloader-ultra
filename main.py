@@ -419,40 +419,56 @@ class DownloaderBridgeAPI:
             try:
                 import urllib.request
                 import tempfile
-                import subprocess
                 import time
-
-                if self._window:
-                    payload = {'status': 'processing', 'msg': 'جاري تنزيل التحديث الجديد (SDN_Downloader_Setup.exe)... ⬇️'}
-                    self._window.evaluate_js(f'updateProgress({json.dumps(payload)})')
 
                 temp_dir = tempfile.gettempdir()
                 setup_filename = f"SDN_Update_{int(time.time())}.exe"
                 setup_path = os.path.join(temp_dir, setup_filename)
+                self.pending_setup_path = setup_path
 
-                # Custom User-Agent header for GitHub releases download
                 req = urllib.request.Request(download_url, headers={'User-Agent': 'Mozilla/5.0'})
                 with urllib.request.urlopen(req) as resp, open(setup_path, 'wb') as out_f:
-                    out_f.write(resp.read())
+                    total_size = int(resp.headers.get('content-length', 0))
+                    downloaded = 0
+                    chunk_size = 65536
+
+                    while True:
+                        chunk = resp.read(chunk_size)
+                        if not chunk:
+                            break
+                        out_f.write(chunk)
+                        downloaded += len(chunk)
+                        pct = int((downloaded / total_size) * 100) if total_size > 0 else 50
+                        if self._window:
+                            payload = {'status': 'downloading', 'pct': pct, 'downloaded': downloaded, 'total': total_size}
+                            self._window.evaluate_js(f'if (typeof onUpdateProgress === "function") onUpdateProgress({json.dumps(payload)});')
 
                 if self._window:
-                    payload = {'status': 'processing', 'msg': 'تم التحميل! جاري فتح تثبيت التحديث... 🚀'}
-                    self._window.evaluate_js(f'updateProgress({json.dumps(payload)})')
+                    payload = {'status': 'complete', 'setup_path': setup_path}
+                    self._window.evaluate_js(f'if (typeof onUpdateProgress === "function") onUpdateProgress({json.dumps(payload)});')
 
-                time.sleep(0.5)
-                # Launch setup installer
-                subprocess.Popen([setup_path])
-                time.sleep(0.5)
-                os._exit(0)
             except Exception as e:
-                # Fallback: open browser release page if download failed
+                import webbrowser
                 webbrowser.open(download_url)
                 if self._window:
-                    payload = {'status': 'error', 'error': f'تم فتح صفحة التحديث في المتصفح ({str(e)})'}
-                    self._window.evaluate_js(f'updateProgress({json.dumps(payload)})')
+                    payload = {'status': 'error', 'error': f'فشل التحميل التلقائي، تم فتح المتصفح ({str(e)})'}
+                    self._window.evaluate_js(f'if (typeof onUpdateProgress === "function") onUpdateProgress({json.dumps(payload)});')
 
         threading.Thread(target=_do_update, daemon=True).start()
         return {'success': True}
+
+    def launch_installer(self, setup_path=None):
+        try:
+            import subprocess
+            import os
+            path = setup_path or getattr(self, 'pending_setup_path', None)
+            if path and os.path.exists(path):
+                subprocess.Popen([path])
+                os._exit(0)
+                return {'success': True}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+        return {'success': False, 'error': 'ملف التثبيت غير موجود'}
 
 def main():
     api = DownloaderBridgeAPI()
