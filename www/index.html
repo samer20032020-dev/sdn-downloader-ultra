@@ -267,9 +267,102 @@ body.light-theme .input-field-wrap input { background: #fff; }
 .nav-tab.active { color: var(--primary); }
 .nav-tab.active i { transform: translateY(-2px); }
 
-/* Settings & History Panels */
-.settings-panel, .history-panel { display: none; flex-direction: column; gap: 14px; }
-.settings-panel.active, .history-panel.active { display: flex; }
+/* Settings, History & Music Panels */
+.settings-panel, .history-panel, .music-panel { display: none; flex-direction: column; gap: 14px; }
+.settings-panel.active, .history-panel.active, .music-panel.active { display: flex; }
+
+/* Lark Player Floating Mini-Player Bar */
+.lark-mini-player {
+  position: fixed; bottom: 64px; left: 12px; right: 12px; max-width: 450px; margin: 0 auto;
+  background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(56, 189, 248, 0.4);
+  border-radius: 16px; padding: 8px 12px; display: none; align-items: center; justify-content: space-between;
+  gap: 10px; box-shadow: 0 10px 35px rgba(0, 0, 0, 0.5); backdrop-filter: blur(15px); z-index: 998;
+  cursor: pointer; transition: all 0.2s ease;
+}
+.lark-mini-player.active { display: flex; animation: slideUpMini 0.3s ease; }
+@keyframes slideUpMini { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+.mini-progress-line {
+  position: absolute; top: 0; left: 0; height: 3px; background: linear-gradient(90deg, #38bdf8, #6366f1);
+  border-radius: 16px 16px 0 0; width: 0%; transition: width 0.2s linear;
+}
+.mini-track-info { display: flex; align-items: center; gap: 10px; flex: 1; overflow: hidden; }
+.mini-thumb {
+  width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
+  background: rgba(56, 189, 248, 0.15); flex-shrink: 0; border: 2px solid var(--primary);
+  animation: rotateDisc 10s linear infinite paused;
+}
+.mini-thumb.playing { animation-play-state: running; }
+@keyframes rotateDisc { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+.mini-text { display: flex; flex-direction: column; overflow: hidden; text-align: right; }
+.mini-title { font-size: 0.85rem; font-weight: 800; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mini-artist { font-size: 0.72rem; color: var(--primary); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.mini-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.mini-btn {
+  width: 34px; height: 34px; border-radius: 50%; background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--card-border); color: var(--text-main); font-size: 0.9rem;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.mini-btn.play-btn { background: var(--primary); color: #000; font-size: 1rem; border: none; }
+
+/* Lark Player Full View Styling */
+.music-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+.music-player-container { display: flex; flex-direction: column; gap: 16px; align-items: center; text-align: center; }
+.vinyl-wrapper {
+  position: relative; width: 200px; height: 200px; border-radius: 50%;
+  background: radial-gradient(circle, #1e293b 0%, #0f172a 100%);
+  border: 4px solid rgba(56, 189, 248, 0.3); box-shadow: 0 0 45px rgba(56, 189, 248, 0.3);
+  display: flex; align-items: center; justify-content: center; margin: 6px 0;
+  animation: rotateDisc 15s linear infinite paused;
+}
+.vinyl-wrapper.playing { animation-play-state: running; box-shadow: 0 0 65px rgba(56, 189, 248, 0.55); }
+.vinyl-cover { width: 125px; height: 125px; border-radius: 50%; object-fit: cover; border: 3px solid rgba(255, 255, 255, 0.2); }
+.vinyl-center-hole { position: absolute; width: 22px; height: 22px; border-radius: 50%; background: #0f172a; border: 2px solid var(--primary); }
+
+.eq-bars { display: flex; gap: 4px; align-items: flex-end; height: 22px; }
+.eq-bar { width: 4px; background: var(--primary); border-radius: 3px; animation: eqWave 1.2s ease-in-out infinite alternate paused; }
+.eq-bars.playing .eq-bar { animation-play-state: running; }
+.eq-bar:nth-child(1) { height: 16px; animation-delay: 0.1s; }
+.eq-bar:nth-child(2) { height: 22px; animation-delay: 0.3s; }
+.eq-bar:nth-child(3) { height: 12px; animation-delay: 0.2s; }
+.eq-bar:nth-child(4) { height: 18px; animation-delay: 0.4s; }
+@keyframes eqWave { 0% { height: 5px; } 100% { height: 22px; } }
+
+.player-controls-card {
+  width: 100%; background: var(--card-bg); border: 1px solid var(--card-border);
+  border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 12px;
+}
+.seek-container { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.seek-bar {
+  width: 100%; -webkit-appearance: none; appearance: none; height: 6px; border-radius: 3px;
+  background: rgba(255,255,255,0.15); outline: none; cursor: pointer;
+}
+.seek-bar::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--primary); cursor: pointer; box-shadow: 0 0 10px var(--primary);
+}
+.time-row { display: flex; justify-content: space-between; font-size: 0.78rem; font-weight: 700; color: var(--text-sub); }
+.ctrl-buttons-row { display: flex; align-items: center; justify-content: space-evenly; width: 100%; margin-top: 2px; }
+.ctrl-btn {
+  background: none; border: none; color: var(--text-sub); font-size: 1.2rem; cursor: pointer;
+  transition: all 0.2s; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+}
+.ctrl-btn:active { transform: scale(0.9); }
+.ctrl-btn.active-mode { color: var(--primary); text-shadow: 0 0 10px var(--primary-glow); }
+.ctrl-btn.big-play {
+  width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #38bdf8, #6366f1);
+  color: #fff; font-size: 1.4rem; box-shadow: 0 8px 25px rgba(56, 189, 248, 0.4);
+}
+
+.playlist-section { width: 100%; display: flex; flex-direction: column; gap: 10px; text-align: right; }
+.playlist-item {
+  background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px;
+  padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  cursor: pointer; transition: all 0.2s;
+}
+.playlist-item:hover, .playlist-item.playing { border-color: var(--primary); background: rgba(56, 189, 248, 0.08); }
 
 .settings-group { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
 .settings-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--card-border); }
@@ -568,15 +661,114 @@ input:checked + .slider:before { transform: translateX(20px); }
         </div>
       </div>
 
+    <!-- TAB 4: LARK MUSIC PLAYER (مشغل الصوتيات والموسيقى) -->
+    <div id="viewMusicPlayer" class="music-panel">
+      <div class="music-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <i class="fas fa-headphones-alt" style="color:var(--primary); font-size:1.2rem;"></i>
+          <h3 style="font-size:1.05rem; font-weight:800;">مشغل الصوتيات (Lark Music)</h3>
+        </div>
+        <div class="eq-bars" id="larkEqBars">
+          <div class="eq-bar"></div>
+          <div class="eq-bar"></div>
+          <div class="eq-bar"></div>
+          <div class="eq-bar"></div>
+        </div>
+      </div>
+
+      <!-- Now Playing Display -->
+      <div class="music-player-container">
+        <div class="vinyl-wrapper" id="vinylDisc">
+          <img src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300" id="playerCoverImg" class="vinyl-cover" alt="Cover">
+          <div class="vinyl-center-hole"></div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; align-items:center; gap:4px; max-width:90%; text-align:center;">
+          <div id="playerTrackTitle" style="font-size:1rem; font-weight:900; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;">اختر مقطعاً صوتياً للاستماع</div>
+          <div id="playerArtistTitle" style="font-size:0.8rem; font-weight:700; color:var(--primary);">SDN Lark Player</div>
+        </div>
+
+        <!-- Controls Box -->
+        <div class="player-controls-card">
+          <div class="seek-container">
+            <input type="range" id="playerSeeker" class="seek-bar" value="0" min="0" max="100" step="0.1">
+            <div class="time-row">
+              <span id="playerCurTime">00:00</span>
+              <span id="playerTotalTime">00:00</span>
+            </div>
+          </div>
+
+          <div class="ctrl-buttons-row">
+            <button class="ctrl-btn" id="repeatBtn" onclick="toggleRepeatMode()" title="التكرار">
+              <i class="fas fa-redo" id="repeatIcon"></i>
+            </button>
+
+            <button class="ctrl-btn" onclick="playPrevTrack()" title="المقطع السابق">
+              <i class="fas fa-step-backward"></i>
+            </button>
+
+            <button class="ctrl-btn big-play" id="bigPlayBtn" onclick="togglePlayPause()" title="تشغيل / إيقاف">
+              <i class="fas fa-play" id="bigPlayIcon"></i>
+            </button>
+
+            <button class="ctrl-btn" onclick="playNextTrack()" title="المقطع التالي">
+              <i class="fas fa-step-forward"></i>
+            </button>
+
+            <button class="ctrl-btn" id="shuffleBtn" onclick="toggleShuffleMode()" title="تشغيل عشوائي">
+              <i class="fas fa-random" id="shuffleIcon"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Downloaded Audio Playlist -->
+      <div class="playlist-section">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-top:4px;">
+          <h4 style="font-size:0.95rem; font-weight:800; color:var(--text-main);">🎶 قائمة المقاطع المحملة</h4>
+          <span style="font-size:0.78rem; font-weight:700; color:var(--primary);" id="playlistCount">0 مقطع</span>
+        </div>
+
+        <div id="audioPlaylist" style="display:flex; flex-direction:column; gap:10px;">
+          <div class="empty-state" id="emptyMusicPlaylist" style="text-align:center; color:var(--muted); padding:25px; font-weight:700; font-size:0.85rem;">
+            لا توجد مقاطع صوتية محملة حتى الآن.<br>قم بتنزيل مقطع MP3 من الرئيسية للاستماع إليه هنا!
+          </div>
+        </div>
+      </div>
     </div>
 
   </main>
 
-  <!-- Bottom Navigation Bar (3 Tabs Only: الرئيسية - السجل - الإعدادات) -->
+  <!-- Lark Player Floating Mini-Player Bar -->
+  <div class="lark-mini-player" id="larkMiniPlayer" onclick="openMusicPlayerTab()">
+    <div class="mini-progress-line" id="miniProgLine"></div>
+    <div class="mini-track-info">
+      <img src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100" class="mini-thumb" id="miniThumb" alt="Music">
+      <div class="mini-text">
+        <span class="mini-title" id="miniTitle">لا يوجد مقطع حالي</span>
+        <span class="mini-artist" id="miniArtist">SDN Lark Music</span>
+      </div>
+    </div>
+    <div class="mini-controls" onclick="event.stopPropagation()">
+      <button class="mini-btn play-btn" id="miniPlayBtn" onclick="togglePlayPause()">
+        <i class="fas fa-play" id="miniPlayIcon"></i>
+      </button>
+      <button class="mini-btn" onclick="closeMiniPlayer()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation Bar (4 Tabs: الرئيسية - الموسيقى - السجل - الإعدادات) -->
   <nav class="bottom-nav">
     <button class="nav-tab active" data-target="viewHome">
       <i class="fas fa-home"></i>
       <span>الرئيسية</span>
+    </button>
+
+    <button class="nav-tab" data-target="viewMusicPlayer">
+      <i class="fas fa-music"></i>
+      <span>الموسيقى</span>
     </button>
 
     <button class="nav-tab" data-target="viewHistory">
@@ -616,7 +808,7 @@ function toast(msg) {
   }, 2500);
 }
 
-/* ── 3-Tab Bottom Navigation Switching ── */
+/* ── 4-Tab Bottom Navigation Switching ── */
 document.querySelectorAll('.nav-tab').forEach(tab => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -624,10 +816,270 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
 
     const targetId = tab.dataset.target;
     document.getElementById('viewHome').style.display = targetId === 'viewHome' ? 'flex' : 'none';
+    document.getElementById('viewMusicPlayer').classList.toggle('active', targetId === 'viewMusicPlayer');
     document.getElementById('viewHistory').classList.toggle('active', targetId === 'viewHistory');
     document.getElementById('viewSettings').classList.toggle('active', targetId === 'viewSettings');
   });
 });
+
+/* ── Lark Player Audio Engine & Playlist State ── */
+const gAudio = new Audio();
+let gPlaylist = [];
+let gCurrentTrackIndex = -1;
+let gRepeatMode = 'none'; // 'none' | 'one' | 'all'
+let gIsShuffle = false;
+
+function initLarkPlayer() {
+  gAudio.addEventListener('timeupdate', updateAudioProgress);
+  gAudio.addEventListener('ended', onAudioEnded);
+  gAudio.addEventListener('play', () => setPlaybackUI(true));
+  gAudio.addEventListener('pause', () => setPlaybackUI(false));
+
+  const seeker = document.getElementById('playerSeeker');
+  if (seeker) {
+    seeker.addEventListener('input', (e) => {
+      if (gAudio.duration) {
+        gAudio.currentTime = (e.target.value / 100) * gAudio.duration;
+      }
+    });
+  }
+
+  refreshAudioPlaylist();
+}
+
+function formatTime(secs) {
+  if (isNaN(secs) || secs < 0) return '00:00';
+  const m = Math.floor(secs / 60);
+  const s = Math.floor(secs % 60);
+  return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
+function updateAudioProgress() {
+  if (!gAudio.duration) return;
+  const pct = (gAudio.currentTime / gAudio.duration) * 100;
+  
+  const seeker = document.getElementById('playerSeeker');
+  if (seeker) seeker.value = pct;
+  
+  const miniLine = document.getElementById('miniProgLine');
+  if (miniLine) miniLine.style.width = pct + '%';
+
+  document.getElementById('playerCurTime').innerText = formatTime(gAudio.currentTime);
+  document.getElementById('playerTotalTime').innerText = formatTime(gAudio.duration);
+}
+
+function setPlaybackUI(isPlaying) {
+  const vinyl = document.getElementById('vinylDisc');
+  const eq = document.getElementById('larkEqBars');
+  const miniThumb = document.getElementById('miniThumb');
+  const bigPlayIcon = document.getElementById('bigPlayIcon');
+  const miniPlayIcon = document.getElementById('miniPlayIcon');
+
+  if (isPlaying) {
+    vinyl?.classList.add('playing');
+    eq?.classList.add('playing');
+    miniThumb?.classList.add('playing');
+    if (bigPlayIcon) bigPlayIcon.className = 'fas fa-pause';
+    if (miniPlayIcon) miniPlayIcon.className = 'fas fa-pause';
+  } else {
+    vinyl?.classList.remove('playing');
+    eq?.classList.remove('playing');
+    miniThumb?.classList.remove('playing');
+    if (bigPlayIcon) bigPlayIcon.className = 'fas fa-play';
+    if (miniPlayIcon) miniPlayIcon.className = 'fas fa-play';
+  }
+}
+
+function togglePlayPause() {
+  if (!gAudio.src) {
+    if (gPlaylist.length > 0) {
+      playTrackAtIndex(0);
+    } else {
+      toast('🎵 لا يوجد مقطع صوتي في القائمة بعد');
+    }
+    return;
+  }
+  if (gAudio.paused) {
+    gAudio.play().catch(e => toast('⚠️ تعذر تشغيل المقطع الصوتي'));
+  } else {
+    gAudio.pause();
+  }
+}
+
+function playTrackAtIndex(idx) {
+  if (idx < 0 || idx >= gPlaylist.length) return;
+  gCurrentTrackIndex = idx;
+  const track = gPlaylist[idx];
+
+  gAudio.src = track.url;
+  
+  const title = track.title || 'مقطع صوتي';
+  const artist = track.uploader || 'SDN Downloader';
+  const thumb = track.thumbnail || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300';
+
+  document.getElementById('playerTrackTitle').innerText = title;
+  document.getElementById('playerArtistTitle').innerText = artist;
+  document.getElementById('playerCoverImg').src = thumb;
+
+  document.getElementById('miniTitle').innerText = title;
+  document.getElementById('miniArtist').innerText = artist;
+  document.getElementById('miniThumb').src = thumb;
+
+  document.getElementById('larkMiniPlayer').classList.add('active');
+
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: title,
+      artist: artist,
+      album: 'SDN Lark Music',
+      artwork: [{ src: thumb, sizes: '512x512', type: 'image/jpeg' }]
+    });
+
+    navigator.mediaSession.setActionHandler('play', () => gAudio.play());
+    navigator.mediaSession.setActionHandler('pause', () => gAudio.pause());
+    navigator.mediaSession.setActionHandler('previoustrack', () => playPrevTrack());
+    navigator.mediaSession.setActionHandler('nexttrack', () => playNextTrack());
+  }
+
+  gAudio.play().catch(e => console.log('Audio play catch:', e));
+  renderPlaylistUI();
+}
+
+function playNextTrack() {
+  if (gPlaylist.length === 0) return;
+  if (gIsShuffle) {
+    const rand = Math.floor(Math.random() * gPlaylist.length);
+    playTrackAtIndex(rand);
+  } else {
+    const nextIdx = (gCurrentTrackIndex + 1) % gPlaylist.length;
+    playTrackAtIndex(nextIdx);
+  }
+}
+
+function playPrevTrack() {
+  if (gPlaylist.length === 0) return;
+  const prevIdx = (gCurrentTrackIndex - 1 + gPlaylist.length) % gPlaylist.length;
+  playTrackAtIndex(prevIdx);
+}
+
+function onAudioEnded() {
+  if (gRepeatMode === 'one') {
+    gAudio.currentTime = 0;
+    gAudio.play();
+  } else if (gRepeatMode === 'all' || gPlaylist.length > 1) {
+    playNextTrack();
+  } else {
+    setPlaybackUI(false);
+  }
+}
+
+function toggleRepeatMode() {
+  const btn = document.getElementById('repeatBtn');
+  if (gRepeatMode === 'none') {
+    gRepeatMode = 'all';
+    btn.classList.add('active-mode');
+    toast('🔁 تكرار كافة المقاطع');
+  } else if (gRepeatMode === 'all') {
+    gRepeatMode = 'one';
+    btn.classList.add('active-mode');
+    toast('🔂 تكرار المقطع الحالي');
+  } else {
+    gRepeatMode = 'none';
+    btn.classList.remove('active-mode');
+    toast('➡️ إيقاف التكرار');
+  }
+}
+
+function toggleShuffleMode() {
+  gIsShuffle = !gIsShuffle;
+  const btn = document.getElementById('shuffleBtn');
+  if (gIsShuffle) {
+    btn.classList.add('active-mode');
+    toast('🔀 تشغيل عشوائي مفعّل');
+  } else {
+    btn.classList.remove('active-mode');
+    toast('➡️ تشغيل متتابع');
+  }
+}
+
+function openMusicPlayerTab() {
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  const musicTab = document.querySelector('.nav-tab[data-target="viewMusicPlayer"]');
+  if (musicTab) musicTab.classList.add('active');
+
+  document.getElementById('viewHome').style.display = 'none';
+  document.getElementById('viewHistory').classList.remove('active');
+  document.getElementById('viewSettings').classList.remove('active');
+  document.getElementById('viewMusicPlayer').classList.add('active');
+}
+
+function closeMiniPlayer() {
+  gAudio.pause();
+  document.getElementById('larkMiniPlayer').classList.remove('active');
+}
+
+function saveHistoryAudioTrack(item) {
+  try {
+    const list = JSON.parse(localStorage.getItem('sdn_music_history') || '[]');
+    list.unshift(item);
+    localStorage.setItem('sdn_music_history', JSON.stringify(list.slice(0, 50)));
+    refreshAudioPlaylist();
+  } catch(e) {}
+}
+
+function refreshAudioPlaylist() {
+  try {
+    gPlaylist = JSON.parse(localStorage.getItem('sdn_music_history') || '[]');
+  } catch(e) { gPlaylist = []; }
+
+  if (gPlaylist.length === 0) {
+    gPlaylist = [
+      {
+        title: 'أنشودة هادئة - SDN Audio Track 1',
+        uploader: 'SDN Music Stream',
+        thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300',
+        url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
+      },
+      {
+        title: 'مقطع موسيقي بيانو - SDN Audio Track 2',
+        uploader: 'SDN Piano Beats',
+        thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300',
+        url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3'
+      }
+    ];
+  }
+
+  renderPlaylistUI();
+}
+
+function renderPlaylistUI() {
+  const container = document.getElementById('audioPlaylist');
+  const countEl = document.getElementById('playlistCount');
+  if (!container) return;
+
+  if (countEl) countEl.innerText = `${gPlaylist.length} مقطع`;
+  container.innerHTML = '';
+
+  gPlaylist.forEach((track, idx) => {
+    const isPlaying = idx === gCurrentTrackIndex;
+    const item = document.createElement('div');
+    item.className = `playlist-item ${isPlaying ? 'playing' : ''}`;
+    item.onclick = () => playTrackAtIndex(idx);
+    item.innerHTML = `
+      <div style="display:flex; align-items:center; gap:12px; overflow:hidden;">
+        <img src="${track.thumbnail || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100'}" style="width:42px; height:42px; border-radius:12px; object-fit:cover; flex-shrink:0;">
+        <div style="display:flex; flex-direction:column; overflow:hidden;">
+          <span style="font-size:0.88rem; font-weight:800; color:${isPlaying ? 'var(--primary)' : 'var(--text-main)'}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${track.title || 'مقطع صوتي'}</span>
+          <span style="font-size:0.75rem; color:var(--text-sub);">${track.uploader || 'SDN Music'}</span>
+        </div>
+      </div>
+      <button style="background:none; border:none; color:${isPlaying ? 'var(--primary)' : 'var(--muted)'}; font-size:1.1rem; cursor:pointer;">
+        <i class="fas ${isPlaying ? 'fa-volume-up' : 'fa-play-circle'}"></i>
+      </button>
+    `;
+    container.appendChild(item);
+  });
+}
 
 document.getElementById('viewAllBtn')?.addEventListener('click', () => {
   document.querySelector('.nav-tab[data-target="viewHistory"]')?.click();
@@ -902,7 +1354,7 @@ document.getElementById('dlBtn').addEventListener('click', () => {
   }
 });
 
-/* ── Recent Items Add ── */
+/* ── Recent Items Add & Lark Player Integration ── */
 function addRecentItem(title, quality, type) {
   document.getElementById('emptyRecent')?.remove();
   document.getElementById('emptyHistory')?.remove();
@@ -914,7 +1366,7 @@ function addRecentItem(title, quality, type) {
   item.className = 'recent-card-item';
   item.innerHTML = `
     <div class="recent-card-left">
-      <div class="platform-icon ${type}"><i class="fas fa-video"></i></div>
+      <div class="platform-icon ${type}"><i class="fas ${type === 'audio' || quality.toLowerCase().includes('mp3') ? 'fa-music' : 'fa-video'}"></i></div>
       <div class="item-details">
         <span class="item-title">${title}</span>
         <span class="item-meta">${quality}</span>
@@ -924,6 +1376,15 @@ function addRecentItem(title, quality, type) {
   `;
   if (list) list.insertBefore(item, list.firstChild);
   if (hist) hist.insertBefore(item.cloneNode(true), hist.firstChild);
+
+  if (gData && gOpt && (gOpt.type === 'audio' || quality.toLowerCase().includes('mp3'))) {
+    saveHistoryAudioTrack({
+      title: title,
+      uploader: gData.uploader || 'SDN Audio',
+      thumbnail: gData.thumbnail || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300',
+      url: gOpt.direct_url || document.getElementById('urlInp')?.value || ''
+    });
+  }
 }
 
 /* ── Auto Update Checker ── */
@@ -958,6 +1419,11 @@ document.getElementById('checkUpdatesManualBtn')?.addEventListener('click', asyn
   }, 2500);
 });
 
+// Initialize Lark Player Engine on page load
+document.addEventListener('DOMContentLoaded', () => {
+  initLarkPlayer();
+});
+setTimeout(initLarkPlayer, 500);
 setTimeout(checkForAppUpdates, 2500);
 
 </script>
