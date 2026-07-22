@@ -332,6 +332,39 @@ body.light-theme .input-field-wrap input { background: #fff; }
 .media-title { font-size: 0.92rem; font-weight: 800; color: var(--text-main); line-clamp: 2; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
 .media-uploader { font-size: 0.78rem; color: var(--primary); margin-top: 4px; font-weight: 700; }
 
+.format-tabs-bar {
+  display: flex;
+  gap: 10px;
+  margin: 14px 0 10px 0;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 5px;
+  border-radius: 14px;
+  border: 1px solid var(--card-border);
+}
+.format-tab-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.92rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-family: inherit;
+}
+.format-tab-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+.format-tab-btn.active {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.25) 0%, rgba(99, 102, 241, 0.25) 100%);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.4);
+  box-shadow: 0 4px 15px rgba(56, 189, 248, 0.15);
+}
+
 .quality-selector-grid { 
   display: grid; 
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); 
@@ -342,18 +375,6 @@ body.light-theme .input-field-wrap input { background: #fff; }
 }
 .quality-selector-grid::-webkit-scrollbar { width: 5px; }
 .quality-selector-grid::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.4); border-radius: 5px; }
-.category-header {
-  grid-column: 1 / -1; 
-  font-weight: 800; 
-  color: #fff; 
-  background: rgba(56, 189, 248, 0.15); 
-  border: 1px solid rgba(56, 189, 248, 0.3); 
-  border-radius: 8px; 
-  padding: 6px 12px; 
-  margin-top: 4px; 
-  font-size: 0.95rem; 
-  text-align: center;
-}
 .q-option-row {
   background: rgba(255,255,255,0.04); border: 1px solid var(--card-border); padding: 10px 14px;
   border-radius: 12px; display: flex; align-items: center; justify-content: space-between;
@@ -997,6 +1018,13 @@ input:checked + .slider:before { transform: translateX(20px); }
             <div id="mUp" class="media-uploader"></div>
           </div>
         </div>
+
+        <!-- Format Category Tab Bar -->
+        <div class="format-tabs-bar" id="formatTabsBar">
+          <button class="format-tab-btn active" id="tabVideoBtn" onclick="switchFormatTab('video')">🎬 قسم الفيديو</button>
+          <button class="format-tab-btn" id="tabAudioBtn" onclick="switchFormatTab('audio')">🎵 قسم الصوت</button>
+        </div>
+
         <div class="quality-selector-grid" id="qGrid"></div>
         <button class="btn-start-download" id="dlBtn">⚡ تنزيل الآن</button>
       </div>
@@ -1809,27 +1837,36 @@ function doFetch() {
 document.getElementById('fetchBtn').addEventListener('click', doFetch);
 
 /* ── Render Media Options ── */
-function renderMediaCard(d) {
-  gData = d;
-  document.getElementById('mThumb').src = d.thumbnail || '';
-  document.getElementById('mTitle').innerText = d.title || 'عنوان الفيديو';
-  document.getElementById('mUp').innerText = d.uploader || '';
+let currentVideoOpts = [];
+let currentAudioOpts = [];
 
+function switchFormatTab(tab) {
+  const vBtn = document.getElementById('tabVideoBtn');
+  const aBtn = document.getElementById('tabAudioBtn');
+  
+  if (tab === 'video') {
+    vBtn?.classList.add('active');
+    aBtn?.classList.remove('active');
+    renderTabOptions(currentVideoOpts);
+  } else {
+    aBtn?.classList.add('active');
+    vBtn?.classList.remove('active');
+    renderTabOptions(currentAudioOpts);
+  }
+}
+
+function renderTabOptions(optionsList) {
   const grid = document.getElementById('qGrid');
   grid.innerHTML = '';
-
-  const vOpts = d.video_options || [];
-  const aOpts = d.audio_options || [];
-  const opts = d.options || [...vOpts, ...aOpts];
-
-  const videos = opts.filter(o => o.type !== 'audio' && !o.label.includes('صوت') && !o.label.includes('MP3'));
-  const audios = opts.filter(o => o.type === 'audio' || o.label.includes('صوت') || o.label.includes('MP3'));
-
-  let firstAdded = false;
-
-  const addOptionRow = (o) => {
+  
+  if (!optionsList || optionsList.length === 0) {
+    grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:20px; color:var(--muted); font-weight:700;">لا توجد خيارات متاحة لهذا القسم</div>';
+    return;
+  }
+  
+  optionsList.forEach((o, i) => {
     const row = document.createElement('div');
-    row.className = 'q-option-row' + (!firstAdded ? ' selected' : '');
+    row.className = 'q-option-row' + (i === 0 ? ' selected' : '');
     row.innerHTML = `<span>${o.label}</span><span style="color:var(--primary); font-weight:800;">${o.size_str || ''}</span>`;
     row.addEventListener('click', () => {
       grid.querySelectorAll('.q-option-row').forEach(r => r.classList.remove('selected'));
@@ -1837,23 +1874,27 @@ function renderMediaCard(d) {
       gOpt = o;
     });
     grid.appendChild(row);
-    if (!firstAdded) { gOpt = o; firstAdded = true; }
-  };
+    if (i === 0) gOpt = o;
+  });
+}
 
-  if (videos.length > 0) {
-    const vHeader = document.createElement('div');
-    vHeader.className = 'category-header';
-    vHeader.innerHTML = '🎬 قسم الفيديو';
-    grid.appendChild(vHeader);
-    videos.forEach(addOptionRow);
-  }
+function renderMediaCard(d) {
+  gData = d;
+  document.getElementById('mThumb').src = d.thumbnail || '';
+  document.getElementById('mTitle').innerText = d.title || 'عنوان الفيديو';
+  document.getElementById('mUp').innerText = d.uploader || '';
 
-  if (audios.length > 0) {
-    const aHeader = document.createElement('div');
-    aHeader.className = 'category-header';
-    aHeader.innerHTML = '🎵 قسم الصوت';
-    grid.appendChild(aHeader);
-    audios.forEach(addOptionRow);
+  const vOpts = d.video_options || [];
+  const aOpts = d.audio_options || [];
+  const opts = d.options || [...vOpts, ...aOpts];
+
+  currentVideoOpts = opts.filter(o => o.type !== 'audio' && !o.label.includes('صوت') && !o.label.includes('MP3'));
+  currentAudioOpts = opts.filter(o => o.type === 'audio' || o.label.includes('صوت') || o.label.includes('MP3'));
+
+  if (currentVideoOpts.length > 0) {
+    switchFormatTab('video');
+  } else {
+    switchFormatTab('audio');
   }
 
   const hero = document.getElementById('heroSection');
