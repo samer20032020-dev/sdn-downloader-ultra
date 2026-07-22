@@ -378,10 +378,12 @@ class DownloaderBridgeAPI:
                 tag_name = data.get('tag_name', '').lstrip('v')
                 body = data.get('body', '')
                 assets = data.get('assets', [])
-                download_url = data.get('html_url')
+                exe_download_url = None
+                release_html_url = data.get('html_url', f"https://github.com/{GITHUB_REPO}/releases/latest")
+
                 for asset in assets:
-                    if asset.get('name', '').endswith(('.exe', '.apk')):
-                        download_url = asset.get('browser_download_url')
+                    if asset.get('name', '').endswith('.exe'):
+                        exe_download_url = asset.get('browser_download_url')
                         break
 
                 if tag_name and tag_name != CURRENT_APP_VERSION:
@@ -389,7 +391,8 @@ class DownloaderBridgeAPI:
                         'has_update': True,
                         'latest_version': tag_name,
                         'current_version': CURRENT_APP_VERSION,
-                        'download_url': download_url or data.get('html_url'),
+                        'download_url': exe_download_url or release_html_url,
+                        'html_url': release_html_url,
                         'notes': body or 'تحديث جديد لتحسين الأداء وحل المشاكل.'
                     }
         except Exception:
@@ -397,11 +400,20 @@ class DownloaderBridgeAPI:
         return {'has_update': False, 'current_version': CURRENT_APP_VERSION}
 
     def apply_app_update(self, download_url=None):
+        import webbrowser
         if not download_url and self.latest_update_info:
             download_url = self.latest_update_info.get('download_url')
 
         if not download_url:
-            return {'success': False, 'error': 'رابط التحميل غير متوفر'}
+            download_url = f"https://github.com/{GITHUB_REPO}/releases/latest"
+
+        # If it's a webpage URL, open in default browser
+        if not download_url.endswith('.exe'):
+            try:
+                webbrowser.open(download_url)
+                return {'success': True, 'msg': 'تم فتح صفحة التحديث في المتصفح'}
+            except Exception:
+                pass
 
         def _do_update():
             try:
@@ -411,28 +423,32 @@ class DownloaderBridgeAPI:
                 import time
 
                 if self._window:
-                    payload = {'status': 'processing', 'msg': 'جاري تنزيل التحديث الجديد وتطبيقه تلقائياً... ⬇️'}
+                    payload = {'status': 'processing', 'msg': 'جاري تنزيل التحديث الجديد (SDN_Downloader_Setup.exe)... ⬇️'}
                     self._window.evaluate_js(f'updateProgress({json.dumps(payload)})')
 
                 temp_dir = tempfile.gettempdir()
                 setup_filename = f"SDN_Update_{int(time.time())}.exe"
                 setup_path = os.path.join(temp_dir, setup_filename)
 
-                urllib.request.urlretrieve(download_url, setup_path)
+                # Custom User-Agent header for GitHub releases download
+                req = urllib.request.Request(download_url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req) as resp, open(setup_path, 'wb') as out_f:
+                    out_f.write(resp.read())
 
                 if self._window:
-                    payload = {'status': 'processing', 'msg': 'تم التحميل! جاري الاستبدال وإعادة التشغيل... 🚀'}
+                    payload = {'status': 'processing', 'msg': 'تم التحميل! جاري فتح تثبيت التحديث... 🚀'}
                     self._window.evaluate_js(f'updateProgress({json.dumps(payload)})')
 
                 time.sleep(0.5)
-                # Launch setup installer in silent background mode
-                CREATE_NO_WINDOW = 0x08000000
-                subprocess.Popen([setup_path, '--silent'], creationflags=CREATE_NO_WINDOW)
-                time.sleep(0.3)
+                # Launch setup installer
+                subprocess.Popen([setup_path])
+                time.sleep(0.5)
                 os._exit(0)
             except Exception as e:
+                # Fallback: open browser release page if download failed
+                webbrowser.open(download_url)
                 if self._window:
-                    payload = {'status': 'error', 'error': f'فشل التحديث: {str(e)}'}
+                    payload = {'status': 'error', 'error': f'تم فتح صفحة التحديث في المتصفح ({str(e)})'}
                     self._window.evaluate_js(f'updateProgress({json.dumps(payload)})')
 
         threading.Thread(target=_do_update, daemon=True).start()

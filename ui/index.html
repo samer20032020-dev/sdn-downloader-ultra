@@ -1582,13 +1582,21 @@ async function checkForAppUpdates() {
     if (!resp.ok) return;
     const release = await resp.json();
     const latestTag = (release.tag_name || '').replace(/^v/, '');
-    if (release.html_url) gLatestReleaseUrl = release.html_url;
+
+    let directDownloadUrl = release.html_url || 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
+    if (release.assets && Array.isArray(release.assets)) {
+      const exeAsset = release.assets.find(a => a.name && a.name.endsWith('.exe'));
+      if (exeAsset && exeAsset.browser_download_url) {
+        directDownloadUrl = exeAsset.browser_download_url;
+      }
+    }
+    gLatestReleaseUrl = directDownloadUrl;
 
     if (latestTag && latestTag !== CURRENT_VERSION) {
       if (btn) btn.classList.add('has-update');
       if (txt) txt.innerText = `🚀 تحديث ${release.tag_name}`;
       if (icon) icon.className = 'fas fa-arrow-alt-circle-up';
-      toast(`🚀 يتوفر تحديث جديد (${release.tag_name})! انقر زِر التحديث في الشريط العلوي للتنزيل.`);
+      toast(`🚀 يتوفر تحديث جديد (${release.tag_name})! انقر زِر التحديث للتنزيل والتثبيت.`);
     } else {
       if (btn) btn.classList.remove('has-update');
       if (txt) txt.innerText = `✓ أحدث إصدار v${CURRENT_VERSION}`;
