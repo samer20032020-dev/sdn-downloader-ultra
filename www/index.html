@@ -966,7 +966,7 @@ input:checked + .slider:before { transform: translateX(20px); }
       </section>
 
       <!-- Futuristic Quantum Sonar Stage (No Platform Badges) -->
-      <section class="fun-hero-container">
+      <section class="fun-hero-container" id="heroSection">
         <div class="holo-stage">
           <!-- Sonar Ripples -->
           <div class="sonar-wave sonar-wave-1"></div>
@@ -1681,6 +1681,8 @@ document.getElementById('clearHistoryBtn')?.addEventListener('click', () => {
 document.getElementById('clearBtn')?.addEventListener('click', () => {
   document.getElementById('urlInp').value = '';
   document.getElementById('mediaCard').classList.remove('active');
+  const hero = document.getElementById('heroSection');
+  if (hero) hero.style.display = 'flex';
 });
 
 /* ── Paste Button Handler ── */
@@ -1853,6 +1855,9 @@ function renderMediaCard(d) {
     grid.appendChild(aHeader);
     audios.forEach(addOptionRow);
   }
+
+  const hero = document.getElementById('heroSection');
+  if (hero) hero.style.display = 'none';
 
   const card = document.getElementById('mediaCard');
   card.classList.add('active');
