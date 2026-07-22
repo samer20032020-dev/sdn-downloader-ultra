@@ -802,7 +802,7 @@ input:checked + .slider:before { transform: translateX(20px); }
         <div class="settings-item">
           <div class="settings-label">
             <span class="settings-title">التحديث التلقائي</span>
-            <span class="settings-desc">إشعار بالنسخ الجديدة من GitHub تلقائياً</span>
+            <span class="settings-desc">إشعار بالنسخ الجديدة المتاحة تلقائياً</span>
           </div>
           <label class="toggle-switch">
             <input type="checkbox" id="autoUpdateToggle" checked>
@@ -1718,7 +1718,7 @@ function onHeaderUpdateClick() {
       window.open(gLatestReleaseUrl, '_blank');
     }
   } else {
-    toast('🔍 جاري فحص التحديثات مع GitHub...');
+    toast('🔍 جاري فحص التحديثات المتاحة...');
     checkForAppUpdates();
   }
 }
