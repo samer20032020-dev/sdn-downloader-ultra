@@ -190,14 +190,22 @@ class MediaDownloader:
                     })
 
                 v_opts = [
-                    {'label': 'أفضل جودة متاحة (Full HD / 4K)', 'format_id': 'bestvideo+bestaudio/best', 'ext': 'mp4', 'type': 'video', 'size_str': ''},
-                    {'label': 'جودة عالية (1080p MP4)', 'format_id': 'bestvideo[height<=1080]+bestaudio/best[height<=1080]/best', 'ext': 'mp4', 'type': 'video', 'size_str': ''},
-                    {'label': 'جودة متوسطة (720p MP4)', 'format_id': 'bestvideo[height<=720]+bestaudio/best[height<=720]/best', 'ext': 'mp4', 'type': 'video', 'size_str': ''},
-                    {'label': 'جودة اقتصادية (480p/360p MP4)', 'format_id': 'bestvideo[height<=480]+bestaudio/best[height<=480]/best', 'ext': 'mp4', 'type': 'video', 'size_str': ''},
+                    {'label': '🎬 أفضل جودة فائقة مدعومة (8K / 4K / 2K / 1080p)', 'format_id': 'bestvideo+bestaudio/best', 'ext': 'mp4', 'type': 'video', 'size_str': 'أعلى جودة'},
+                    {'label': '🎥 جودة 4K Ultra HD (2160p MP4)', 'format_id': 'bestvideo[height<=2160]+bestaudio/best[height<=2160]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '2160p'},
+                    {'label': '📺 جودة 2K Quad HD (1440p MP4)', 'format_id': 'bestvideo[height<=1440]+bestaudio/best[height<=1440]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '1440p'},
+                    {'label': '💻 جودة عالية جداً Full HD (1080p MP4)', 'format_id': 'bestvideo[height<=1080]+bestaudio/best[height<=1080]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '1080p'},
+                    {'label': '📱 جودة عالية HD (720p MP4)', 'format_id': 'bestvideo[height<=720]+bestaudio/best[height<=720]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '720p'},
+                    {'label': '⚙️ جودة متوسطة SD (480p MP4)', 'format_id': 'bestvideo[height<=480]+bestaudio/best[height<=480]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '480p'},
+                    {'label': '⚡ جودة منخفضة (360p MP4)', 'format_id': 'bestvideo[height<=360]+bestaudio/best[height<=360]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '360p'},
+                    {'label': '📉 جودة اقتصادية جداً (240p / 144p MP4)', 'format_id': 'bestvideo[height<=240]+bestaudio/best[height<=240]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '240p'},
                 ]
                 a_opts = [
-                    {'label': 'صوت عالي الجودة (320 kbps MP3)', 'format_id': 'bestaudio/best', 'ext': 'mp3', 'type': 'audio', 'quality': '320', 'size_str': ''},
-                    {'label': 'صوت متوسط الجودة (128 kbps MP3)', 'format_id': 'bestaudio/best', 'ext': 'mp3', 'type': 'audio', 'quality': '128', 'size_str': ''},
+                    {'label': '🎵 صوت نقي عالي الجودة (320 kbps MP3)', 'format_id': 'bestaudio/best', 'ext': 'mp3', 'type': 'audio', 'quality': '320', 'size_str': '320k'},
+                    {'label': '🎧 صوت متوازن ممتازة (256 kbps MP3)', 'format_id': 'bestaudio/best', 'ext': 'mp3', 'type': 'audio', 'quality': '256', 'size_str': '256k'},
+                    {'label': '🎼 صوت قياسي ممتاز (192 kbps MP3)', 'format_id': 'bestaudio/best', 'ext': 'mp3', 'type': 'audio', 'quality': '192', 'size_str': '192k'},
+                    {'label': '🔊 صوت متوسط الجودة (128 kbps MP3)', 'format_id': 'bestaudio/best', 'ext': 'mp3', 'type': 'audio', 'quality': '128', 'size_str': '128k'},
+                    {'label': '💾 صوت اقتصادي صغير (64 kbps MP3)', 'format_id': 'bestaudio/best', 'ext': 'mp3', 'type': 'audio', 'quality': '64', 'size_str': '64k'},
+                    {'label': '🎶 صوت M4A/AAC الأصلي من السيرفر', 'format_id': 'bestaudio[ext=m4a]/bestaudio/best', 'ext': 'm4a', 'type': 'audio', 'quality': '256', 'size_str': 'M4A'},
                 ]
                 return {
                     'is_playlist': True,
@@ -215,14 +223,22 @@ class MediaDownloader:
                 thumb = info.get('thumbnail') or f'https://i.ytimg.com/vi/{info.get("id")}/hqdefault.jpg'
 
                 v_opts = [
-                    {'label': 'أفضل جودة متاحة (Full HD / 4K)', 'format_id': 'bestvideo+bestaudio/best', 'ext': 'mp4', 'type': 'video', 'size_str': ''},
-                    {'label': 'جودة عالية (1080p MP4)', 'format_id': 'bestvideo[height<=1080]+bestaudio/best[height<=1080]/best', 'ext': 'mp4', 'type': 'video', 'size_str': ''},
-                    {'label': 'جودة متوسطة (720p MP4)', 'format_id': 'bestvideo[height<=720]+bestaudio/best[height<=720]/best', 'ext': 'mp4', 'type': 'video', 'size_str': ''},
-                    {'label': 'جودة اقتصادية (480p/360p MP4)', 'format_id': 'bestvideo[height<=480]+bestaudio/best[height<=480]/best', 'ext': 'mp4', 'type': 'video', 'size_str': ''},
+                    {'label': '🎬 أفضل جودة فائقة مدعومة (8K / 4K / 2K / 1080p)', 'format_id': 'bestvideo+bestaudio/best', 'ext': 'mp4', 'type': 'video', 'size_str': 'أعلى جودة'},
+                    {'label': '🎥 جودة 4K Ultra HD (2160p MP4)', 'format_id': 'bestvideo[height<=2160]+bestaudio/best[height<=2160]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '2160p'},
+                    {'label': '📺 جودة 2K Quad HD (1440p MP4)', 'format_id': 'bestvideo[height<=1440]+bestaudio/best[height<=1440]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '1440p'},
+                    {'label': '💻 جودة عالية جداً Full HD (1080p MP4)', 'format_id': 'bestvideo[height<=1080]+bestaudio/best[height<=1080]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '1080p'},
+                    {'label': '📱 جودة عالية HD (720p MP4)', 'format_id': 'bestvideo[height<=720]+bestaudio/best[height<=720]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '720p'},
+                    {'label': '⚙️ جودة متوسطة SD (480p MP4)', 'format_id': 'bestvideo[height<=480]+bestaudio/best[height<=480]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '480p'},
+                    {'label': '⚡ جودة منخفضة (360p MP4)', 'format_id': 'bestvideo[height<=360]+bestaudio/best[height<=360]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '360p'},
+                    {'label': '📉 جودة اقتصادية جداً (240p / 144p MP4)', 'format_id': 'bestvideo[height<=240]+bestaudio/best[height<=240]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '240p'},
                 ]
                 a_opts = [
-                    {'label': 'صوت عالي الجودة (320 kbps MP3)', 'format_id': 'bestaudio/best', 'ext': 'mp3', 'type': 'audio', 'quality': '320', 'size_str': ''},
-                    {'label': 'صوت متوسط الجودة (128 kbps MP3)', 'format_id': 'bestaudio/best', 'ext': 'mp3', 'type': 'audio', 'quality': '128', 'size_str': ''},
+                    {'label': '🎵 صوت نقي عالي الجودة (320 kbps MP3)', 'format_id': 'bestaudio/best', 'ext': 'mp3', 'type': 'audio', 'quality': '320', 'size_str': '320k'},
+                    {'label': '🎧 صوت متوازن ممتازة (256 kbps MP3)', 'format_id': 'bestaudio/best', 'ext': 'mp3', 'type': 'audio', 'quality': '256', 'size_str': '256k'},
+                    {'label': '🎼 صوت قياسي ممتاز (192 kbps MP3)', 'format_id': 'bestaudio/best', 'ext': 'mp3', 'type': 'audio', 'quality': '192', 'size_str': '192k'},
+                    {'label': '🔊 صوت متوسط الجودة (128 kbps MP3)', 'format_id': 'bestaudio/best', 'ext': 'mp3', 'type': 'audio', 'quality': '128', 'size_str': '128k'},
+                    {'label': '💾 صوت اقتصادي صغير (64 kbps MP3)', 'format_id': 'bestaudio/best', 'ext': 'mp3', 'type': 'audio', 'quality': '64', 'size_str': '64k'},
+                    {'label': '🎶 صوت M4A/AAC الأصلي من السيرفر', 'format_id': 'bestaudio[ext=m4a]/bestaudio/best', 'ext': 'm4a', 'type': 'audio', 'quality': '256', 'size_str': 'M4A'},
                 ]
                 return {
                     'is_playlist': False,

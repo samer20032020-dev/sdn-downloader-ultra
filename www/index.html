@@ -508,6 +508,30 @@ input:checked + .slider:before { transform: translateX(20px); }
   padding: 6px 12px; border-radius: 10px; font-family: inherit; font-size: 0.82rem; font-weight: 700; outline: none;
 }
 
+/* Modals & Overlays */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(9, 11, 22, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 99999;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-overlay.active {
+  display: flex;
+  animation: popToast 0.25s ease forwards;
+}
+.modal-card {
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid var(--primary-glow);
+  border-radius: var(--radius);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
+}
+
 /* Folder Selection Modal */
 .folder-modal-overlay {
   display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75);
@@ -529,6 +553,216 @@ input:checked + .slider:before { transform: translateX(20px); }
   transition: all 0.2s; font-family: inherit;
 }
 .folder-opt-btn:active { background: rgba(56, 189, 248, 0.2); border-color: var(--primary); }
+
+/* Side Menu Drawer (3 Shahatat Menu) */
+.drawer-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 999999;
+  transition: opacity 0.3s ease;
+}
+.drawer-overlay.active {
+  display: block;
+}
+.drawer-content {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 300px;
+  max-width: 85%;
+  background: rgba(15, 23, 42, 0.98);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.7);
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: slideDrawer 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes slideDrawer {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.drawer-close-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.drawer-close-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+.drawer-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.drawer-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #cbd5e1;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+.drawer-nav-item i {
+  font-size: 1.2rem;
+  color: #94a3b8;
+  width: 24px;
+  text-align: center;
+}
+.drawer-nav-item:hover, .drawer-nav-item.active {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.15) 0%, rgba(99, 102, 241, 0.15) 100%);
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
+}
+.drawer-nav-item.active i, .drawer-nav-item:hover i {
+  color: #38bdf8;
+}
+
+/* Animated Quantum Cyber Core (No Platform Badges) */
+.fun-hero-container {
+  position: relative;
+  width: 100%;
+  padding: 50px 20px 55px 20px;
+  background: radial-gradient(circle at 50% 30%, rgba(30, 41, 59, 0.7) 0%, rgba(9, 11, 22, 0.96) 100%);
+  border-radius: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  overflow: hidden;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.6);
+}
+
+.holo-stage {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 25px;
+}
+
+/* Expanding Sonar Pulse Waves */
+.sonar-wave {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  border: 2px solid rgba(56, 189, 248, 0.6);
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+  animation: sonarRipple 3s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
+  pointer-events: none;
+}
+.sonar-wave-2 { animation-delay: 1s; border-color: rgba(99, 102, 241, 0.6); box-shadow: 0 0 20px rgba(99, 102, 241, 0.4); }
+.sonar-wave-3 { animation-delay: 2s; border-color: rgba(168, 85, 247, 0.6); box-shadow: 0 0 20px rgba(168, 85, 247, 0.4); }
+
+@keyframes sonarRipple {
+  0% { width: 90px; height: 90px; opacity: 0.9; transform: scale(1); }
+  100% { width: 260px; height: 260px; opacity: 0; transform: scale(1); }
+}
+
+/* Multiple Futuristic Rotating Rings */
+.orbit-ring {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.orbit-ring-1 {
+  width: 160px; height: 160px;
+  border: 2px dashed rgba(56, 189, 248, 0.4);
+  animation: spinRight 12s linear infinite;
+}
+.orbit-ring-2 {
+  width: 210px; height: 210px;
+  border: 2px solid transparent;
+  border-top-color: #6366f1;
+  border-bottom-color: #38bdf8;
+  animation: spinLeft 8s linear infinite;
+}
+.orbit-ring-3 {
+  width: 240px; height: 240px;
+  border: 1px dotted rgba(168, 85, 247, 0.3);
+  animation: spinRight 20s linear infinite;
+}
+
+@keyframes spinRight { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes spinLeft { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+
+/* Ultra Levitating Cyber Core */
+.core-sphere {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #38bdf8 0%, #6366f1 55%, #a855f7 100%);
+  box-shadow: 0 0 60px rgba(56, 189, 248, 0.7), inset 0 0 25px rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 2.8rem;
+  z-index: 5;
+  animation: floatLevitate 3.5s ease-in-out infinite alternate;
+  cursor: pointer;
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.core-sphere:hover {
+  transform: scale(1.18) rotate(15deg);
+  box-shadow: 0 0 90px rgba(56, 189, 248, 0.95), inset 0 0 35px rgba(255, 255, 255, 1);
+}
+
+@keyframes floatLevitate {
+  0% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-14px) rotate(6deg); }
+  100% { transform: translateY(0px) rotate(-6deg); }
+}
+
+.shimmer-title {
+  font-size: 2.3rem;
+  font-weight: 900;
+  background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc, #34d399, #38bdf8);
+  background-size: 250% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: textShimmer 4s linear infinite;
+  margin-bottom: 10px;
+  letter-spacing: -0.5px;
+}
+@keyframes textShimmer {
+  to { background-position: 250% center; }
+}
 
 </style>
 </head>
@@ -598,6 +832,43 @@ input:checked + .slider:before { transform: translateX(20px); }
   </div>
 </div>
 
+<!-- SIDE MENU DRAWER (3 SHAHATAT MENU) -->
+<div class="drawer-overlay" id="sideMenuDrawer" onclick="toggleSideMenu(false)">
+  <div class="drawer-content" onclick="event.stopPropagation()">
+    <div class="drawer-header">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div class="brand-badge" style="width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg, #38bdf8 0%, #6366f1 100%); display:flex; align-items:center; justify-content:center; font-size:1rem; color:#fff; box-shadow:0 4px 15px rgba(56,189,248,0.4);">⚡</div>
+        <span style="font-weight:900; font-size:1.05rem; color:#fff;">قائمة التنقل</span>
+      </div>
+      <button class="drawer-close-btn" onclick="toggleSideMenu(false)">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <div class="drawer-nav-list">
+      <button class="drawer-nav-item active" data-target="viewHome" onclick="onDrawerNavClick('viewHome')">
+        <i class="fas fa-home"></i>
+        <span>الرئيسية</span>
+      </button>
+
+      <button class="drawer-nav-item" data-target="viewMusicPlayer" onclick="onDrawerNavClick('viewMusicPlayer')">
+        <i class="fas fa-music"></i>
+        <span>الموسيقى</span>
+      </button>
+
+      <button class="drawer-nav-item" data-target="viewHistory" onclick="onDrawerNavClick('viewHistory')">
+        <i class="fas fa-history"></i>
+        <span>السجل</span>
+      </button>
+
+      <button class="drawer-nav-item" data-target="viewSettings" onclick="onDrawerNavClick('viewSettings')">
+        <i class="fas fa-cog"></i>
+        <span>الإعدادات</span>
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="bg-glow">
   <div class="glow-orb orb-1"></div>
   <div class="glow-orb orb-2"></div>
@@ -607,43 +878,34 @@ input:checked + .slider:before { transform: translateX(20px); }
 
 <div class="app-viewport">
   
-  <!-- Header Bar -->
-  <header class="app-header">
+  <!-- Header Bar with 3-Lines Menu Icon -->
+  <header class="app-header" style="display:flex; align-items:center; justify-content:space-between; padding:0 24px; background:rgba(9, 11, 22, 0.95); backdrop-filter:blur(20px); border-bottom:1px solid rgba(255,255,255,0.06); height:68px;">
+    
+    <!-- Right side (First element in RTL): Hamburger Menu + Brand Logo -->
+    <div style="display:flex; align-items:center; gap:14px;">
+      <button onclick="toggleSideMenu(true)" style="width:42px; height:42px; border-radius:14px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:#fff; font-size:1.25rem; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s;" title="القائمة المنسدلة">
+        <i class="fas fa-bars"></i>
+      </button>
+
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div class="brand-badge" style="width:38px; height:38px; border-radius:12px; background:linear-gradient(135deg, #38bdf8 0%, #6366f1 100%); display:flex; align-items:center; justify-content:center; font-size:1.1rem; color:#fff; box-shadow:0 4px 18px rgba(56, 189, 248, 0.4);">
+          ⚡
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:flex-start;">
+          <span style="font-size:1.1rem; font-weight:900; color:#f8fafc; letter-spacing:-0.3px;">SDN Downloader <span style="font-size:0.75rem; color:var(--primary); font-weight:800;">ULTRA</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Left side (Last element in RTL): Folder Selector & Update button -->
     <div style="display:flex; align-items:center; gap:10px;">
-      <div class="brand-badge">⚡</div>
-      <div class="header-brand" style="align-items:flex-start;">
-        <span class="brand-title">SDN Downloader <span style="font-size:0.75rem; color:var(--primary); font-weight:800;">ULTRA</span></span>
-      </div>
-    </div>
-
-    <!-- Desktop Nav Tabs (Visible on PC Screens) -->
-    <div class="desktop-nav-tabs">
-      <button class="nav-tab active" data-target="viewHome">
-        <i class="fas fa-home"></i>
-        <span>الرئيسية</span>
-      </button>
-      <button class="nav-tab" data-target="viewMusicPlayer">
-        <i class="fas fa-music"></i>
-        <span>الموسيقى</span>
-      </button>
-      <button class="nav-tab" data-target="viewHistory">
-        <i class="fas fa-history"></i>
-        <span>السجل</span>
-      </button>
-      <button class="nav-tab" data-target="viewSettings">
-        <i class="fas fa-cog"></i>
-        <span>الإعدادات</span>
-      </button>
-    </div>
-
-    <!-- Right Header Actions (Folder Selector & Update Button) -->
-    <div style="display:flex; align-items:center; gap:8px;">
-      <div class="desktop-folder-bar" id="desktopFolderBar">
-        <span class="folder-path-text" id="desktopSavePathTxt">C:\Downloads</span>
-        <button class="folder-change-btn" id="desktopChangeFolderBtn" onclick="onPickFolderClick()">تغيير 📁</button>
+      <div class="desktop-folder-bar" id="desktopFolderBar" style="display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); padding:6px 14px; border-radius:14px; font-size:0.82rem;">
+        <i class="fas fa-folder-open" style="color:#fbbf24; font-size:1rem;"></i>
+        <span class="folder-path-text" id="desktopSavePathTxt" style="color:var(--primary); font-weight:700; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; direction:ltr; text-align:left;">C:\Downloads</span>
+        <button class="folder-change-btn" id="desktopChangeFolderBtn" onclick="onPickFolderClick()" style="background:var(--primary); color:#000; border:none; padding:4px 10px; border-radius:8px; font-size:0.75rem; font-weight:800; cursor:pointer; font-family:inherit;">تغيير</button>
       </div>
 
-      <button class="update-header-btn" id="headerUpdateBtn" onclick="onHeaderUpdateClick()" title="فحص التحديثات">
+      <button class="update-header-btn" id="headerUpdateBtn" onclick="onHeaderUpdateClick()" title="فحص التحديثات" style="display:none;">
         <i class="fas fa-sync-alt" id="updateHeaderIcon"></i>
         <span id="updateHeaderTxt">فحص التحديثات</span>
       </button>
@@ -654,42 +916,56 @@ input:checked + .slider:before { transform: translateX(20px); }
   <main class="main-content" id="mainScroll">
 
     <!-- TAB 1: HOME (الرئيسية) -->
-    <div id="viewHome" style="display:flex; flex-direction:column; gap:20px;">
+    <div id="viewHome" style="display:flex; flex-direction:column; gap:24px; max-width:850px; margin:0 auto; width:100%;">
       
-      <!-- Hero Center -->
-      <section class="hero-section">
-        <div class="glow-download-ring">
-          <i class="fas fa-download"></i>
-        </div>
-        <h1 class="hero-title">حمل من أي موقع</h1>
-        <p class="hero-sub">انسخ رابط الفيديو من أي منصة، وخلي الباقي علينا</p>
-      </section>
-
       <!-- Input Card Box -->
-      <section class="input-card">
-        <div class="input-field-wrap">
-          <input type="text" id="urlInp" placeholder="...إلصق رابط الفيديو هنا" autocomplete="off" spellcheck="false">
-          <i class="fas fa-times-circle clear-btn" id="clearBtn"></i>
+      <section style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:24px; padding:10px 14px; display:flex; align-items:center; margin-top:10px; backdrop-filter:blur(15px); box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+        
+        <!-- 1st child (Right side in RTL): Paste Button -->
+        <button id="pasteBtn" style="padding:0 20px; height:46px; border-radius:16px; background:rgba(255,255,255,0.06); border:1px solid rgba(56,189,248,0.3); font-size:0.95rem; font-weight:800; color:#f8fafc; cursor:pointer; display:flex; align-items:center; gap:8px; transition:all 0.2s;" title="لصق من الحافظة">
+          لصق 📋
+        </button>
+
+        <!-- 2nd child (Middle): Input -->
+        <div style="flex:1; padding:0 15px; position:relative; display:flex; align-items:center;">
+          <input type="text" id="urlInp" placeholder="...ألصق رابط الفيديو من يوتيوب، تيكتوك، إنستغرام، فيسبوك" autocomplete="off" spellcheck="false" style="width:100%; background:transparent; border:none; outline:none; font-size:0.95rem; font-weight:600; color:#f8fafc; font-family:inherit;">
         </div>
 
-        <div class="action-row">
-          <button class="btn-paste-sq" id="pasteBtn" title="لصق من الحافظة">
-            <i class="far fa-clipboard"></i>
-          </button>
-          <button class="btn-fetch-main" id="fetchBtn">
-            <i class="fas fa-bolt"></i>
-            <span id="fetchTxt">جلب الفيديو</span>
-          </button>
-        </div>
+        <!-- 3rd child: Clear Button -->
+        <button id="clearBtn" style="width:42px; height:42px; border-radius:14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; justify-content:center; cursor:pointer; margin-left:10px; transition:all 0.2s;">
+          <i class="fas fa-times" style="color:#94a3b8; font-size:1.1rem;"></i>
+        </button>
+
+        <!-- 4th child (Left side in RTL): Fetch Button -->
+        <button id="fetchBtn" style="min-width:130px; height:46px; border-radius:16px; background:linear-gradient(135deg, #38bdf8 0%, #6366f1 100%); border:none; color:#fff; font-size:1rem; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 6px 20px rgba(56,189,248,0.35); font-family:inherit; transition:all 0.2s;">
+          <span id="fetchTxt">جلب الرابط ✨</span>
+        </button>
       </section>
 
-      <!-- Feature Badges -->
-      <div class="badges-row">
-        <div class="feat-chip"><i class="fas fa-globe"></i> +1000 موقع مدعوم</div>
-        <div class="feat-chip"><i class="fas fa-shield-alt"></i> بدون علامة مائية</div>
-      </div>
+      <!-- Futuristic Quantum Sonar Stage (No Platform Badges) -->
+      <section class="fun-hero-container">
+        <div class="holo-stage">
+          <!-- Sonar Ripples -->
+          <div class="sonar-wave sonar-wave-1"></div>
+          <div class="sonar-wave sonar-wave-2"></div>
+          <div class="sonar-wave sonar-wave-3"></div>
 
-      <!-- Live Fetch Results Card -->
+          <!-- Rotating Concentric Orbit Rings -->
+          <div class="orbit-ring orbit-ring-1"></div>
+          <div class="orbit-ring orbit-ring-2"></div>
+          <div class="orbit-ring orbit-ring-3"></div>
+          
+          <!-- Quantum Levitating Core -->
+          <div class="core-sphere" title="انقر للتفاعل ✨" onclick="toast('⚡ مركز التحميل الخارق جاهز للاستخدام بأعلى جودة وسرعة!')">
+            <i class="fas fa-bolt"></i>
+          </div>
+        </div>
+
+        <h1 class="shimmer-title">مركز التحميل الذكي ⚡</h1>
+        <p style="font-size:0.95rem; color:#94a3b8; font-weight:500; max-width:440px; line-height:1.6; z-index:2;">ضع رابطك أعلاه لتنزيل الفيديوهات والصوتيات بأعلى جودة فوراً 🚀</p>
+      </section>
+
+      <!-- Live Fetch Results Card (Hidden by default) -->
       <div class="media-result-card" id="mediaCard">
         <div class="media-header-info">
           <img id="mThumb" class="media-thumb" src="" alt="">
@@ -712,19 +988,18 @@ input:checked + .slider:before { transform: translateX(20px); }
           <div class="progress-bar-fill" id="progFill"></div>
         </div>
       </div>
-
-      <!-- Recent Downloads Section -->
-      <section class="recent-section">
+      
+      <!-- Hidden Recent section to avoid breaking JS -->
+      <section class="recent-section" style="display:none;">
         <div class="section-hdr">
           <h3>التحميلات الأخيرة</h3>
           <span class="link-all" id="viewAllBtn">عرض الكل</span>
         </div>
-
         <div class="recent-cards-list" id="recentList">
           <div class="empty-state" id="emptyRecent" style="text-align:center; color:var(--muted); padding:20px; font-weight:700; font-size:0.85rem;">لا توجد تنزيلات سابقة حتى الآن 🚀</div>
         </div>
       </section>
-
+      
     </div><!-- End View Home -->
 
     <!-- TAB 2: HISTORY (السجل) -->
@@ -982,9 +1257,31 @@ function toast(msg) {
   }, 2500);
 }
 
+/* ── Side Menu Drawer (3 Shahatat Menu) Handler ── */
+function toggleSideMenu(show) {
+  const drawer = document.getElementById('sideMenuDrawer');
+  if (!drawer) return;
+  if (typeof show === 'boolean') {
+    drawer.classList.toggle('active', show);
+  } else {
+    drawer.classList.toggle('active');
+  }
+}
+
+function onDrawerNavClick(targetId) {
+  switchTab(targetId);
+  toggleSideMenu(false);
+  document.querySelectorAll('.drawer-nav-item').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.target === targetId);
+  });
+}
+
 /* ── Unified Navigation Tab Switching (Desktop & Mobile) ── */
 function switchTab(targetId) {
   document.querySelectorAll('.nav-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.target === targetId);
+  });
+  document.querySelectorAll('.drawer-nav-item').forEach(t => {
     t.classList.toggle('active', t.dataset.target === targetId);
   });
 
@@ -1004,12 +1301,15 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
 function updateSavePathDisplays(path) {
   if (!path) return;
   const desktopTxt = document.getElementById('desktopSavePathTxt');
+  const settingsTxt = document.getElementById('savePathTxt');
   const modalTxt = document.getElementById('currentFolderTxt');
   const pathLabel = document.getElementById('currentPathLabel');
 
   if (desktopTxt) desktopTxt.innerText = path;
+  if (settingsTxt) settingsTxt.innerText = path;
   if (modalTxt) modalTxt.innerText = path;
   if (pathLabel) pathLabel.innerText = path;
+  localStorage.setItem('customSavePath', path);
 }
 
 function onPickFolderClick() {
@@ -1493,13 +1793,16 @@ function renderMediaCard(d) {
   const grid = document.getElementById('qGrid');
   grid.innerHTML = '';
 
-  const opts = d.options || d.video_options || [];
+  const vOpts = d.video_options || [];
+  const aOpts = d.audio_options || [];
+  const opts = d.options || [...vOpts, ...aOpts];
+
   if (opts.length > 0) gOpt = opts[0];
 
   opts.forEach((o, i) => {
     const row = document.createElement('div');
     row.className = 'q-option-row' + (i === 0 ? ' selected' : '');
-    row.innerHTML = `<span>${o.label}</span><span>${o.size_str || ''}</span>`;
+    row.innerHTML = `<span>${o.label}</span><span style="color:var(--primary); font-weight:800;">${o.size_str || ''}</span>`;
     row.addEventListener('click', () => {
       grid.querySelectorAll('.q-option-row').forEach(r => r.classList.remove('selected'));
       row.classList.add('selected');
