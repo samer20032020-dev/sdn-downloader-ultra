@@ -67,11 +67,111 @@ html, body {
 .orb-1 { width: 450px; height: 450px; background: radial-gradient(circle, #38bdf8 0%, #6366f1 70%, transparent 80%); top: -100px; right: -80px; }
 .orb-2 { width: 400px; height: 400px; background: radial-gradient(circle, #6366f1 0%, #ec4899 70%, transparent 80%); bottom: -120px; left: -100px; }
 
-/* Main Container Frame */
+/* Main Container Frame & Responsive Layouts */
 .app-viewport {
-  display: flex; flex-direction: column; height: 100vh; max-width: 500px; margin: 0 auto;
+  display: flex; flex-direction: column; height: 100vh; width: 100%; max-width: 500px; margin: 0 auto;
   position: relative; overflow: hidden; background: var(--bg);
   box-shadow: 0 0 60px rgba(0,0,0,0.8); transition: background 0.3s;
+}
+
+.desktop-nav-tabs { display: none; }
+.desktop-folder-bar { display: none; }
+
+/* Desktop PC Layout (@media min-width: 650px) */
+@media (min-width: 650px) {
+  .app-viewport {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .main-content {
+    max-width: 850px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 24px 30px 40px 30px;
+  }
+
+  .desktop-nav-tabs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--card-border);
+    padding: 4px 8px;
+    border-radius: 30px;
+  }
+
+  .desktop-nav-tabs .nav-tab {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-sub);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .desktop-nav-tabs .nav-tab.active {
+    background: var(--primary);
+    color: #000;
+  }
+
+  .desktop-folder-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--card-border);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.78rem;
+  }
+
+  .folder-path-text {
+    max-width: 180px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--primary);
+    font-weight: 700;
+  }
+
+  .folder-change-btn {
+    background: var(--primary);
+    color: #000;
+    border: none;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  /* Hide mobile bottom nav on PC */
+  .bottom-nav {
+    display: none !important;
+  }
+
+  .lark-mini-player {
+    bottom: 16px;
+    max-width: 650px;
+  }
+}
+
+/* Mobile Layout (@media max-width: 649px) */
+@media (max-width: 649px) {
+  .desktop-nav-tabs { display: none !important; }
+  .desktop-folder-bar { display: none !important; }
+  .bottom-nav { display: flex !important; }
 }
 
 /* Header Bar */
@@ -487,13 +587,42 @@ input:checked + .slider:before { transform: translateX(20px); }
     <div style="display:flex; align-items:center; gap:10px;">
       <div class="brand-badge">⚡</div>
       <div class="header-brand" style="align-items:flex-start;">
-        <span class="brand-title">SDN Downloader</span>
+        <span class="brand-title">SDN Downloader <span style="font-size:0.75rem; color:var(--primary); font-weight:800;">ULTRA</span></span>
       </div>
     </div>
-    <button class="update-header-btn" id="headerUpdateBtn" onclick="onHeaderUpdateClick()" title="فحص التحديثات">
-      <i class="fas fa-sync-alt" id="updateHeaderIcon"></i>
-      <span id="updateHeaderTxt">فحص التحديثات</span>
-    </button>
+
+    <!-- Desktop Nav Tabs (Visible on PC Screens) -->
+    <div class="desktop-nav-tabs">
+      <button class="nav-tab active" data-target="viewHome">
+        <i class="fas fa-home"></i>
+        <span>الرئيسية</span>
+      </button>
+      <button class="nav-tab" data-target="viewMusicPlayer">
+        <i class="fas fa-music"></i>
+        <span>الموسيقى</span>
+      </button>
+      <button class="nav-tab" data-target="viewHistory">
+        <i class="fas fa-history"></i>
+        <span>السجل</span>
+      </button>
+      <button class="nav-tab" data-target="viewSettings">
+        <i class="fas fa-cog"></i>
+        <span>الإعدادات</span>
+      </button>
+    </div>
+
+    <!-- Right Header Actions (Folder Selector & Update Button) -->
+    <div style="display:flex; align-items:center; gap:8px;">
+      <div class="desktop-folder-bar" id="desktopFolderBar">
+        <span class="folder-path-text" id="desktopSavePathTxt">C:\Downloads</span>
+        <button class="folder-change-btn" id="desktopChangeFolderBtn" onclick="onPickFolderClick()">تغيير 📁</button>
+      </div>
+
+      <button class="update-header-btn" id="headerUpdateBtn" onclick="onHeaderUpdateClick()" title="فحص التحديثات">
+        <i class="fas fa-sync-alt" id="updateHeaderIcon"></i>
+        <span id="updateHeaderTxt">فحص التحديثات</span>
+      </button>
+    </div>
   </header>
 
   <!-- Main Scroll Area -->
@@ -828,19 +957,52 @@ function toast(msg) {
   }, 2500);
 }
 
-/* ── 4-Tab Bottom Navigation Switching ── */
+/* ── Unified Navigation Tab Switching (Desktop & Mobile) ── */
+function switchTab(targetId) {
+  document.querySelectorAll('.nav-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.target === targetId);
+  });
+
+  const homeView = document.getElementById('viewHome');
+  if (homeView) homeView.style.display = targetId === 'viewHome' ? 'flex' : 'none';
+  document.getElementById('viewMusicPlayer')?.classList.toggle('active', targetId === 'viewMusicPlayer');
+  document.getElementById('viewHistory')?.classList.toggle('active', targetId === 'viewHistory');
+  document.getElementById('viewSettings')?.classList.toggle('active', targetId === 'viewSettings');
+}
+
 document.querySelectorAll('.nav-tab').forEach(tab => {
   tab.addEventListener('click', () => {
-    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-
-    const targetId = tab.dataset.target;
-    document.getElementById('viewHome').style.display = targetId === 'viewHome' ? 'flex' : 'none';
-    document.getElementById('viewMusicPlayer').classList.toggle('active', targetId === 'viewMusicPlayer');
-    document.getElementById('viewHistory').classList.toggle('active', targetId === 'viewHistory');
-    document.getElementById('viewSettings').classList.toggle('active', targetId === 'viewSettings');
+    switchTab(tab.dataset.target);
   });
 });
+
+function updateSavePathDisplays(path) {
+  if (!path) return;
+  const desktopTxt = document.getElementById('desktopSavePathTxt');
+  const modalTxt = document.getElementById('currentFolderTxt');
+  const pathLabel = document.getElementById('currentPathLabel');
+
+  if (desktopTxt) desktopTxt.innerText = path;
+  if (modalTxt) modalTxt.innerText = path;
+  if (pathLabel) pathLabel.innerText = path;
+}
+
+function onPickFolderClick() {
+  if (window.pywebview?.api?.choose_folder) {
+    window.pywebview.api.choose_folder().then(path => {
+      if (path) updateSavePathDisplays(path);
+    });
+  } else {
+    document.getElementById('folderModal')?.classList.add('active');
+  }
+}
+
+// Fetch save directory on startup
+if (window.pywebview?.api?.get_save_dir) {
+  window.pywebview.api.get_save_dir().then(path => {
+    if (path) updateSavePathDisplays(path);
+  });
+}
 
 /* ── Lark Player Audio Engine & Playlist State ── */
 const gAudio = new Audio();
