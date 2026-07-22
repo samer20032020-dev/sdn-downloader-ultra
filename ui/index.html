@@ -1437,10 +1437,30 @@ async function checkForAppUpdates() {
   }
 }
 
+function showUpdateBadge(upInfo) {
+  if (!upInfo || !upInfo.has_update) return;
+  const btn = document.getElementById('headerUpdateBtn');
+  const txt = document.getElementById('updateHeaderTxt');
+  const icon = document.getElementById('updateHeaderIcon');
+
+  if (btn) btn.classList.add('has-update');
+  if (txt) txt.innerText = `🚀 تحديث v${upInfo.latest_version}`;
+  if (icon) icon.className = 'fas fa-arrow-alt-circle-up';
+  if (upInfo.download_url) gLatestReleaseUrl = upInfo.download_url;
+
+  toast(`🚀 يتوفر تحديث جديد (v${upInfo.latest_version})! انقر زِر التحديث في الأعلى.`);
+}
+window.showUpdateBadge = showUpdateBadge;
+
 function onHeaderUpdateClick() {
   const btn = document.getElementById('headerUpdateBtn');
   if (btn && btn.classList.contains('has-update')) {
-    window.open(gLatestReleaseUrl, '_blank');
+    if (window.pywebview?.api?.apply_app_update) {
+      toast('🚀 جاري بدء التنزيل والتحديث التلقائي للبرنامج...');
+      window.pywebview.api.apply_app_update(gLatestReleaseUrl);
+    } else {
+      window.open(gLatestReleaseUrl, '_blank');
+    }
   } else {
     toast('🔍 جاري فحص التحديثات مع GitHub...');
     checkForAppUpdates();

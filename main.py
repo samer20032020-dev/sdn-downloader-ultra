@@ -378,18 +378,18 @@ class DownloaderBridgeAPI:
                 tag_name = data.get('tag_name', '').lstrip('v')
                 body = data.get('body', '')
                 assets = data.get('assets', [])
-                download_url = None
+                download_url = data.get('html_url')
                 for asset in assets:
-                    if asset.get('name', '').endswith('.exe'):
+                    if asset.get('name', '').endswith(('.exe', '.apk')):
                         download_url = asset.get('browser_download_url')
                         break
 
-                if tag_name and tag_name != CURRENT_APP_VERSION and download_url:
+                if tag_name and tag_name != CURRENT_APP_VERSION:
                     return {
                         'has_update': True,
                         'latest_version': tag_name,
                         'current_version': CURRENT_APP_VERSION,
-                        'download_url': download_url,
+                        'download_url': download_url or data.get('html_url'),
                         'notes': body or 'تحديث جديد لتحسين الأداء وحل المشاكل.'
                     }
         except Exception:
