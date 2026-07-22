@@ -117,7 +117,11 @@ shutil.copyfile(apk_source, apk_target)
 apk_size = os.path.getsize(apk_target)
 print(f"Successfully built real APK: {apk_target} ({apk_size} bytes)")
 
-# 7. Delete Existing GitHub Release Assets for SDN_Downloader_Ultra.apk
+if not TOKEN:
+    print("=== Pipeline Complete ===")
+    print(f"Build Output: {apk_target}")
+    print("Notice: GITHUB_TOKEN environment variable not set. Skipping GitHub release asset upload.")
+    sys.exit(0)
 print(f"Checking existing release assets for {REPO} (Release ID {RELEASE_ID})...")
 try:
     req_rel = urllib.request.Request(
