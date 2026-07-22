@@ -342,6 +342,18 @@ body.light-theme .input-field-wrap input { background: #fff; }
 }
 .quality-selector-grid::-webkit-scrollbar { width: 5px; }
 .quality-selector-grid::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.4); border-radius: 5px; }
+.category-header {
+  grid-column: 1 / -1; 
+  font-weight: 800; 
+  color: #fff; 
+  background: rgba(56, 189, 248, 0.15); 
+  border: 1px solid rgba(56, 189, 248, 0.3); 
+  border-radius: 8px; 
+  padding: 6px 12px; 
+  margin-top: 4px; 
+  font-size: 0.95rem; 
+  text-align: center;
+}
 .q-option-row {
   background: rgba(255,255,255,0.04); border: 1px solid var(--card-border); padding: 10px 14px;
   border-radius: 12px; display: flex; align-items: center; justify-content: space-between;
@@ -1808,11 +1820,14 @@ function renderMediaCard(d) {
   const aOpts = d.audio_options || [];
   const opts = d.options || [...vOpts, ...aOpts];
 
-  if (opts.length > 0) gOpt = opts[0];
+  const videos = opts.filter(o => o.type !== 'audio' && !o.label.includes('صوت') && !o.label.includes('MP3'));
+  const audios = opts.filter(o => o.type === 'audio' || o.label.includes('صوت') || o.label.includes('MP3'));
 
-  opts.forEach((o, i) => {
+  let firstAdded = false;
+
+  const addOptionRow = (o) => {
     const row = document.createElement('div');
-    row.className = 'q-option-row' + (i === 0 ? ' selected' : '');
+    row.className = 'q-option-row' + (!firstAdded ? ' selected' : '');
     row.innerHTML = `<span>${o.label}</span><span style="color:var(--primary); font-weight:800;">${o.size_str || ''}</span>`;
     row.addEventListener('click', () => {
       grid.querySelectorAll('.q-option-row').forEach(r => r.classList.remove('selected'));
@@ -1820,7 +1835,24 @@ function renderMediaCard(d) {
       gOpt = o;
     });
     grid.appendChild(row);
-  });
+    if (!firstAdded) { gOpt = o; firstAdded = true; }
+  };
+
+  if (videos.length > 0) {
+    const vHeader = document.createElement('div');
+    vHeader.className = 'category-header';
+    vHeader.innerHTML = '🎬 قسم الفيديو';
+    grid.appendChild(vHeader);
+    videos.forEach(addOptionRow);
+  }
+
+  if (audios.length > 0) {
+    const aHeader = document.createElement('div');
+    aHeader.className = 'category-header';
+    aHeader.innerHTML = '🎵 قسم الصوت';
+    grid.appendChild(aHeader);
+    audios.forEach(addOptionRow);
+  }
 
   const card = document.getElementById('mediaCard');
   card.classList.add('active');
