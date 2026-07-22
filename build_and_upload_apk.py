@@ -10,7 +10,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 
 TOKEN = os.environ.get("GITHUB_TOKEN", "")
 REPO = "samer20032020-dev/sdn-downloader-ultra"
-RELEASE_ID = 357054700
+RELEASE_ID = 357706708
 OLD_ASSET_ID = 484092256
 SDK_ROOT = r"C:\Users\samer\AppData\Local\Android\Sdk"
 ZIP_PATH = os.path.expandvars(r"%TEMP%\cmdline-tools.zip")
