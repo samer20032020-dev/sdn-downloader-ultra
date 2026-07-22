@@ -332,12 +332,23 @@ body.light-theme .input-field-wrap input { background: #fff; }
 .media-title { font-size: 0.92rem; font-weight: 800; color: var(--text-main); line-clamp: 2; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
 .media-uploader { font-size: 0.78rem; color: var(--primary); margin-top: 4px; font-weight: 700; }
 
-.quality-selector-grid { display: flex; flex-direction: column; gap: 8px; }
+.quality-selector-grid { 
+  display: grid; 
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); 
+  gap: 10px; 
+  max-height: 280px; 
+  overflow-y: auto; 
+  padding-right: 6px; 
+}
+.quality-selector-grid::-webkit-scrollbar { width: 5px; }
+.quality-selector-grid::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.4); border-radius: 5px; }
 .q-option-row {
   background: rgba(255,255,255,0.04); border: 1px solid var(--card-border); padding: 10px 14px;
   border-radius: 12px; display: flex; align-items: center; justify-content: space-between;
   cursor: pointer; transition: all 0.2s; font-size: 0.85rem; font-weight: 700; color: var(--text-main);
+  gap: 8px;
 }
+.q-option-row > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .q-option-row.selected { background: rgba(56, 189, 248, 0.15); border-color: var(--primary); }
 
 .btn-start-download {
