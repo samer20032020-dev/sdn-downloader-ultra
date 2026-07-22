@@ -97,6 +97,22 @@ html, body {
   box-shadow: 0 4px 15px var(--primary-glow);
 }
 
+.update-header-btn {
+  background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3);
+  color: var(--primary); border-radius: 20px; padding: 6px 12px; font-size: 0.78rem;
+  font-weight: 800; display: flex; align-items: center; gap: 6px; cursor: pointer;
+  font-family: inherit; transition: all 0.25s ease; outline: none;
+}
+.update-header-btn:hover { background: rgba(56, 189, 248, 0.2); transform: translateY(-1px); }
+.update-header-btn.has-update {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #fff;
+  border: none; box-shadow: 0 0 15px rgba(16, 185, 129, 0.5); animation: pulseUpdate 2s infinite alternate;
+}
+@keyframes pulseUpdate {
+  0% { transform: scale(1); box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); }
+  100% { transform: scale(1.05); box-shadow: 0 0 20px rgba(16, 185, 129, 0.8); }
+}
+
 /* Scrollable Body Content */
 .main-content {
   flex: 1; overflow-y: auto; padding: 20px 18px 90px 18px; display: flex; flex-direction: column; gap: 20px;
@@ -474,6 +490,10 @@ input:checked + .slider:before { transform: translateX(20px); }
         <span class="brand-title">SDN Downloader</span>
       </div>
     </div>
+    <button class="update-header-btn" id="headerUpdateBtn" onclick="onHeaderUpdateClick()" title="فحص التحديثات">
+      <i class="fas fa-sync-alt" id="updateHeaderIcon"></i>
+      <span id="updateHeaderTxt">فحص التحديثات</span>
+    </button>
   </header>
 
   <!-- Main Scroll Area -->
@@ -1387,19 +1407,44 @@ function addRecentItem(title, quality, type) {
   }
 }
 
-/* ── Auto Update Checker ── */
+let gLatestReleaseUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
+
+/* ── Auto Update Checker & Header Button ── */
 async function checkForAppUpdates() {
-  if (document.getElementById('autoUpdateToggle')?.checked === false) return;
+  const btn = document.getElementById('headerUpdateBtn');
+  const txt = document.getElementById('updateHeaderTxt');
+  const icon = document.getElementById('updateHeaderIcon');
+
   try {
     const resp = await fetch('https://api.github.com/repos/samer20032020-dev/sdn-downloader-ultra/releases/latest');
     if (!resp.ok) return;
     const release = await resp.json();
     const latestTag = (release.tag_name || '').replace(/^v/, '');
+    if (release.html_url) gLatestReleaseUrl = release.html_url;
 
     if (latestTag && latestTag !== CURRENT_VERSION) {
-      toast(`🚀 يتوفر تحديث جديد (${release.tag_name})!`);
+      if (btn) btn.classList.add('has-update');
+      if (txt) txt.innerText = `🚀 تحديث ${release.tag_name}`;
+      if (icon) icon.className = 'fas fa-arrow-alt-circle-up';
+      toast(`🚀 يتوفر تحديث جديد (${release.tag_name})! انقر زِر التحديث في الشريط العلوي للتنزيل.`);
+    } else {
+      if (btn) btn.classList.remove('has-update');
+      if (txt) txt.innerText = `✓ أحدث إصدار v${CURRENT_VERSION}`;
+      if (icon) icon.className = 'fas fa-check-circle';
     }
-  } catch(e) {}
+  } catch(e) {
+    if (txt) txt.innerText = `v${CURRENT_VERSION}`;
+  }
+}
+
+function onHeaderUpdateClick() {
+  const btn = document.getElementById('headerUpdateBtn');
+  if (btn && btn.classList.contains('has-update')) {
+    window.open(gLatestReleaseUrl, '_blank');
+  } else {
+    toast('🔍 جاري فحص التحديثات مع GitHub...');
+    checkForAppUpdates();
+  }
 }
 
 let isCheckingUpdate = false;
@@ -1411,7 +1456,7 @@ document.getElementById('checkUpdatesManualBtn')?.addEventListener('click', asyn
 
   toast('🔍 جاري فحص التحديثات...');
   await checkForAppUpdates();
-  toast('✓ أنت تستخدم أحدث إصدار الحالي');
+  toast(`✓ أنت تستخدم أحدث إصدار v${CURRENT_VERSION}`);
 
   setTimeout(() => {
     isCheckingUpdate = false;
@@ -1422,9 +1467,10 @@ document.getElementById('checkUpdatesManualBtn')?.addEventListener('click', asyn
 // Initialize Lark Player Engine on page load
 document.addEventListener('DOMContentLoaded', () => {
   initLarkPlayer();
+  checkForAppUpdates();
 });
 setTimeout(initLarkPlayer, 500);
-setTimeout(checkForAppUpdates, 2500);
+setTimeout(checkForAppUpdates, 1500);
 
 </script>
 </body>
