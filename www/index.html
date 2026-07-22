@@ -1997,7 +1997,7 @@ async function checkForAppUpdates() {
 
   try {
     const resp = await fetch('https://api.github.com/repos/samer20032020-dev/sdn-downloader-ultra/releases/latest');
-    if (!resp.ok) return;
+    if (!resp.ok) return false;
     const release = await resp.json();
     const latestTag = (release.tag_name || '').replace(/^v/, '');
 
@@ -2015,13 +2015,16 @@ async function checkForAppUpdates() {
       if (txt) txt.innerText = `🚀 تحديث ${release.tag_name}`;
       if (icon) icon.className = 'fas fa-arrow-alt-circle-up';
       toast(`🚀 يتوفر تحديث جديد (${release.tag_name})! انقر زِر التحديث للتنزيل والتثبيت.`);
+      return true;
     } else {
       if (btn) btn.classList.remove('has-update');
       if (txt) txt.innerText = `✓ أحدث إصدار v${CURRENT_VERSION}`;
       if (icon) icon.className = 'fas fa-check-circle';
+      return false;
     }
   } catch(e) {
     if (txt) txt.innerText = `v${CURRENT_VERSION}`;
+    return false;
   }
 }
 
@@ -2124,8 +2127,10 @@ document.getElementById('checkUpdatesManualBtn')?.addEventListener('click', asyn
   if (btn) btn.disabled = true;
 
   toast('🔍 جاري فحص التحديثات...');
-  await checkForAppUpdates();
-  toast(`✓ أنت تستخدم أحدث إصدار v${CURRENT_VERSION}`);
+  const hasUpdate = await checkForAppUpdates();
+  if (!hasUpdate) {
+    toast(`✅ أنت تستخدم أحدث إصدار v${CURRENT_VERSION}`);
+  }
 
   setTimeout(() => {
     isCheckingUpdate = false;
