@@ -316,10 +316,13 @@ class DownloaderBridgeAPI:
                 from downloader import MediaDownloader
                 self.downloader = MediaDownloader()
             
-            info = self.downloader.fetch_info(url, browser_cookies=browser_cookies, proxy=proxy)
+            # Normalize proxy: treat empty string as None
+            clean_proxy = (proxy or '').strip() or None
+            info = self.downloader.fetch_info(url, browser_cookies=browser_cookies, proxy=clean_proxy)
             return {'data': info, 'error': None}
         except Exception as e:
-            return {'data': None, 'error': str(e)}
+            from downloader import clean_error_message
+            return {'data': None, 'error': clean_error_message(e)}
 
     def start_download(self, url, option, browser_cookies='none'):
         threading.Thread(

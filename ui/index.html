@@ -970,7 +970,7 @@ input:checked + .slider:before { transform: translateX(20px); }
         <button class="folder-change-btn" id="desktopChangeFolderBtn" onclick="onPickFolderClick()" style="background:var(--primary); color:#000; border:none; padding:4px 10px; border-radius:8px; font-size:0.75rem; font-weight:800; cursor:pointer; font-family:inherit;">تغيير</button>
       </div>
 
-      <button class="update-header-btn" id="headerUpdateBtn" onclick="onHeaderUpdateClick()" title="فحص التحديثات" style="display:none;">
+      <button class="update-header-btn" id="headerUpdateBtn" onclick="onHeaderUpdateClick()" title="فحص التحديثات">
         <i class="fas fa-sync-alt" id="updateHeaderIcon"></i>
         <span id="updateHeaderTxt">فحص التحديثات</span>
       </button>
@@ -1067,6 +1067,11 @@ input:checked + .slider:before { transform: translateX(20px); }
         <div class="progress-bar-track">
           <div class="progress-bar-fill" id="progFill"></div>
         </div>
+        <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:var(--text-sub); margin-top:4px;">
+          <span id="progSpeed">جاري البدء...</span>
+          <span id="progSizes"></span>
+        </div>
+        <div id="progEta" style="font-size:0.75rem; color:var(--muted); text-align:center;"></div>
       </div>
       
       <!-- Hidden Recent section to avoid breaking JS -->
@@ -1188,7 +1193,9 @@ input:checked + .slider:before { transform: translateX(20px); }
           </div>
           <button class="header-btn" id="checkUpdatesManualBtn" style="width:auto; padding:0 10px; font-size:0.78rem; color:var(--primary);">فحص التحديثات</button>
         </div>
-      </div>
+    </div><!-- End settings-group group 4 -->
+
+    </div><!-- End viewSettings -->
 
     <!-- TAB 4: LARK MUSIC PLAYER (مشغل الصوتيات والموسيقى) -->
     <div id="viewMusicPlayer" class="music-panel">
@@ -1731,6 +1738,14 @@ if (savedPath && document.getElementById('savePathTxt')) {
 /* ── Clear History ── */
 document.getElementById('clearHistoryBtn')?.addEventListener('click', () => {
   document.getElementById('fullHistoryList').innerHTML = '<div style="text-align:center; color:var(--muted); padding:20px; font-weight:700;">السجل فارغ حالياً</div>';
+  // Clear Python-side history as well
+  if (window.pywebview?.api?.clear_history) {
+    window.pywebview.api.clear_history();
+  }
+  // Clear localStorage music history
+  localStorage.removeItem('sdn_music_history');
+  gPlaylist = [];
+  refreshAudioPlaylist();
   toast('🧹 تم مسح السجل بنجاح');
 });
 
@@ -1845,25 +1860,133 @@ function doFetch() {
 
   if (window.pywebview?.api?.fetch_info) {
     window.pywebview.api.fetch_info(url, 'none', '').then(res => {
-      gBusy = false; btn.disabled = false; txt.innerText = 'جلب الفيديو';
+      gBusy = false; btn.disabled = false; txt.innerText = 'جلب الرابط ✨';
       if (res.error) { toast('❌ ' + res.error); return; }
       renderMediaCard(res.data);
     }).catch(e => {
-      gBusy = false; btn.disabled = false; txt.innerText = 'جلب الفيديو';
+      gBusy = false; btn.disabled = false; txt.innerText = 'جلب الرابط ✨';
       toast('❌ فشل جلب تفاصيل الرابط');
     });
   } else {
     fetchWebMediaInfo(url).then(data => {
-      gBusy = false; btn.disabled = false; txt.innerText = 'جلب الفيديو';
+      gBusy = false; btn.disabled = false; txt.innerText = 'جلب الرابط ✨';
       renderMediaCard(data);
     }).catch(e => {
-      gBusy = false; btn.disabled = false; txt.innerText = 'جلب الفيديو';
+      gBusy = false; btn.disabled = false; txt.innerText = 'جلب الرابط ✨';
       toast('❌ تعذر الاتصال ببطاقة الفيديو');
     });
   }
 }
 
 document.getElementById('fetchBtn').addEventListener('click', doFetch);
+
+/* ── updateProgress: Called by Python backend during download ── */
+function updateProgress(p) {
+  const card = document.getElementById('progCard');
+  const fill = document.getElementById('progFill');
+  const pct  = document.getElementById('progPct');
+  const stat = document.getElementById('progStatus');
+  const speed = document.getElementById('progSpeed');
+  const sizes = document.getElementById('progSizes');
+  const eta   = document.getElementById('progEta');
+
+  if (!card) return;
+
+  if (p.status === 'downloading') {
+    card.style.display = 'flex';
+    const pctVal = Math.round(p.percent || 0);
+    if (fill) fill.style.width = pctVal + '%';
+    if (pct)  pct.innerText  = pctVal + '%';
+    if (stat) stat.innerText = '⬇️ جاري التحميل...';
+    if (speed) speed.innerText = p.speed_str || 'جاري البدء...';
+    if (sizes) sizes.innerText = p.downloaded_str && p.total_str ? `${p.downloaded_str} / ${p.total_str}` : '';
+    if (eta && p.eta_str) eta.innerText = 'الوقت المتبقي: ' + p.eta_str;
+
+  } else if (p.status === 'processing') {
+    card.style.display = 'flex';
+    if (fill) fill.style.width = '95%';
+    if (pct)  pct.innerText  = '95%';
+    if (stat) stat.innerText = '⚙️ ' + (p.msg || 'جاري المعالجة...');
+    if (speed) speed.innerText = '';
+    if (eta)   eta.innerText = '';
+
+  } else if (p.status === 'complete') {
+    card.style.display = 'flex';
+    if (fill) fill.style.width = '100%';
+    if (pct)  pct.innerText  = '100%';
+    if (stat) stat.innerText = '🎉 اكتمل التحميل!';
+    if (speed) speed.innerText = '';
+    if (eta)   eta.innerText = '';
+    if (sizes) sizes.innerText = '';
+
+    // Save to history
+    const title = gData?.title || 'فيديو محمّل';
+    const qualLabel = gOpt?.label || gOpt?.size_str || 'جودة افتراضية';
+    const mediaType = gOpt?.type || 'video';
+    addRecentItem(title, qualLabel, mediaType === 'audio' ? 'tt' : 'yt');
+
+    // Save to Python history
+    if (window.pywebview?.api?.add_history) {
+      window.pywebview.api.add_history({
+        title: title,
+        quality: qualLabel,
+        type: mediaType,
+        filepath: p.filepath || '',
+        date: new Date().toISOString()
+      });
+    }
+
+    // Play completion sound
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.5);
+    } catch(e) {}
+
+    toast('✅ تم تحميل الفيديو بنجاح!');
+
+    // Auto-hide progress card after 4s
+    setTimeout(() => {
+      if (card) card.style.display = 'none';
+    }, 4000);
+
+  } else if (p.status === 'error') {
+    card.style.display = 'flex';
+    if (fill) { fill.style.width = '100%'; fill.style.background = 'var(--red)'; }
+    if (pct)  pct.innerText = '❌';
+    if (stat) stat.innerText = p.error || 'حدث خطأ أثناء التحميل';
+    if (speed) speed.innerText = '';
+    if (eta)   eta.innerText = '';
+    toast('❌ ' + (p.error || 'فشل التحميل'));
+
+    // Reset fill color after 5s
+    setTimeout(() => {
+      if (fill) fill.style.background = '';
+      if (card) card.style.display = 'none';
+    }, 5000);
+  }
+}
+window.updateProgress = updateProgress;
+
+/* ── handleExtensionInput: Called by Python when browser extension sends a URL ── */
+function handleExtensionInput(url) {
+  if (!url) return;
+  const inp = document.getElementById('urlInp');
+  if (inp) {
+    inp.value = url;
+    toast('🔗 تم استقبال رابط من الإضافة تلقائياً');
+    setTimeout(doFetch, 300);
+  }
+}
+window.handleExtensionInput = handleExtensionInput;
 
 /* ── Render Media Options ── */
 let currentVideoOpts = [];
@@ -1946,6 +2069,7 @@ document.getElementById('dlBtn').addEventListener('click', () => {
 
   if (window.pywebview?.api?.start_download) {
     window.pywebview.api.start_download(downloadUrl, gOpt, 'none');
+    // Progress updates come via updateProgress() callback from Python
   } else if (window.androidInterface?.downloadFile) {
     const mimeType = gOpt.type === 'audio' ? 'audio/mpeg' : 'video/mp4';
     const subFolder = localStorage.getItem('customSavePath') || 'Downloads';
@@ -2186,6 +2310,44 @@ document.getElementById('checkUpdatesManualBtn')?.addEventListener('click', asyn
 // Initialize Lark Player Engine on page load
 document.addEventListener('DOMContentLoaded', () => {
   initLarkPlayer();
+
+  // Show update button on desktop
+  const updateBtn = document.getElementById('headerUpdateBtn');
+  if (updateBtn) updateBtn.style.display = 'flex';
+
+  // Fetch save directory
+  if (window.pywebview?.api?.get_save_dir) {
+    window.pywebview.api.get_save_dir().then(path => {
+      if (path) updateSavePathDisplays(path);
+    });
+  }
+
+  // Load history from Python backend
+  if (window.pywebview?.api?.get_history) {
+    window.pywebview.api.get_history().then(items => {
+      if (!items || items.length === 0) return;
+      const hist = document.getElementById('fullHistoryList');
+      document.getElementById('emptyHistory')?.remove();
+      if (!hist) return;
+      hist.innerHTML = '';
+      items.forEach(item => {
+        const el = document.createElement('div');
+        el.className = 'recent-card-item';
+        el.innerHTML = `
+          <div class="recent-card-left">
+            <div class="platform-icon generic"><i class="fas ${item.type === 'audio' ? 'fa-music' : 'fa-video'}"></i></div>
+            <div class="item-details">
+              <span class="item-title">${item.title || 'بدون عنوان'}</span>
+              <span class="item-meta">${item.quality || ''}</span>
+            </div>
+          </div>
+          <i class="fas fa-check-circle item-status-icon"></i>
+        `;
+        hist.appendChild(el);
+      });
+    }).catch(() => {});
+  }
+
   checkForAppUpdates();
 });
 setTimeout(initLarkPlayer, 500);

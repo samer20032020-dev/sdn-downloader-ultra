@@ -261,10 +261,22 @@ class MediaDownloader:
 
         out_tmpl = os.path.join(save_dir, '%(title)s.%(ext)s')
 
+        # Track the actual filename via progress hook
+        _final_filename = [None]
+
         def ydl_progress_hook(d):
+            status = d.get('status')
+
+            # Capture the real output filename when download finishes
+            if status == 'finished':
+                raw_path = d.get('filename') or d.get('info_dict', {}).get('_filename')
+                if raw_path:
+                    _final_filename[0] = raw_path
+                if status_callback:
+                    status_callback('جاري المعالجة والدمج عبر ffmpeg...')
+
             if not progress_callback:
                 return
-            status = d.get('status')
             if status == 'downloading':
                 downloaded = d.get('downloaded_bytes', 0)
                 total = d.get('total_bytes') or d.get('total_bytes_estimate', 0)
@@ -280,16 +292,12 @@ class MediaDownloader:
                     'speed_str': f'{format_bytes(spd)}/ثانية' if spd else 'جاري البدء...',
                     'eta_str': f'{eta} ثانية' if eta else ''
                 })
-            elif status == 'finished':
-                if status_callback:
-                    status_callback('جاري المعالجة والدمج عبر ffmpeg...')
 
         ydl_opts = {
             'format': format_id,
             'outtmpl': out_tmpl,
             'progress_hooks': [ydl_progress_hook],
             'nocheckcertificate': True,
-            'ignoreerrors': True,
             'quiet': True,
             'no_warnings': True,
             'ffmpeg_location': self.ffmpeg_path,
@@ -297,8 +305,10 @@ class MediaDownloader:
         if not is_audio:
             ydl_opts['merge_output_format'] = 'mp4'
 
-        if option.get('proxy'):
-            ydl_opts['proxy'] = option['proxy']
+        # Only set proxy if it's a non-empty string
+        proxy_val = option.get('proxy') or ''
+        if proxy_val.strip():
+            ydl_opts['proxy'] = proxy_val.strip()
 
         if browser_cookies and browser_cookies != 'none':
             if os.path.exists(browser_cookies):
@@ -315,9 +325,40 @@ class MediaDownloader:
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
-            saved_file = ydl.prepare_filename(info) if info else None
-            if is_audio and saved_file:
-                saved_file = os.path.splitext(saved_file)[0] + '.mp3'
+            if not info:
+                raise Exception('فشل التحميل - تعذر استخراج معلومات الوسائط من الرابط المحدد.')
+
+            # Determine saved file path
+            saved_file = None
+
+            if is_audio:
+                # For audio: the file is renamed to .mp3 by the postprocessor
+                # Use the captured filename from progress hook, then swap extension
+                raw = _final_filename[0] or ydl.prepare_filename(info)
+                base = os.path.splitext(raw)[0]
+                mp3_path = base + '.mp3'
+                if os.path.exists(mp3_path):
+                    saved_file = mp3_path
+                else:
+                    # Fallback: search for the most recently created mp3 in save_dir
+                    import glob as _glob
+                    candidates = sorted(
+                        _glob.glob(os.path.join(save_dir, '*.mp3')),
+                        key=os.path.getmtime,
+                        reverse=True
+                    )
+                    saved_file = candidates[0] if candidates else mp3_path
+            else:
+                # For video: use prepare_filename or the captured filename
+                raw = ydl.prepare_filename(info)
+                # yt-dlp may merge to .mp4 even if format was originally different
+                mp4_path = os.path.splitext(raw)[0] + '.mp4'
+                if os.path.exists(mp4_path):
+                    saved_file = mp4_path
+                elif os.path.exists(raw):
+                    saved_file = raw
+                else:
+                    saved_file = _final_filename[0] or raw
 
         trim_start = option.get('trim_start')
         trim_end = option.get('trim_end')

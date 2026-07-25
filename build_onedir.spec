@@ -3,6 +3,8 @@ import os
 from PyInstaller.utils.hooks import collect_all
 
 datas = [('ui', 'ui')]
+if os.path.exists('app_icon.ico'):
+    datas.append(('app_icon.ico', '.'))
 if os.path.exists('extension'):
     datas.append(('extension', 'extension'))
 binaries = []
