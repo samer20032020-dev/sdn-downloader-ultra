@@ -338,6 +338,18 @@ body.light-theme .input-field-wrap input { background: #fff; }
 
 .item-status-icon { color: var(--green); font-size: 1.1rem; flex-shrink: 0; }
 
+.open-folder-btn {
+  background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.3);
+  color: var(--primary); border-radius: 10px; padding: 6px 12px;
+  font-size: 0.75rem; font-weight: 700; cursor: pointer;
+  font-family: 'Tajawal', sans-serif; white-space: nowrap; flex-shrink: 0;
+  transition: all 0.2s ease; display: flex; align-items: center; gap: 5px;
+}
+.open-folder-btn:hover {
+  background: rgba(56, 189, 248, 0.25); color: #fff; border-color: rgba(56, 189, 248, 0.6);
+  transform: translateY(-1px);
+}
+
 /* Media Details Card Modal */
 .media-result-card {
   display: none; background: var(--card-bg); border: 1px solid var(--primary-glow);
@@ -970,17 +982,18 @@ input:checked + .slider:before { transform: translateX(20px); }
         <button class="folder-change-btn" id="desktopChangeFolderBtn" onclick="onPickFolderClick()" style="background:var(--primary); color:#000; border:none; padding:4px 10px; border-radius:8px; font-size:0.75rem; font-weight:800; cursor:pointer; font-family:inherit;">تغيير</button>
       </div>
 
-      <button class="update-header-btn" id="headerUpdateBtn" onclick="onHeaderUpdateClick()" title="فحص التحديثات">
-        <i class="fas fa-sync-alt" id="updateHeaderIcon"></i>
-        <span id="updateHeaderTxt">فحص التحديثات</span>
-      </button>
-
       <!-- Download Counter Badge (v2.4.0) -->
       <div id="dlCounterBadge" title="عدد التحميلات في هذه الجلسة" style="display:flex; align-items:center; gap:6px; background:rgba(34,197,94,0.12); border:1px solid rgba(34,197,94,0.3); color:#4ade80; padding:5px 12px; border-radius:12px; font-size:0.8rem; font-weight:800; cursor:default; transition:all 0.3s; animation:dlBadgePop 0.4s ease;">
         <i class="fas fa-check-circle" style="font-size:0.85rem;"></i>
         <span id="dlCounterNum">0</span>
         <span style="opacity:0.8; font-weight:600;">تحميل</span>
       </div>
+
+      <!-- Update Header Button -->
+      <button id="headerUpdateBtn" onclick="onHeaderUpdateClick()" class="update-header-btn" title="فحص التحديثات" style="display:none;">
+        <i class="fas fa-cog" id="updateHeaderIcon"></i>
+        <span id="updateHeaderTxt">v2.4.0</span>
+      </button>
     </div>
   </header>
 
@@ -1406,6 +1419,15 @@ function onPickFolderClick() {
     });
   } else {
     document.getElementById('folderModal')?.classList.add('active');
+  }
+}
+
+function openDownloadFolder(filepath) {
+  if (!filepath) return;
+  if (window.pywebview?.api?.locate_file) {
+    window.pywebview.api.locate_file(filepath);
+  } else if (window.pywebview?.api?.open_folder) {
+    window.pywebview.api.open_folder(filepath);
   }
 }
 
@@ -1923,7 +1945,7 @@ function updateProgress(p) {
     const title = gData?.title || 'فيديو محمّل';
     const qualLabel = gOpt?.label || gOpt?.size_str || 'جودة افتراضية';
     const mediaType = gOpt?.type || 'video';
-    addRecentItem(title, qualLabel, mediaType === 'audio' ? 'tt' : 'yt');
+    addRecentItem(title, qualLabel, mediaType === 'audio' ? 'tt' : 'yt', p.filepath || '');
 
     // Save to Python history
     if (window.pywebview?.api?.add_history) {
@@ -2107,12 +2129,15 @@ document.getElementById('dlBtn').addEventListener('click', () => {
 });
 
 /* ── Recent Items Add & Lark Player Integration ── */
-function addRecentItem(title, quality, type) {
+function addRecentItem(title, quality, type, filepath) {
   document.getElementById('emptyRecent')?.remove();
   document.getElementById('emptyHistory')?.remove();
 
   const list = document.getElementById('recentList');
   const hist = document.getElementById('fullHistoryList');
+
+  const fp = filepath || '';
+  const openFolderBtn = fp ? `<button class="open-folder-btn" onclick="event.stopPropagation(); openDownloadFolder('${fp.replace(/'/g, "\\'")}')" title="فتح في المجلد"><i class="fas fa-folder-open"></i> فتح في المجلد</button>` : '';
 
   const item = document.createElement('div');
   item.className = 'recent-card-item';
@@ -2124,6 +2149,7 @@ function addRecentItem(title, quality, type) {
         <span class="item-meta">${quality}</span>
       </div>
     </div>
+    ${openFolderBtn}
     <i class="fas fa-check-circle item-status-icon"></i>
   `;
   if (list) list.insertBefore(item, list.firstChild);
@@ -2187,8 +2213,8 @@ async function checkForAppUpdates() {
       return true;
     } else {
       if (btn) btn.classList.remove('has-update');
-      if (txt) txt.innerText = `✓ أحدث إصدار v${CURRENT_VERSION}`;
-      if (icon) icon.className = 'fas fa-check-circle';
+      if (txt) txt.innerText = `⚙️ تأكد من الإعدادات`;
+      if (icon) icon.className = 'fas fa-cog';
       return false;
     }
   } catch(e) {
@@ -2298,7 +2324,7 @@ document.getElementById('checkUpdatesManualBtn')?.addEventListener('click', asyn
   toast('🔍 جاري فحص التحديثات...');
   const hasUpdate = await checkForAppUpdates();
   if (!hasUpdate) {
-    toast(`✅ أنت تستخدم أحدث إصدار v${CURRENT_VERSION}`);
+    toast(`⚙️ تأكد من الإعدادات - الإصدار v${CURRENT_VERSION}`);
   }
 
   setTimeout(() => {
@@ -2331,6 +2357,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!hist) return;
       hist.innerHTML = '';
       items.forEach(item => {
+        const fp = item.filepath || '';
+        const openFolderBtn = fp ? `<button class="open-folder-btn" onclick="event.stopPropagation(); openDownloadFolder('${fp.replace(/'/g, "\\'")}')" title="فتح في المجلد"><i class="fas fa-folder-open"></i> فتح في المجلد</button>` : '';
         const el = document.createElement('div');
         el.className = 'recent-card-item';
         el.innerHTML = `
@@ -2341,6 +2369,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <span class="item-meta">${item.quality || ''}</span>
             </div>
           </div>
+          ${openFolderBtn}
           <i class="fas fa-check-circle item-status-icon"></i>
         `;
         hist.appendChild(el);

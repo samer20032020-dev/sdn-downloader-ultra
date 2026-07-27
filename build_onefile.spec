@@ -10,11 +10,18 @@ if os.path.exists('extension'):
 binaries = []
 if os.path.exists('ffmpeg.exe'):
     binaries.append(('ffmpeg.exe', '.'))
-hiddenimports = ['requests', 'urllib.parse', 'http.server', 'wsgiref.simple_server', 'clr', 'pythonnet', 'clr_loader', 'yt_dlp_ejs']
+hiddenimports = [
+    'requests', 'urllib.parse', 'http.server', 'wsgiref.simple_server',
+    'app_logger', 'concurrent.futures', 'certifi', 'urllib3',
+    'yt_dlp.utils', 'yt_dlp.extractor', 'yt_dlp.postprocessor',
+]
 
-for pkg in ('pywebview', 'yt_dlp', 'clr_loader', 'pythonnet', 'yt_dlp_ejs'):
-    tmp_ret = collect_all(pkg)
-    datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+for pkg in ('pywebview', 'yt_dlp'):
+    try:
+        tmp_ret = collect_all(pkg)
+        datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+    except Exception as e:
+        print(f'Warning: collect_all({pkg}) failed: {e}')
 
 try:
     import webview
@@ -63,5 +70,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='app_icon.ico'
+    icon='app_icon.ico' if os.path.exists('app_icon.ico') else None
 )

@@ -1,12 +1,88 @@
-build/
-tools/
-*.bmp
-*.pyc
+# === Python ===
 __pycache__/
-dist/
-node_modules/
-.agents/
-.vscode/
-.github/
-*.apk
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+.eggs/
 
+# === PyInstaller ===
+# تجاهل محتوى dist/ (ملفات كبيرة جداً لـ git) — ترفع عبر GitHub Releases
+dist/*.exe
+dist/*.apk
+dist/*.aab
+dist/SDN_Downloader_App/
+build/
+*.spec.bak
+*.manifest
+
+
+# === Virtual Environment ===
+venv/
+env/
+ENV/
+.venv/
+.conda/
+
+# === IDE ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.agents/
+
+# === OS Junks ===
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# === Android / Gradle ===
+android/.gradle/
+android/build/
+android/app/build/
+android/captures/
+android/*.apk
+android/*.aab
+android/local.properties
+*.iml
+.gradle/
+local.properties
+
+# === Node / Capacitor ===
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# === Environment & Secrets ===
+.env
+.env.local
+.env.*.local
+*.secret
+
+# === Temp & Cache ===
+*.tmp
+*.part
+*.ytdl
+*.log
+*.temp
+SDN_Update_*.exe
+~$*
+
+# === Inno Setup Output ===
+Output/
+
+# === ZIP files ===
+*.zip
+*.7z
+*.rar
+
+# === Large binaries (track separately) ===
+ffmpeg.exe
+ffprobe.exe
+
+# === Tools (Git, JDK bundled locally — don't commit) ===
+tools/
