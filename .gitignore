@@ -38,6 +38,7 @@ ENV/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+*.bmp
 
 # === Android / Gradle ===
 android/.gradle/
