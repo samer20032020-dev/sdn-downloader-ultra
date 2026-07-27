@@ -992,7 +992,7 @@ input:checked + .slider:before { transform: translateX(20px); }
       <!-- Update Header Button -->
       <button id="headerUpdateBtn" onclick="onHeaderUpdateClick()" class="update-header-btn" title="فحص التحديثات" style="display:none;">
         <i class="fas fa-cog" id="updateHeaderIcon"></i>
-        <span id="updateHeaderTxt">v2.4.0</span>
+        <span id="updateHeaderTxt">v2.5.0</span>
       </button>
     </div>
   </header>
@@ -1046,7 +1046,7 @@ input:checked + .slider:before { transform: translateX(20px); }
           </div>
         </div>
 
-        <div style="background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.3); color:#38bdf8; padding:5px 14px; border-radius:20px; font-size:0.8rem; font-weight:800; margin-bottom:12px; display:inline-flex; align-items:center; gap:6px;">✨ نسخة التجربة الكاملة v2.4.0 - جميع الميزات مفعلة ⚡</div>
+        <div style="background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.3); color:#38bdf8; padding:5px 14px; border-radius:20px; font-size:0.8rem; font-weight:800; margin-bottom:12px; display:inline-flex; align-items:center; gap:6px;">✨ نسخة التجربة الكاملة v2.5.0 - جميع الميزات مفعلة ⚡</div>
         <h1 class="shimmer-title">مركز التحميل الذكي ⚡</h1>
         <p style="font-size:0.95rem; color:#94a3b8; font-weight:500; max-width:440px; line-height:1.6; z-index:2;">ضع رابطك أعلاه لتنزيل الفيديوهات والصوتيات بأعلى جودة فوراً 🚀</p>
       </section>
@@ -1174,6 +1174,17 @@ input:checked + .slider:before { transform: translateX(20px); }
         
         <div class="settings-item">
           <div class="settings-label">
+            <span class="settings-title">⚡ وضع السرعة الفائقة وتوليد الصوت (Turbo Speed & Audio Alert)</span>
+            <span class="settings-desc">إشعار صوتي مميز وتخصيص استهلاك المعالج للتحميل الخارق v2.5.0</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="turboModeToggle" checked onchange="toast('⚡ تم تفعيل وضع السرعة الفائقة v2.5.0!')">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="settings-item">
+          <div class="settings-label">
             <span class="settings-title">التحديث التلقائي</span>
             <span class="settings-desc">إشعار بالنسخ الجديدة المتاحة تلقائياً</span>
           </div>
@@ -1202,7 +1213,7 @@ input:checked + .slider:before { transform: translateX(20px); }
         <div class="settings-item">
           <div class="settings-label">
             <span class="settings-title">إصدار التطبيق الحالي</span>
-            <span class="settings-desc">SDN Downloader Ultra Edition v2.4.0</span>
+            <span class="settings-desc">SDN Downloader Ultra Edition v2.5.0</span>
           </div>
           <button class="header-btn" id="checkUpdatesManualBtn" style="width:auto; padding:0 10px; font-size:0.78rem; color:var(--primary);">فحص التحديثات</button>
         </div>
@@ -1337,7 +1348,7 @@ input:checked + .slider:before { transform: translateX(20px); }
 'use strict';
 
 let gData = null, gOpt = null, gBusy = false;
-const CURRENT_VERSION = '2.4.0';
+const CURRENT_VERSION = '2.5.0';
 
 /* ── Toast Handler (Single Instance & Anti-Spam) ── */
 let toastTimer = null;

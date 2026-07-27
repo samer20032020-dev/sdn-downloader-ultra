@@ -20,19 +20,15 @@ if hasattr(sys.stdout, 'reconfigure'):
 # ============================================================
 REPO          = "samer20032020-dev/sdn-downloader-ultra"
 BRANCH        = "main"
-RELEASE_TAG   = "v2.4.0"
-RELEASE_NAME  = "SDN Downloader Ultra v2.4.0"
+RELEASE_TAG   = "v2.5.0"
+RELEASE_NAME  = "SDN Downloader Ultra v2.5.0"
 RELEASE_BODY  = (
-    "## ⚡ SDN Downloader Ultra v2.4.0\n\n"
-    "### ✨ مميزات هذا الإصدار:\n"
-    "- دعم 1000+ منصة عبر yt-dlp\n"
-    "- جودات فيديو من 144p حتى 8K\n"
-    "- استخراج الصوت بجودة 320kbps MP3\n"
-    "- تقليم الفيديو بدقة عبر FFmpeg\n"
-    "- واجهة مستخدم عصرية Dark/Light\n"
-    "- تحديثات تلقائية من GitHub\n"
-    "- تكامل مع إضافات المتصفح (port 4567)\n"
-    "- دعم كامل لقوائم التشغيل\n"
+    "## ⚡ SDN Downloader Ultra v2.5.0\n\n"
+    "### ✨ المميزات الجديدة والتحديثات:\n"
+    "- ⚡ خيار وضع السرعة الفائقة وتنبيهات الصوت الذكية في قسم الإعدادات\n"
+    "- 🚀 تحسين فحص التحديثات الذكي والتنزيل المباشر والتلقائي\n"
+    "- 🎵 تحسينات استخراج صوت MP3 وتنظيم جودات الفيديو حتى 8K\n"
+    "- 🌐 دعم 1000+ منصة مع التوافق التام مع إضافات المتصفح\n"
 )
 
 DIST_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dist")
