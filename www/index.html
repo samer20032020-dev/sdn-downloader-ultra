@@ -2,6 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
+    <meta name="capacitor" content="true">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>SDN Downloader ⚡ Ultra Edition</title>
 
@@ -337,6 +338,18 @@ body.light-theme .input-field-wrap input { background: #fff; }
 .item-meta { font-size: 0.78rem; font-weight: 500; color: var(--text-sub); margin-top: 2px; }
 
 .item-status-icon { color: var(--green); font-size: 1.1rem; flex-shrink: 0; }
+
+.open-folder-btn {
+  background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.3);
+  color: var(--primary); border-radius: 10px; padding: 6px 12px;
+  font-size: 0.75rem; font-weight: 700; cursor: pointer;
+  font-family: 'Tajawal', sans-serif; white-space: nowrap; flex-shrink: 0;
+  transition: all 0.2s ease; display: flex; align-items: center; gap: 5px;
+}
+.open-folder-btn:hover {
+  background: rgba(56, 189, 248, 0.25); color: #fff; border-color: rgba(56, 189, 248, 0.6);
+  transform: translateY(-1px);
+}
 
 /* Media Details Card Modal */
 .media-result-card {
@@ -970,17 +983,18 @@ input:checked + .slider:before { transform: translateX(20px); }
         <button class="folder-change-btn" id="desktopChangeFolderBtn" onclick="onPickFolderClick()" style="background:var(--primary); color:#000; border:none; padding:4px 10px; border-radius:8px; font-size:0.75rem; font-weight:800; cursor:pointer; font-family:inherit;">تغيير</button>
       </div>
 
-      <button class="update-header-btn" id="headerUpdateBtn" onclick="onHeaderUpdateClick()" title="فحص التحديثات" style="display:none;">
-        <i class="fas fa-sync-alt" id="updateHeaderIcon"></i>
-        <span id="updateHeaderTxt">فحص التحديثات</span>
-      </button>
-
       <!-- Download Counter Badge (v2.4.0) -->
       <div id="dlCounterBadge" title="عدد التحميلات في هذه الجلسة" style="display:flex; align-items:center; gap:6px; background:rgba(34,197,94,0.12); border:1px solid rgba(34,197,94,0.3); color:#4ade80; padding:5px 12px; border-radius:12px; font-size:0.8rem; font-weight:800; cursor:default; transition:all 0.3s; animation:dlBadgePop 0.4s ease;">
         <i class="fas fa-check-circle" style="font-size:0.85rem;"></i>
         <span id="dlCounterNum">0</span>
         <span style="opacity:0.8; font-weight:600;">تحميل</span>
       </div>
+
+      <!-- Update Header Button -->
+      <button id="headerUpdateBtn" onclick="onHeaderUpdateClick()" class="update-header-btn" title="فحص التحديثات" style="display:none;">
+        <i class="fas fa-cog" id="updateHeaderIcon"></i>
+        <span id="updateHeaderTxt">v2.4.0</span>
+      </button>
     </div>
   </header>
 
@@ -1067,6 +1081,11 @@ input:checked + .slider:before { transform: translateX(20px); }
         <div class="progress-bar-track">
           <div class="progress-bar-fill" id="progFill"></div>
         </div>
+        <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:var(--text-sub); margin-top:4px;">
+          <span id="progSpeed">جاري البدء...</span>
+          <span id="progSizes"></span>
+        </div>
+        <div id="progEta" style="font-size:0.75rem; color:var(--muted); text-align:center;"></div>
       </div>
       
       <!-- Hidden Recent section to avoid breaking JS -->
@@ -1188,7 +1207,9 @@ input:checked + .slider:before { transform: translateX(20px); }
           </div>
           <button class="header-btn" id="checkUpdatesManualBtn" style="width:auto; padding:0 10px; font-size:0.78rem; color:var(--primary);">فحص التحديثات</button>
         </div>
-      </div>
+    </div><!-- End settings-group group 4 -->
+
+    </div><!-- End viewSettings -->
 
     <!-- TAB 4: LARK MUSIC PLAYER (مشغل الصوتيات والموسيقى) -->
     <div id="viewMusicPlayer" class="music-panel">
@@ -1399,6 +1420,15 @@ function onPickFolderClick() {
     });
   } else {
     document.getElementById('folderModal')?.classList.add('active');
+  }
+}
+
+function openDownloadFolder(filepath) {
+  if (!filepath) return;
+  if (window.pywebview?.api?.locate_file) {
+    window.pywebview.api.locate_file(filepath);
+  } else if (window.pywebview?.api?.open_folder) {
+    window.pywebview.api.open_folder(filepath);
   }
 }
 
@@ -1731,6 +1761,14 @@ if (savedPath && document.getElementById('savePathTxt')) {
 /* ── Clear History ── */
 document.getElementById('clearHistoryBtn')?.addEventListener('click', () => {
   document.getElementById('fullHistoryList').innerHTML = '<div style="text-align:center; color:var(--muted); padding:20px; font-weight:700;">السجل فارغ حالياً</div>';
+  // Clear Python-side history as well
+  if (window.pywebview?.api?.clear_history) {
+    window.pywebview.api.clear_history();
+  }
+  // Clear localStorage music history
+  localStorage.removeItem('sdn_music_history');
+  gPlaylist = [];
+  refreshAudioPlaylist();
   toast('🧹 تم مسح السجل بنجاح');
 });
 
@@ -1845,25 +1883,133 @@ function doFetch() {
 
   if (window.pywebview?.api?.fetch_info) {
     window.pywebview.api.fetch_info(url, 'none', '').then(res => {
-      gBusy = false; btn.disabled = false; txt.innerText = 'جلب الفيديو';
+      gBusy = false; btn.disabled = false; txt.innerText = 'جلب الرابط ✨';
       if (res.error) { toast('❌ ' + res.error); return; }
       renderMediaCard(res.data);
     }).catch(e => {
-      gBusy = false; btn.disabled = false; txt.innerText = 'جلب الفيديو';
+      gBusy = false; btn.disabled = false; txt.innerText = 'جلب الرابط ✨';
       toast('❌ فشل جلب تفاصيل الرابط');
     });
   } else {
     fetchWebMediaInfo(url).then(data => {
-      gBusy = false; btn.disabled = false; txt.innerText = 'جلب الفيديو';
+      gBusy = false; btn.disabled = false; txt.innerText = 'جلب الرابط ✨';
       renderMediaCard(data);
     }).catch(e => {
-      gBusy = false; btn.disabled = false; txt.innerText = 'جلب الفيديو';
+      gBusy = false; btn.disabled = false; txt.innerText = 'جلب الرابط ✨';
       toast('❌ تعذر الاتصال ببطاقة الفيديو');
     });
   }
 }
 
 document.getElementById('fetchBtn').addEventListener('click', doFetch);
+
+/* ── updateProgress: Called by Python backend during download ── */
+function updateProgress(p) {
+  const card = document.getElementById('progCard');
+  const fill = document.getElementById('progFill');
+  const pct  = document.getElementById('progPct');
+  const stat = document.getElementById('progStatus');
+  const speed = document.getElementById('progSpeed');
+  const sizes = document.getElementById('progSizes');
+  const eta   = document.getElementById('progEta');
+
+  if (!card) return;
+
+  if (p.status === 'downloading') {
+    card.style.display = 'flex';
+    const pctVal = Math.round(p.percent || 0);
+    if (fill) fill.style.width = pctVal + '%';
+    if (pct)  pct.innerText  = pctVal + '%';
+    if (stat) stat.innerText = '⬇️ جاري التحميل...';
+    if (speed) speed.innerText = p.speed_str || 'جاري البدء...';
+    if (sizes) sizes.innerText = p.downloaded_str && p.total_str ? `${p.downloaded_str} / ${p.total_str}` : '';
+    if (eta && p.eta_str) eta.innerText = 'الوقت المتبقي: ' + p.eta_str;
+
+  } else if (p.status === 'processing') {
+    card.style.display = 'flex';
+    if (fill) fill.style.width = '95%';
+    if (pct)  pct.innerText  = '95%';
+    if (stat) stat.innerText = '⚙️ ' + (p.msg || 'جاري المعالجة...');
+    if (speed) speed.innerText = '';
+    if (eta)   eta.innerText = '';
+
+  } else if (p.status === 'complete') {
+    card.style.display = 'flex';
+    if (fill) fill.style.width = '100%';
+    if (pct)  pct.innerText  = '100%';
+    if (stat) stat.innerText = '🎉 اكتمل التحميل!';
+    if (speed) speed.innerText = '';
+    if (eta)   eta.innerText = '';
+    if (sizes) sizes.innerText = '';
+
+    // Save to history
+    const title = gData?.title || 'فيديو محمّل';
+    const qualLabel = gOpt?.label || gOpt?.size_str || 'جودة افتراضية';
+    const mediaType = gOpt?.type || 'video';
+    addRecentItem(title, qualLabel, mediaType === 'audio' ? 'tt' : 'yt', p.filepath || '');
+
+    // Save to Python history
+    if (window.pywebview?.api?.add_history) {
+      window.pywebview.api.add_history({
+        title: title,
+        quality: qualLabel,
+        type: mediaType,
+        filepath: p.filepath || '',
+        date: new Date().toISOString()
+      });
+    }
+
+    // Play completion sound
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.5);
+    } catch(e) {}
+
+    toast('✅ تم تحميل الفيديو بنجاح!');
+
+    // Auto-hide progress card after 4s
+    setTimeout(() => {
+      if (card) card.style.display = 'none';
+    }, 4000);
+
+  } else if (p.status === 'error') {
+    card.style.display = 'flex';
+    if (fill) { fill.style.width = '100%'; fill.style.background = 'var(--red)'; }
+    if (pct)  pct.innerText = '❌';
+    if (stat) stat.innerText = p.error || 'حدث خطأ أثناء التحميل';
+    if (speed) speed.innerText = '';
+    if (eta)   eta.innerText = '';
+    toast('❌ ' + (p.error || 'فشل التحميل'));
+
+    // Reset fill color after 5s
+    setTimeout(() => {
+      if (fill) fill.style.background = '';
+      if (card) card.style.display = 'none';
+    }, 5000);
+  }
+}
+window.updateProgress = updateProgress;
+
+/* ── handleExtensionInput: Called by Python when browser extension sends a URL ── */
+function handleExtensionInput(url) {
+  if (!url) return;
+  const inp = document.getElementById('urlInp');
+  if (inp) {
+    inp.value = url;
+    toast('🔗 تم استقبال رابط من الإضافة تلقائياً');
+    setTimeout(doFetch, 300);
+  }
+}
+window.handleExtensionInput = handleExtensionInput;
 
 /* ── Render Media Options ── */
 let currentVideoOpts = [];
@@ -1946,6 +2092,7 @@ document.getElementById('dlBtn').addEventListener('click', () => {
 
   if (window.pywebview?.api?.start_download) {
     window.pywebview.api.start_download(downloadUrl, gOpt, 'none');
+    // Progress updates come via updateProgress() callback from Python
   } else if (window.androidInterface?.downloadFile) {
     const mimeType = gOpt.type === 'audio' ? 'audio/mpeg' : 'video/mp4';
     const subFolder = localStorage.getItem('customSavePath') || 'Downloads';
@@ -1983,12 +2130,15 @@ document.getElementById('dlBtn').addEventListener('click', () => {
 });
 
 /* ── Recent Items Add & Lark Player Integration ── */
-function addRecentItem(title, quality, type) {
+function addRecentItem(title, quality, type, filepath) {
   document.getElementById('emptyRecent')?.remove();
   document.getElementById('emptyHistory')?.remove();
 
   const list = document.getElementById('recentList');
   const hist = document.getElementById('fullHistoryList');
+
+  const fp = filepath || '';
+  const openFolderBtn = fp ? `<button class="open-folder-btn" onclick="event.stopPropagation(); openDownloadFolder('${fp.replace(/'/g, "\\'")}')" title="فتح في المجلد"><i class="fas fa-folder-open"></i> فتح في المجلد</button>` : '';
 
   const item = document.createElement('div');
   item.className = 'recent-card-item';
@@ -2000,6 +2150,7 @@ function addRecentItem(title, quality, type) {
         <span class="item-meta">${quality}</span>
       </div>
     </div>
+    ${openFolderBtn}
     <i class="fas fa-check-circle item-status-icon"></i>
   `;
   if (list) list.insertBefore(item, list.firstChild);
@@ -2063,8 +2214,8 @@ async function checkForAppUpdates() {
       return true;
     } else {
       if (btn) btn.classList.remove('has-update');
-      if (txt) txt.innerText = `✓ أحدث إصدار v${CURRENT_VERSION}`;
-      if (icon) icon.className = 'fas fa-check-circle';
+      if (txt) txt.innerText = `⚙️ تأكد من الإعدادات`;
+      if (icon) icon.className = 'fas fa-cog';
       return false;
     }
   } catch(e) {
@@ -2174,7 +2325,7 @@ document.getElementById('checkUpdatesManualBtn')?.addEventListener('click', asyn
   toast('🔍 جاري فحص التحديثات...');
   const hasUpdate = await checkForAppUpdates();
   if (!hasUpdate) {
-    toast(`✅ أنت تستخدم أحدث إصدار v${CURRENT_VERSION}`);
+    toast(`⚙️ تأكد من الإعدادات - الإصدار v${CURRENT_VERSION}`);
   }
 
   setTimeout(() => {
@@ -2186,6 +2337,47 @@ document.getElementById('checkUpdatesManualBtn')?.addEventListener('click', asyn
 // Initialize Lark Player Engine on page load
 document.addEventListener('DOMContentLoaded', () => {
   initLarkPlayer();
+
+  // Show update button on desktop
+  const updateBtn = document.getElementById('headerUpdateBtn');
+  if (updateBtn) updateBtn.style.display = 'flex';
+
+  // Fetch save directory
+  if (window.pywebview?.api?.get_save_dir) {
+    window.pywebview.api.get_save_dir().then(path => {
+      if (path) updateSavePathDisplays(path);
+    });
+  }
+
+  // Load history from Python backend
+  if (window.pywebview?.api?.get_history) {
+    window.pywebview.api.get_history().then(items => {
+      if (!items || items.length === 0) return;
+      const hist = document.getElementById('fullHistoryList');
+      document.getElementById('emptyHistory')?.remove();
+      if (!hist) return;
+      hist.innerHTML = '';
+      items.forEach(item => {
+        const fp = item.filepath || '';
+        const openFolderBtn = fp ? `<button class="open-folder-btn" onclick="event.stopPropagation(); openDownloadFolder('${fp.replace(/'/g, "\\'")}')" title="فتح في المجلد"><i class="fas fa-folder-open"></i> فتح في المجلد</button>` : '';
+        const el = document.createElement('div');
+        el.className = 'recent-card-item';
+        el.innerHTML = `
+          <div class="recent-card-left">
+            <div class="platform-icon generic"><i class="fas ${item.type === 'audio' ? 'fa-music' : 'fa-video'}"></i></div>
+            <div class="item-details">
+              <span class="item-title">${item.title || 'بدون عنوان'}</span>
+              <span class="item-meta">${item.quality || ''}</span>
+            </div>
+          </div>
+          ${openFolderBtn}
+          <i class="fas fa-check-circle item-status-icon"></i>
+        `;
+        hist.appendChild(el);
+      });
+    }).catch(() => {});
+  }
+
   checkForAppUpdates();
 });
 setTimeout(initLarkPlayer, 500);

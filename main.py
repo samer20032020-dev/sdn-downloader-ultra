@@ -2,6 +2,10 @@ import sys
 import os
 import multiprocessing
 
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8')
 import threading
 import webview
 import webview.util

@@ -13,8 +13,11 @@ if os.path.exists('ffmpeg.exe'):
 hiddenimports = ['requests', 'urllib.parse', 'http.server', 'wsgiref.simple_server', 'clr', 'pythonnet', 'clr_loader', 'yt_dlp_ejs']
 
 for pkg in ('pywebview', 'yt_dlp', 'clr_loader', 'pythonnet', 'yt_dlp_ejs'):
-    tmp_ret = collect_all(pkg)
-    datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+    try:
+        tmp_ret = collect_all(pkg)
+        datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+    except Exception as e:
+        print(f'Warning: collect_all({pkg}) failed: {e}')
 
 try:
     import webview
@@ -55,7 +58,7 @@ exe = EXE(
     strip=False,
     upx=False,
     console=False,
-    icon='app_icon.ico'
+    icon='app_icon.ico' if os.path.exists('app_icon.ico') else None
 )
 
 coll = COLLECT(

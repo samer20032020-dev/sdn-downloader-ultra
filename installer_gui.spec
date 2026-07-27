@@ -17,8 +17,11 @@ binaries = []
 hiddenimports = ['webview', 'clr', 'pythonnet', 'clr_loader']
 
 for pkg in ('pywebview', 'clr_loader', 'pythonnet'):
-    tmp_ret = collect_all(pkg)
-    datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+    try:
+        tmp_ret = collect_all(pkg)
+        datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+    except Exception as e:
+        print(f'Warning: collect_all({pkg}) failed: {e}')
 
 try:
     import webview
