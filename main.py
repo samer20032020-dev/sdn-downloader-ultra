@@ -634,17 +634,46 @@ class DownloaderBridgeAPI:
     def launch_installer(self, setup_path=None):
         try:
             path = setup_path or getattr(self, 'pending_setup_path', None)
-            if path and os.path.exists(path):
-                _log.info(f"Launching installer: {path}")
-                subprocess.Popen([path])
-                os._exit(0)
-                return {'success': True}
-            else:
-                _log.warning("Installer not found")
+            if not path or not os.path.exists(path):
+                _log.warning("Update package not found")
+                return {'success': False, 'error': 'ملف التحديث غير موجود'}
+
+            _log.info(f"Performing silent in-place update using package: {path}")
+
+            # Target current executable
+            current_exe = os.path.abspath(sys.executable)
+            
+            temp_dir = tempfile.gettempdir()
+            now_t = int(time.time())
+            bat_path = os.path.join(temp_dir, f"sdn_silent_update_{now_t}.bat")
+            vbs_path = os.path.join(temp_dir, f"sdn_silent_update_{now_t}.vbs")
+
+            # Batch script to wait for main app process to exit, copy file, and restart silently
+            bat_content = f"""@echo off
+timeout /t 2 /nobreak > nul
+if exist "{path}" (
+    copy /y "{path}" "{current_exe}" > nul
+)
+start "" "{current_exe}"
+del "%~f0"
+"""
+            with open(bat_path, "w", encoding="utf-8", errors="replace") as f:
+                f.write(bat_content)
+
+            # VBScript to launch batch file completely hidden without console or GUI
+            vbs_content = f'CreateObject("WScript.Shell").Run "{bat_path}", 0, False'
+            with open(vbs_path, "w", encoding="utf-8") as f:
+                f.write(vbs_content)
+
+            _log.info(f"Triggering silent background update script: {vbs_path}")
+            subprocess.Popen(["wscript.exe", vbs_path])
+
+            time.sleep(0.3)
+            os._exit(0)
+            return {'success': True}
         except Exception as e:
-            _log.error(f"Installer launch failed: {e}")
+            _log.error(f"Silent update launch failed: {e}")
             return {'success': False, 'error': str(e)}
-        return {'success': False, 'error': 'ملف التثبيت غير موجود'}
 
 
 # ================================================================
