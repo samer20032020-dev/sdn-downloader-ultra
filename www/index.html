@@ -2180,9 +2180,31 @@ function addRecentItem(title, quality, type, filepath) {
   incrementDlCounter();
 }
 
-let _dlCount = 0;
+/* ── Open Download Folder Helper ── */
+function openDownloadFolder(filepath) {
+  if (window.pywebview?.api?.locate_file) {
+    window.pywebview.api.locate_file(filepath || '');
+  } else if (window.pywebview?.api?.open_folder) {
+    window.pywebview.api.open_folder(filepath ? '' : null);
+  } else {
+    toast('📁 مجلد التنزيلات: ' + (filepath || 'C:\\Downloads'));
+  }
+}
+window.openDownloadFolder = openDownloadFolder;
+
+/* ── Persistent Download Counter Badge ── */
+let _dlCount = parseInt(localStorage.getItem('totalDlCount') || '0', 10);
+
+function initDlCounter() {
+  const badge = document.getElementById('dlCounterBadge');
+  const num   = document.getElementById('dlCounterNum');
+  if (num) num.innerText = _dlCount;
+  if (badge) badge.style.display = 'flex';
+}
+
 function incrementDlCounter() {
   _dlCount++;
+  localStorage.setItem('totalDlCount', _dlCount.toString());
   const badge = document.getElementById('dlCounterBadge');
   const num   = document.getElementById('dlCounterNum');
   if (!badge || !num) return;
@@ -2196,41 +2218,58 @@ function incrementDlCounter() {
 
 let gLatestReleaseUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
 
-/* ── Auto Update Checker & Header Button ── */
+/* ── Auto Update Checker & Header Button (With Tags API Fallback) ── */
 async function checkForAppUpdates() {
   const btn = document.getElementById('headerUpdateBtn');
   const txt = document.getElementById('updateHeaderTxt');
   const icon = document.getElementById('updateHeaderIcon');
 
+  let latestTag = null;
+  let directDownloadUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
+
+  // 1. Try releases/latest API
   try {
     const resp = await fetch('https://api.github.com/repos/samer20032020-dev/sdn-downloader-ultra/releases/latest');
-    if (!resp.ok) return false;
-    const release = await resp.json();
-    const latestTag = (release.tag_name || '').replace(/^v/, '');
-
-    let directDownloadUrl = release.html_url || 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
-    if (release.assets && Array.isArray(release.assets)) {
-      const exeAsset = release.assets.find(a => a.name && a.name.endsWith('.exe'));
-      if (exeAsset && exeAsset.browser_download_url) {
-        directDownloadUrl = exeAsset.browser_download_url;
+    if (resp.ok) {
+      const release = await resp.json();
+      latestTag = (release.tag_name || '').replace(/^v/, '');
+      if (release.assets && Array.isArray(release.assets)) {
+        const exeAsset = release.assets.find(a => a.name && a.name.endsWith('.exe'));
+        if (exeAsset && exeAsset.browser_download_url) {
+          directDownloadUrl = exeAsset.browser_download_url;
+        }
       }
+      if (release.html_url) directDownloadUrl = release.html_url;
     }
-    gLatestReleaseUrl = directDownloadUrl;
+  } catch(e) {}
 
-    if (latestTag && latestTag !== CURRENT_VERSION) {
-      if (btn) btn.classList.add('has-update');
-      if (txt) txt.innerText = `🚀 تحديث ${release.tag_name}`;
-      if (icon) icon.className = 'fas fa-arrow-alt-circle-up';
-      toast(`🚀 يتوفر تحديث جديد (${release.tag_name})! انقر زِر التحديث للتنزيل والتثبيت.`);
-      return true;
-    } else {
-      if (btn) btn.classList.remove('has-update');
-      if (txt) txt.innerText = `⚙️ تأكد من الإعدادات`;
-      if (icon) icon.className = 'fas fa-cog';
-      return false;
-    }
-  } catch(e) {
+  // 2. Fallback to tags API if release tag is missing or equal
+  if (!latestTag || latestTag === CURRENT_VERSION) {
+    try {
+      const resp = await fetch('https://api.github.com/repos/samer20032020-dev/sdn-downloader-ultra/tags');
+      if (resp.ok) {
+        const tags = await resp.json();
+        if (tags && tags.length > 0) {
+          latestTag = (tags[0].name || '').replace(/^v/, '');
+          directDownloadUrl = `https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/tag/v${latestTag}`;
+        }
+      }
+    } catch(e) {}
+  }
+
+  gLatestReleaseUrl = directDownloadUrl;
+
+  if (latestTag && latestTag !== CURRENT_VERSION) {
+    if (btn) btn.classList.add('has-update');
+    if (txt) txt.innerText = `🚀 تحديث v${latestTag}`;
+    if (icon) icon.className = 'fas fa-arrow-alt-circle-up';
+    toast(`🚀 يتوفر تحديث جديد (v${latestTag})! انقر زِر التحديث في الأعلى للتثبيت.`);
+    return true;
+  } else {
+    if (btn) btn.classList.remove('has-update');
     if (txt) txt.innerText = `v${CURRENT_VERSION}`;
+    if (icon) icon.className = 'fas fa-check-circle';
+    toast(`✨ أنت تستخدم أحدث إصدار من البرنامج (v${CURRENT_VERSION})`);
     return false;
   }
 }
@@ -2336,7 +2375,7 @@ document.getElementById('checkUpdatesManualBtn')?.addEventListener('click', asyn
   toast('🔍 جاري فحص التحديثات...');
   const hasUpdate = await checkForAppUpdates();
   if (!hasUpdate) {
-    toast(`⚙️ تأكد من الإعدادات - الإصدار v${CURRENT_VERSION}`);
+    toast(`✨ أنت تستخدم أحدث إصدار من البرنامج (v${CURRENT_VERSION})`);
   }
 
   setTimeout(() => {
@@ -2345,9 +2384,10 @@ document.getElementById('checkUpdatesManualBtn')?.addEventListener('click', asyn
   }, 2500);
 });
 
-// Initialize Lark Player Engine on page load
+// Initialize Lark Player Engine & Counter on page load
 document.addEventListener('DOMContentLoaded', () => {
   initLarkPlayer();
+  initDlCounter();
 
   // Show update button on desktop
   const updateBtn = document.getElementById('headerUpdateBtn');
