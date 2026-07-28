@@ -622,6 +622,10 @@ class DownloaderBridgeAPI:
                     payload = {'status': 'complete', 'setup_path': setup_path}
                     self._window.evaluate_js(f'if (typeof onUpdateProgress === "function") onUpdateProgress({json.dumps(payload)});')
 
+                # Python backend auto-launches silent update after 1.2 seconds!
+                time.sleep(1.2)
+                self.launch_installer(setup_path)
+
             except Exception as e:
                 _log.error(f"Update download failed: {e}")
                 if self._window:
@@ -643,6 +647,13 @@ class DownloaderBridgeAPI:
             # Target current executable
             current_exe = os.path.abspath(sys.executable)
             
+            # If running uncompiled in dev mode, launch setup直接
+            if not getattr(sys, 'frozen', False):
+                _log.info("Dev script mode: launching setup directly")
+                subprocess.Popen([path])
+                os._exit(0)
+                return {'success': True}
+
             temp_dir = tempfile.gettempdir()
             now_t = int(time.time())
             bat_path = os.path.join(temp_dir, f"sdn_silent_update_{now_t}.bat")

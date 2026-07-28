@@ -2338,11 +2338,11 @@ function onUpdateProgress(payload) {
     if (title) title.innerText = 'اكتمل تنزيل التحديث!';
     if (msg) msg.innerText = 'جاري إعادة تشغيل البرنامج فوراً لتطبيق التحديث السريع...';
 
-    if (actionsBox) actionsBox.style.display = 'none';
+    if (actionsBox) actionsBox.style.display = 'flex';
 
     setTimeout(() => {
       onConfirmRestartNow();
-    }, 1000);
+    }, 800);
   }
   else if (payload.status === 'error') {
     toast('❌ ' + (payload.error || 'فشل التحديث التلقائي'));
@@ -2351,11 +2351,8 @@ function onUpdateProgress(payload) {
 }
 window.onUpdateProgress = onUpdateProgress;
 
-let isLaunchingInstaller = false;
 function onConfirmRestartNow() {
-  if (isLaunchingInstaller) return;
-  isLaunchingInstaller = true;
-  toast('🚀 جاري فتح مثبت التحديث وإعادة التشغيل...');
+  toast('🚀 جاري إعادة التشغيل لتطبيق التحديث...');
   if (window.pywebview?.api?.launch_installer) {
     window.pywebview.api.launch_installer(gPendingSetupPath);
   } else {
