@@ -170,7 +170,7 @@ class ExtensionHTTPHandler(BaseHTTPRequestHandler):
             _log.debug(f"Extension handler error: {e}")
             self.wfile.write(json.dumps({'status': 'error', 'msg': str(e)}).encode('utf-8'))
 
-CURRENT_APP_VERSION = "2.6.0"
+CURRENT_APP_VERSION = "2.7.0"
 GITHUB_REPO = "samer20032020-dev/sdn-downloader-ultra"
 
 class DownloaderBridgeAPI:
@@ -538,7 +538,7 @@ class DownloaderBridgeAPI:
             import urllib.request
             req = urllib.request.Request(
                 f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest",
-                headers={'User-Agent': 'SDN-Downloader-App/2.6.0'}
+                headers={'User-Agent': 'SDN-Downloader-App/2.7.0'}
             )
             with urllib.request.urlopen(req, timeout=8) as resp:
                 data = json.loads(resp.read().decode('utf-8'))
