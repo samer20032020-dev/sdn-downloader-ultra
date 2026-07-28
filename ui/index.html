@@ -2363,11 +2363,11 @@ function closeUpdateModal() {
 function onHeaderUpdateClick() {
   const btn = document.getElementById('headerUpdateBtn');
   if (btn && btn.classList.contains('has-update')) {
+    document.getElementById('updateModal')?.classList.add('active');
     if (window.pywebview?.api?.apply_app_update) {
-      document.getElementById('updateModal')?.classList.add('active');
       window.pywebview.api.apply_app_update(gLatestReleaseUrl);
     } else {
-      window.open(gLatestReleaseUrl, '_blank');
+      toast('🚀 جاري بدء التنزيل التلقائي داخل التطبيق...');
     }
   } else {
     toast('🔍 جاري فحص التحديثات المتاحة...');

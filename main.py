@@ -567,68 +567,66 @@ class DownloaderBridgeAPI:
         return {'has_update': False, 'current_version': CURRENT_APP_VERSION}
 
     def apply_app_update(self, download_url=None):
-        import webbrowser
-        if not download_url and self.latest_update_info:
-            download_url = self.latest_update_info.get('download_url')
-        if not download_url:
-            download_url = f"https://github.com/{GITHUB_REPO}/releases/latest"
+        _log.info(f"apply_app_update requested with url: {download_url}")
+        
+        # Direct raw EXE download link on GitHub main branch
+        default_exe_url = f"https://github.com/{GITHUB_REPO}/raw/main/dist/SDN_Downloader_Setup.exe"
+        target_url = download_url if (download_url and download_url.endswith('.exe')) else default_exe_url
 
-        if not download_url.endswith('.exe'):
-            try:
-                webbrowser.open(download_url)
-                _log.info(f"Opened update page in browser: {download_url}")
-                return {'success': True, 'msg': 'تم فتح صفحة التحديث في المتصفح'}
-            except Exception as e:
-                _log.warning(f"Browser open failed: {e}")
+        # Check for local compiled installer build for instant testing
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        local_dist_setup = os.path.join(base_dir, "dist", "SDN_Downloader_Setup.exe")
 
         def _do_update():
             try:
                 import urllib.request
                 import tempfile
+                import shutil
 
                 temp_dir = tempfile.gettempdir()
                 setup_filename = f"SDN_Update_{int(time.time())}.exe"
                 setup_path = os.path.join(temp_dir, setup_filename)
                 self.pending_setup_path = setup_path
 
-                _log.info(f"Downloading update to: {setup_path}")
-                req = urllib.request.Request(download_url, headers={'User-Agent': 'Mozilla/5.0'})
-                with urllib.request.urlopen(req, timeout=300) as resp, open(setup_path, 'wb') as out_f:
-                    total_size = int(resp.headers.get('content-length', 0))
-                    downloaded = 0
-                    chunk_size = 256 * 1024  # 256KB chunks for ultra speed
+                # Fast Path 1: If local build exists, copy instantly (0.1s)
+                if os.path.exists(local_dist_setup) and os.path.getsize(local_dist_setup) > 100000:
+                    _log.info(f"Instant local update copy: {local_dist_setup} -> {setup_path}")
+                    shutil.copy2(local_dist_setup, setup_path)
+                    time.sleep(0.3)
+                    if self._window:
+                        payload = {'status': 'downloading', 'pct': 100, 'downloaded': os.path.getsize(setup_path), 'total': os.path.getsize(setup_path)}
+                        self._window.evaluate_js(f'if (typeof onUpdateProgress === "function") onUpdateProgress({json.dumps(payload)});')
+                else:
+                    # Fast Path 2: Download directly from GitHub raw link
+                    _log.info(f"Downloading update from: {target_url}")
+                    req = urllib.request.Request(target_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+                    with urllib.request.urlopen(req, timeout=120) as resp, open(setup_path, 'wb') as out_f:
+                        total_size = int(resp.headers.get('content-length', 0) or resp.headers.get('Content-Length', 0))
+                        downloaded = 0
+                        chunk_size = 512 * 1024  # 512KB chunks for high speed
 
-                    while True:
-                        chunk = resp.read(chunk_size)
-                        if not chunk:
-                            break
-                        out_f.write(chunk)
-                        downloaded += len(chunk)
-                        pct = min(int((downloaded / total_size) * 100), 99) if total_size > 0 else 50
-                        if self._window:
-                            payload = {'status': 'downloading', 'pct': pct, 'downloaded': downloaded, 'total': total_size}
-                            self._window.evaluate_js(
-                                f'if (typeof onUpdateProgress === "function") onUpdateProgress({json.dumps(payload)});'
-                            )
+                        while True:
+                            chunk = resp.read(chunk_size)
+                            if not chunk:
+                                break
+                            out_f.write(chunk)
+                            downloaded += len(chunk)
+                            pct = min(int((downloaded / total_size) * 100), 99) if total_size > 0 else 50
+                            if self._window:
+                                payload = {'status': 'downloading', 'pct': pct, 'downloaded': downloaded, 'total': total_size}
+                                self._window.evaluate_js(f'if (typeof onUpdateProgress === "function") onUpdateProgress({json.dumps(payload)});')
 
-                _log.info(f"Update downloaded: {setup_path} ({downloaded} bytes)")
+                _log.info(f"Update download complete: {setup_path}")
+                time.sleep(0.5)
                 if self._window:
                     payload = {'status': 'complete', 'setup_path': setup_path}
-                    self._window.evaluate_js(
-                        f'if (typeof onUpdateProgress === "function") onUpdateProgress({json.dumps(payload)});'
-                    )
+                    self._window.evaluate_js(f'if (typeof onUpdateProgress === "function") onUpdateProgress({json.dumps(payload)});')
 
             except Exception as e:
                 _log.error(f"Update download failed: {e}")
-                try:
-                    webbrowser.open(download_url)
-                except Exception:
-                    pass
                 if self._window:
-                    payload = {'status': 'error', 'error': f'فشل التحميل التلقائي، تم فتح المتصفح'}
-                    self._window.evaluate_js(
-                        f'if (typeof onUpdateProgress === "function") onUpdateProgress({json.dumps(payload)});'
-                    )
+                    payload = {'status': 'error', 'error': f'فشل التنزيل التلقائي: {str(e)}'}
+                    self._window.evaluate_js(f'if (typeof onUpdateProgress === "function") onUpdateProgress({json.dumps(payload)});')
 
         threading.Thread(target=_do_update, daemon=True, name="UpdateDownloader").start()
         return {'success': True}
