@@ -109,8 +109,11 @@ def github_request(url, method="GET", data=None, headers=None, token=None):
 
     req = urllib.request.Request(url, data=data, headers=_headers, method=method)
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+        with urllib.request.urlopen(req, timeout=300) as resp:
+            content = resp.read().decode("utf-8")
+            if not content.strip():
+                return {}
+            return json.loads(content)
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
         print(f"  HTTP {e.code}: {body[:200]}")
