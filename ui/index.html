@@ -989,16 +989,16 @@ input:checked + .slider:before { transform: translateX(20px); }
         <span style="opacity:0.8; font-weight:600;">تحميل</span>
       </div>
 
-      <!-- Turbo Booster v2.9 Badge -->
-      <div id="turboBoosterBadge" onclick="toast('🚀 المحرك الفائق Turbo Booster نشط v2.9.0!')" title="وضع السرعة الفائقة Turbo Booster" style="display:flex; align-items:center; gap:5px; background:linear-gradient(135deg, rgba(56,189,248,0.2) 0%, rgba(99,102,241,0.2) 100%); border:1px solid rgba(56,189,248,0.4); color:#38bdf8; padding:5px 11px; border-radius:12px; font-size:0.78rem; font-weight:800; cursor:pointer; transition:all 0.25s ease;">
+      <!-- Turbo Booster v3.0 Badge -->
+      <div id="turboBoosterBadge" onclick="toast('🚀 المحرك الفائق Turbo Booster نشط v3.0.0!')" title="وضع السرعة الفائقة Turbo Booster" style="display:flex; align-items:center; gap:5px; background:linear-gradient(135deg, rgba(56,189,248,0.2) 0%, rgba(99,102,241,0.2) 100%); border:1px solid rgba(56,189,248,0.4); color:#38bdf8; padding:5px 11px; border-radius:12px; font-size:0.78rem; font-weight:800; cursor:pointer; transition:all 0.25s ease;">
         <i class="fas fa-bolt" style="color:#fbbf24; font-size:0.85rem;"></i>
-        <span>Turbo 2.9</span>
+        <span>Turbo 3.0</span>
       </div>
 
       <!-- Update Header Button -->
       <button id="headerUpdateBtn" onclick="onHeaderUpdateClick()" class="update-header-btn" title="فحص التحديثات" style="display:none;">
         <i class="fas fa-cog" id="updateHeaderIcon"></i>
-        <span id="updateHeaderTxt">v2.9.0</span>
+        <span id="updateHeaderTxt">v3.0.0</span>
       </button>
     </div>
   </header>
@@ -1180,11 +1180,22 @@ input:checked + .slider:before { transform: translateX(20px); }
         
         <div class="settings-item">
           <div class="settings-label">
-            <span class="settings-title">🎯 الوضع الذكي المباشر للروابط (Smart Live Link Detection)</span>
-            <span class="settings-desc">تحليل الرابط وتحديد أعلى جودة متاحة تلقائياً في الإصدار v2.7.0</span>
+            <span class="settings-title">🌟 وضع الفائق فائق السرعة والمزامنة الذكية (Quantum Speed Multi-Thread v3.0)</span>
+            <span class="settings-desc">تنشيط بروتوكول التنزيل المتعدد المستقر وتحسين التحميل المباشر في الإصدار v3.0.0</span>
           </div>
           <label class="toggle-switch">
-            <input type="checkbox" id="smartLiveDetectToggle" checked onchange="toast('🎯 تم تفعيل الوضع الذكي المباشر v2.7.0!')">
+            <input type="checkbox" id="quantumSpeedToggle" checked onchange="toast('🌟 تم تفعيل المحرك التجميعي الفائق v3.0.0!')">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="settings-item">
+          <div class="settings-label">
+            <span class="settings-title">🎯 الوضع الذكي المباشر للروابط (Smart Live Link Detection)</span>
+            <span class="settings-desc">تحليل الرابط وتحديد أعلى جودة متاحة تلقائياً في الإصدار v3.0.0</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="smartLiveDetectToggle" checked onchange="toast('🎯 تم تفعيل الوضع الذكي المباشر v3.0.0!')">
             <span class="slider"></span>
           </label>
         </div>
@@ -1192,10 +1203,10 @@ input:checked + .slider:before { transform: translateX(20px); }
         <div class="settings-item">
           <div class="settings-label">
             <span class="settings-title">⚡ وضع السرعة الفائقة وتوليد الصوت (Turbo Speed & Audio Alert)</span>
-            <span class="settings-desc">إشعار صوتي مميز وتخصيص استهلاك المعالج للتحميل الخارق v2.7.0</span>
+            <span class="settings-desc">إشعار صوتي مميز وتخصيص استهلاك المعالج للتحميل الخارق v3.0.0</span>
           </div>
           <label class="toggle-switch">
-            <input type="checkbox" id="turboModeToggle" checked onchange="toast('⚡ تم تفعيل وضع السرعة الفائقة v2.7.0!')">
+            <input type="checkbox" id="turboModeToggle" checked onchange="toast('⚡ تم تفعيل وضع السرعة الفائقة v3.0.0!')">
             <span class="slider"></span>
           </label>
         </div>
@@ -1230,7 +1241,7 @@ input:checked + .slider:before { transform: translateX(20px); }
         <div class="settings-item">
           <div class="settings-label">
             <span class="settings-title">إصدار التطبيق الحالي</span>
-            <span class="settings-desc">SDN Downloader Ultra Edition v2.7.0</span>
+            <span class="settings-desc">SDN Downloader Ultra Edition v3.0.0</span>
           </div>
           <button class="header-btn" id="checkUpdatesManualBtn" style="width:auto; padding:0 10px; font-size:0.78rem; color:var(--primary);">فحص التحديثات</button>
         </div>
