@@ -20,15 +20,14 @@ if hasattr(sys.stdout, 'reconfigure'):
 # ============================================================
 REPO          = "samer20032020-dev/sdn-downloader-ultra"
 BRANCH        = "main"
-RELEASE_TAG   = "v2.7.0"
-RELEASE_NAME  = "SDN Downloader Ultra v2.7.0"
+RELEASE_TAG   = "v2.8.0"
+RELEASE_NAME  = "SDN Downloader Ultra v2.8.0"
 RELEASE_BODY  = (
-    "## ⚡ SDN Downloader Ultra v2.7.0\n\n"
+    "## ⚡ SDN Downloader Ultra v2.8.0 — التحديث الفائق\n\n"
     "### ✨ المميزات الجديدة والتحديثات:\n"
-    "- 🚀 التحديث التلقائي الصامت الخارق في الخلفية دون فتح أي نوافذ بدقة فائقة\n"
-    "- 🎯 خيار الوضع الذكي المباشر للروابط (Smart Live Link Detection) في قسم الإعدادات\n"
-    "- ⚡ خيار وضع السرعة الفائقة وتنبيهات الصوت الذكية في الإعدادات\n"
-    "- 📁 فتح مجلد التحميل الفعلي بدقة وحفظ عدد التنزيلات التراكمي دائماً\n"
+    "- 🚀 إضافة شارة Turbo Booster الذكية لتعزيز السرعة والاستجابة في الشريط العلوي\n"
+    "- ⚡ تحديث نظام التثبيت التلقائي الفائق والآمن المباشر بنقرة واحدة\n"
+    "- 🎯 تحسين أنيميشن العداد وتأثيرات الإضاءة الترا المتطورة\n"
 )
 
 DIST_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dist")

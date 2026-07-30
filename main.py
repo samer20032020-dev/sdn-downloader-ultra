@@ -170,7 +170,7 @@ class ExtensionHTTPHandler(BaseHTTPRequestHandler):
             _log.debug(f"Extension handler error: {e}")
             self.wfile.write(json.dumps({'status': 'error', 'msg': str(e)}).encode('utf-8'))
 
-CURRENT_APP_VERSION = "2.7.0"
+CURRENT_APP_VERSION = "2.8.0"
 GITHUB_REPO = "samer20032020-dev/sdn-downloader-ultra"
 
 class DownloaderBridgeAPI:
