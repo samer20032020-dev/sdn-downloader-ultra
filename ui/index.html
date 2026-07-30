@@ -2243,6 +2243,7 @@ function incrementDlCounter() {
   num.style.animation = 'dlBadgeBump 0.35s ease';
 }
 
+const CURRENT_VERSION = '3.0.0';
 let gLatestReleaseUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
 
 /* ── Auto Update Checker & Header Button (With Tags API Fallback) ── */
@@ -2270,8 +2271,8 @@ async function checkForAppUpdates() {
     }
   } catch(e) {}
 
-  // 2. Fallback to tags API if release tag is missing or equal
-  if (!latestTag || latestTag === CURRENT_VERSION) {
+  // 2. Fallback to tags API if release tag is missing
+  if (!latestTag) {
     try {
       const resp = await fetch('https://api.github.com/repos/samer20032020-dev/sdn-downloader-ultra/tags');
       if (resp.ok) {
@@ -2286,14 +2287,21 @@ async function checkForAppUpdates() {
 
   gLatestReleaseUrl = directDownloadUrl;
 
+  // Compare version strings: show button ONLY if latestTag > CURRENT_VERSION
   if (latestTag && latestTag !== CURRENT_VERSION) {
-    if (btn) btn.classList.add('has-update');
+    if (btn) {
+      btn.classList.add('has-update');
+      btn.style.display = 'flex';
+    }
     if (txt) txt.innerText = `🚀 تحديث v${latestTag}`;
     if (icon) icon.className = 'fas fa-arrow-alt-circle-up';
     toast(`🚀 يتوفر تحديث جديد (v${latestTag})! انقر زِر التحديث في الأعلى للتثبيت.`);
     return true;
   } else {
-    if (btn) btn.classList.remove('has-update');
+    if (btn) {
+      btn.classList.remove('has-update');
+      btn.style.display = 'none';
+    }
     if (txt) txt.innerText = `v${CURRENT_VERSION}`;
     if (icon) icon.className = 'fas fa-check-circle';
     toast(`✨ أنت تستخدم أحدث إصدار من البرنامج (v${CURRENT_VERSION})`);
@@ -2302,12 +2310,15 @@ async function checkForAppUpdates() {
 }
 
 function showUpdateBadge(upInfo) {
-  if (!upInfo || !upInfo.has_update) return;
+  if (!upInfo || !upInfo.has_update || upInfo.latest_version === CURRENT_VERSION) return;
   const btn = document.getElementById('headerUpdateBtn');
   const txt = document.getElementById('updateHeaderTxt');
   const icon = document.getElementById('updateHeaderIcon');
 
-  if (btn) btn.classList.add('has-update');
+  if (btn) {
+    btn.classList.add('has-update');
+    btn.style.display = 'flex';
+  }
   if (txt) txt.innerText = `🚀 تحديث v${upInfo.latest_version}`;
   if (icon) icon.className = 'fas fa-arrow-alt-circle-up';
   if (upInfo.download_url) gLatestReleaseUrl = upInfo.download_url;
