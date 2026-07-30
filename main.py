@@ -169,7 +169,7 @@ class ExtensionHTTPHandler(BaseHTTPRequestHandler):
         except Exception as e:
             _log.debug(f"Extension handler error: {e}")
 
-CURRENT_APP_VERSION = "0.5.0"
+CURRENT_APP_VERSION = "0.6.0"
 GITHUB_REPO = "samer20032020-dev/sdn-downloader-ultra"
 
 class DownloaderBridgeAPI:
@@ -181,6 +181,7 @@ class DownloaderBridgeAPI:
         self.downloader = None
         self.latest_update_info = None
         self._startup_time = time.time()
+        self._installer_launched = False
         
         ExtensionHTTPHandler.bridge_api = self
         
@@ -701,6 +702,10 @@ class DownloaderBridgeAPI:
         return {'success': True}
 
     def launch_installer(self, setup_path=None):
+        if getattr(self, '_installer_launched', False):
+            _log.info("launch_installer already executed, skipping duplicate call.")
+            return {'success': True}
+        self._installer_launched = True
         try:
             _log.info(f"launch_installer called with parameter: {setup_path}")
             path = str(setup_path) if (setup_path and str(setup_path) != 'undefined' and str(setup_path).strip() != '' and os.path.exists(str(setup_path))) else None
