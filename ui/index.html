@@ -229,6 +229,10 @@ html, body {
   40% { transform: scale(1.3); }
   100% { transform: scale(1); }
 }
+@keyframes cyberBar {
+  0% { height: 6px; opacity: 0.5; filter: brightness(0.8); }
+  100% { height: 26px; opacity: 1; filter: brightness(1.3); box-shadow: 0 0 10px rgba(56, 189, 248, 0.6); }
+}
 @keyframes pulseUpdate {
   0% { transform: scale(1); box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); }
   100% { transform: scale(1.05); box-shadow: 0 0 20px rgba(16, 185, 129, 0.8); }
@@ -1046,11 +1050,33 @@ input:checked + .slider:before { transform: translateX(20px); }
           </div>
         </div>
 
-        <div style="background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.3); color:#38bdf8; padding:5px 14px; border-radius:20px; font-size:0.8rem; font-weight:800; margin-bottom:12px; display:inline-flex; align-items:center; gap:6px;">✨ الإصدار الذكي v0.5.0 - المحرك الخارق ⚡</div>
+        <div style="background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.3); color:#38bdf8; padding:5px 14px; border-radius:20px; font-size:0.8rem; font-weight:800; margin-bottom:12px; display:inline-flex; align-items:center; gap:6px;">✨ الإصدار الهولوجرامي v0.7.0 - Cyber Visualizer ⚡</div>
         <h1 class="shimmer-title">مركز التحميل الذكي ⚡</h1>
         <p style="font-size:0.95rem; color:#94a3b8; font-weight:500; max-width:440px; line-height:1.6; z-index:2; margin-bottom:14px;">ضع رابطك أعلاه لتنزيل الفيديوهات والصوتيات بأعلى جودة فوراً 🚀</p>
-        <button onclick="toast('⚡ فحص السرعة: المحرك الخارق يعمل بسرعة 1.8 GB/s وتكافؤ 100%!')" style="padding:6px 16px; border-radius:12px; background:linear-gradient(135deg, rgba(56,189,248,0.2) 0%, rgba(99,102,241,0.2) 100%); border:1px solid rgba(56,189,248,0.4); color:var(--primary); font-size:0.78rem; font-weight:800; cursor:pointer; font-family:inherit; transition:all 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-          🚀 اختبر سرعة المحرك الذكي v0.5.0
+        
+        <!-- Cyber Neon Visualizer Widget (New Animation Feature v0.7.0) -->
+        <div style="width:100%; max-width:380px; background:rgba(255,255,255,0.03); border:1px solid rgba(56,189,248,0.25); border-radius:18px; padding:12px 16px; margin:6px 0 10px 0; display:flex; flex-direction:column; align-items:center; gap:8px; backdrop-filter:blur(10px); box-shadow:0 8px 25px rgba(0,0,0,0.3);">
+          <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+            <span style="font-size:0.78rem; font-weight:800; color:var(--primary); display:flex; align-items:center; gap:6px;">
+              <i class="fas fa-wave-square fa-beat" style="color:var(--green);"></i> 🌌 المحلل الهولوجرامي الفائق
+            </span>
+            <span style="font-size:0.68rem; font-weight:800; color:var(--green); background:rgba(52,211,153,0.15); padding:2px 8px; border-radius:6px;">نشط 100%</span>
+          </div>
+          <!-- Animated Equalizer Bars -->
+          <div style="display:flex; align-items:flex-end; gap:5px; height:28px; width:100%; justify-content:center; padding:0 10px;">
+            <div style="width:6px; background:linear-gradient(to top, #38bdf8, #6366f1); border-radius:4px; animation:cyberBar 1.2s ease-in-out infinite alternate;"></div>
+            <div style="width:6px; background:linear-gradient(to top, #38bdf8, #ec4899); border-radius:4px; animation:cyberBar 0.8s ease-in-out infinite alternate 0.2s;"></div>
+            <div style="width:6px; background:linear-gradient(to top, #34d399, #38bdf8); border-radius:4px; animation:cyberBar 1.5s ease-in-out infinite alternate 0.4s;"></div>
+            <div style="width:6px; background:linear-gradient(to top, #6366f1, #a855f7); border-radius:4px; animation:cyberBar 0.9s ease-in-out infinite alternate 0.1s;"></div>
+            <div style="width:6px; background:linear-gradient(to top, #ec4899, #38bdf8); border-radius:4px; animation:cyberBar 1.3s ease-in-out infinite alternate 0.3s;"></div>
+            <div style="width:6px; background:linear-gradient(to top, #38bdf8, #34d399); border-radius:4px; animation:cyberBar 0.7s ease-in-out infinite alternate 0.5s;"></div>
+            <div style="width:6px; background:linear-gradient(to top, #a855f7, #6366f1); border-radius:4px; animation:cyberBar 1.1s ease-in-out infinite alternate 0.2s;"></div>
+            <div style="width:6px; background:linear-gradient(to top, #34d399, #ec4899); border-radius:4px; animation:cyberBar 1.4s ease-in-out infinite alternate 0.4s;"></div>
+          </div>
+        </div>
+
+        <button onclick="toast('✨ تم تفعيل وضع المحلل الهولوجرامي بنجاح!')" style="padding:6px 16px; border-radius:12px; background:linear-gradient(135deg, rgba(56,189,248,0.2) 0%, rgba(99,102,241,0.2) 100%); border:1px solid rgba(56,189,248,0.4); color:var(--primary); font-size:0.78rem; font-weight:800; cursor:pointer; font-family:inherit; transition:all 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+          🚀 تجربة التمييز الهولوجرامي v0.7.0
         </button>
       </section>
 
@@ -1227,7 +1253,7 @@ input:checked + .slider:before { transform: translateX(20px); }
         <div class="settings-item">
           <div class="settings-label">
             <span class="settings-title">إصدار التطبيق الحالي</span>
-            <span class="settings-desc">SDN v0.5.0</span>
+            <span class="settings-desc">SDN v0.7.0</span>
           </div>
           <button class="header-btn" id="checkUpdatesManualBtn" style="width:auto; padding:0 10px; font-size:0.78rem; color:var(--primary);">فحص التحديثات</button>
         </div>
@@ -2530,7 +2556,7 @@ function incrementDlCounter() {
   num.style.animation = 'dlBadgeBump 0.35s ease';
 }
 
-const CURRENT_VERSION = '0.6.0';
+const CURRENT_VERSION = '0.7.0';
 let gLatestReleaseUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
 
 /* ── Auto Update Checker & Header Button (With Tags API Fallback) ── */

@@ -169,7 +169,7 @@ class ExtensionHTTPHandler(BaseHTTPRequestHandler):
         except Exception as e:
             _log.debug(f"Extension handler error: {e}")
 
-CURRENT_APP_VERSION = "0.6.0"
+CURRENT_APP_VERSION = "0.7.0"
 GITHUB_REPO = "samer20032020-dev/sdn-downloader-ultra"
 
 class DownloaderBridgeAPI:
