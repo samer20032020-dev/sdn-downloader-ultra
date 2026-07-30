@@ -17,6 +17,27 @@ ZIP_PATH = os.path.expandvars(r"%TEMP%\cmdline-tools.zip")
 
 print("=== Starting Real Android APK Build & Upload Pipeline ===")
 
+# 1. Check JDK 17+ / Java Home
+def find_jdk():
+    known = [
+        r"C:\Program Files\Eclipse Adoptium\jdk-17.0.20.8-hotspot",
+        r"C:\Program Files\Android\Android Studio\jbr",
+    ]
+    for k in known:
+        if os.path.exists(os.path.join(k, "bin", "java.exe")):
+            return k
+    import glob
+    for g in glob.glob("C:/Program Files/Eclipse Adoptium/jdk*") + glob.glob("C:/Program Files/Java/jdk*"):
+        if os.path.exists(os.path.join(g, "bin", "java.exe")):
+            return g
+    return None
+
+jdk_path = find_jdk()
+if jdk_path:
+    print(f"Found Java 17+ JDK at: {jdk_path}")
+    os.environ["JAVA_HOME"] = jdk_path
+    os.environ["PATH"] = os.path.join(jdk_path, "bin") + os.path.pathsep + os.environ.get("PATH", "")
+
 # 1. Check SDK / ZIP
 if not os.path.exists(SDK_ROOT) and not os.path.exists(ZIP_PATH):
     print(f"Warning: Neither {SDK_ROOT} nor {ZIP_PATH} found!")
