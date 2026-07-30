@@ -170,7 +170,7 @@ class ExtensionHTTPHandler(BaseHTTPRequestHandler):
             _log.debug(f"Extension handler error: {e}")
             self.wfile.write(json.dumps({'status': 'error', 'msg': str(e)}).encode('utf-8'))
 
-CURRENT_APP_VERSION = "2.8.0"
+CURRENT_APP_VERSION = "2.9.0"
 GITHUB_REPO = "samer20032020-dev/sdn-downloader-ultra"
 
 class DownloaderBridgeAPI:
@@ -643,24 +643,47 @@ class DownloaderBridgeAPI:
                 _log.warning("Update package not found")
                 return {'success': False, 'error': 'ملف التحديث غير موجود'}
 
-            _log.info(f"Launching update installer package: {path}")
+            _log.info(f"Performing 100% silent update without popups using package: {path}")
 
-            # Safe execution: os.startfile on Windows handles UAC elevation & shell execution
-            if os.name == 'nt':
-                try:
-                    os.startfile(path)
-                except Exception as e_start:
-                    _log.warning(f"os.startfile failed: {e_start}, falling back to Popen")
-                    subprocess.Popen([path], shell=True)
+            current_exe = os.path.abspath(sys.executable)
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+
+            if getattr(sys, 'frozen', False):
+                relaunch_cmd = f'"{current_exe}"'
             else:
-                subprocess.Popen([path])
+                main_py = os.path.join(base_dir, "main.py")
+                py_exe = sys.executable
+                relaunch_cmd = f'"{py_exe}" "{main_py}"'
 
-            _log.info("Installer launched successfully. Terminating current process for clean update...")
+            temp_dir = tempfile.gettempdir()
+            now_t = int(time.time())
+            bat_path = os.path.join(temp_dir, f"sdn_silent_update_{now_t}.bat")
+            vbs_path = os.path.join(temp_dir, f"sdn_silent_update_{now_t}.vbs")
+
+            # Batch script runs setup completely silently without language dialogs or windows
+            bat_content = f"""@echo off
+timeout /t 2 /nobreak > nul
+start /wait "" "{path}" /VERYSILENT /SUPPRESSMSGBOXES /SP- /NORESTART
+timeout /t 1 /nobreak > nul
+start "" {relaunch_cmd}
+del "%~f0"
+"""
+            with open(bat_path, "w", encoding="utf-8", errors="replace") as f:
+                f.write(bat_content)
+
+            # VBScript executes batch script silently in background (0 window)
+            vbs_content = f'CreateObject("WScript.Shell").Run "{bat_path}", 0, False'
+            with open(vbs_path, "w", encoding="utf-8") as f:
+                f.write(vbs_content)
+
+            _log.info(f"Triggering silent background update runner: {vbs_path}")
+            subprocess.Popen(["wscript.exe", vbs_path])
+
             time.sleep(0.5)
             os._exit(0)
             return {'success': True}
         except Exception as e:
-            _log.error(f"Update launch failed: {e}")
+            _log.error(f"Silent update launch failed: {e}")
             return {'success': False, 'error': str(e)}
 
 
