@@ -34,7 +34,7 @@ except ImportError:
 
 _log = setup_logger("SDN.Main")
 _log.info("═" * 60)
-_log.info("SDN v0.1.0 - STARTING")
+_log.info("SDN v0.3.0 - STARTING")
 _log.info("═" * 60)
 
 # ============================================================
@@ -170,7 +170,7 @@ class ExtensionHTTPHandler(BaseHTTPRequestHandler):
             _log.debug(f"Extension handler error: {e}")
             self.wfile.write(json.dumps({'status': 'error', 'msg': str(e)}).encode('utf-8'))
 
-CURRENT_APP_VERSION = "0.1.0"
+CURRENT_APP_VERSION = "0.3.0"
 GITHUB_REPO = "samer20032020-dev/sdn-downloader-ultra"
 
 class DownloaderBridgeAPI:
@@ -442,6 +442,71 @@ class DownloaderBridgeAPI:
                 _log.debug(f"Cookie file selected: {result[0]}")
                 return result[0]
         return ""
+
+    # ================================================================
+    # Music Player APIs
+    # ================================================================
+    def scan_music_folder(self, folder_path=None):
+        """Scan a folder for all audio files and return their metadata"""
+        import glob, json
+        scan_dir = folder_path or self.save_dir
+        if not os.path.isdir(scan_dir):
+            return {'tracks': [], 'folder': scan_dir}
+        audio_exts = ['*.mp3', '*.m4a', '*.aac', '*.flac', '*.ogg', '*.wav', '*.opus', '*.wma']
+        tracks = []
+        for ext in audio_exts:
+            for fpath in glob.glob(os.path.join(scan_dir, ext)):
+                fname = os.path.basename(fpath)
+                name = os.path.splitext(fname)[0]
+                tracks.append({
+                    'title': name,
+                    'uploader': 'مجلد التنزيلات',
+                    'url': fpath.replace('\\', '/'),
+                    'filepath': fpath,
+                    'thumbnail': ''
+                })
+        tracks.sort(key=lambda x: os.path.getmtime(x['filepath']), reverse=True)
+        _log.info(f"Scanned {len(tracks)} audio files in {scan_dir}")
+        return {'tracks': tracks, 'folder': scan_dir}
+
+    def add_music_files(self):
+        """Open file dialog to pick audio files to add to the player"""
+        if self._window:
+            file_types = (
+                'Audio Files (*.mp3;*.m4a;*.aac;*.flac;*.ogg;*.wav;*.opus;*.wma)',
+                'All files (*.*)'
+            )
+            result = self._window.create_file_dialog(
+                webview.OPEN_DIALOG,
+                allow_multiple=True,
+                file_types=file_types
+            )
+            if result:
+                tracks = []
+                for fpath in result:
+                    fname = os.path.basename(fpath)
+                    name = os.path.splitext(fname)[0]
+                    tracks.append({
+                        'title': name,
+                        'uploader': 'مضافة يدوياً',
+                        'url': fpath.replace('\\', '/'),
+                        'filepath': fpath,
+                        'thumbnail': ''
+                    })
+                return {'tracks': tracks}
+        return {'tracks': []}
+
+    def delete_music_track(self, filepath):
+        """Delete an audio file from disk"""
+        try:
+            if filepath and os.path.isfile(filepath):
+                os.remove(filepath)
+                _log.info(f"Deleted music file: {filepath}")
+                return {'ok': True}
+            return {'ok': False, 'error': 'الملف غير موجود'}
+        except Exception as e:
+            _log.warning(f"Delete music error: {e}")
+            return {'ok': False, 'error': str(e)}
 
     # ================================================================
     # Download & Media methods with Ultra error handling

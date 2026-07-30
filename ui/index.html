@@ -1046,7 +1046,7 @@ input:checked + .slider:before { transform: translateX(20px); }
           </div>
         </div>
 
-        <div style="background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.3); color:#38bdf8; padding:5px 14px; border-radius:20px; font-size:0.8rem; font-weight:800; margin-bottom:12px; display:inline-flex; align-items:center; gap:6px;">✨ النسخة الكاملة v0.1.0 - جميع الميزات مفعلة ⚡</div>
+        <div style="background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.3); color:#38bdf8; padding:5px 14px; border-radius:20px; font-size:0.8rem; font-weight:800; margin-bottom:12px; display:inline-flex; align-items:center; gap:6px;">✨ النسخة الكاملة v0.2.0 - مشغل موسيقى متكامل ⚡</div>
         <h1 class="shimmer-title">مركز التحميل الذكي ⚡</h1>
         <p style="font-size:0.95rem; color:#94a3b8; font-weight:500; max-width:440px; line-height:1.6; z-index:2;">ضع رابطك أعلاه لتنزيل الفيديوهات والصوتيات بأعلى جودة فوراً 🚀</p>
       </section>
@@ -1224,7 +1224,7 @@ input:checked + .slider:before { transform: translateX(20px); }
         <div class="settings-item">
           <div class="settings-label">
             <span class="settings-title">إصدار التطبيق الحالي</span>
-            <span class="settings-desc">SDN v0.1.0</span>
+            <span class="settings-desc">SDN v0.3.0</span>
           </div>
           <button class="header-btn" id="checkUpdatesManualBtn" style="width:auto; padding:0 10px; font-size:0.78rem; color:var(--primary);">فحص التحديثات</button>
         </div>
@@ -1237,30 +1237,49 @@ input:checked + .slider:before { transform: translateX(20px); }
       <div class="music-header">
         <div style="display:flex; align-items:center; gap:8px;">
           <i class="fas fa-headphones-alt" style="color:var(--primary); font-size:1.2rem;"></i>
-          <h3 style="font-size:1.05rem; font-weight:800;">مشغل الصوتيات (Lark Music)</h3>
+          <h3 style="font-size:1.05rem; font-weight:800;">🎵 مشغل الصوتيات</h3>
         </div>
-        <div class="eq-bars" id="larkEqBars">
-          <div class="eq-bar"></div>
-          <div class="eq-bar"></div>
-          <div class="eq-bar"></div>
-          <div class="eq-bar"></div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div class="eq-bars" id="larkEqBars">
+            <div class="eq-bar"></div>
+            <div class="eq-bar"></div>
+            <div class="eq-bar"></div>
+            <div class="eq-bar"></div>
+          </div>
+          <!-- Folder path badge -->
+          <div id="musicFolderBadge" style="font-size:0.7rem; color:var(--text-sub); background:rgba(255,255,255,0.06); border-radius:8px; padding:3px 8px; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer; border:1px solid rgba(255,255,255,0.08);" title="مجلد الأغاني"
+            onclick="if(window.pywebview?.api?.open_folder) window.pywebview.api.open_folder()">
+            📂 مجلد التنزيلات
+          </div>
         </div>
       </div>
 
       <!-- Now Playing Display -->
       <div class="music-player-container">
+        <!-- Animated Album Art -->
         <div class="vinyl-wrapper" id="vinylDisc">
-          <img src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300" id="playerCoverImg" class="vinyl-cover" alt="Cover">
+          <img src="" id="playerCoverImg" class="vinyl-cover" alt="Cover"
+            onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYwIiBoZWlnaHQ9IjE2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cmFkaWFsR3JhZGllbnQgaWQ9ImciIGN4PSI1MCUiIGN5PSI1MCUiIHI9IjUwJSI+PHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iIzFhMWEzZSIvPjxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzA3MDkwZSIvPjwvcmFkaWFsR3JhZGllbnQ+PC9kZWZzPjxjaXJjbGUgY3g9IjgwIiBjeT0iODAiIHI9IjgwIiBmaWxsPSJ1cmwoI2cpIi8+PGNpcmNsZSBjeD0iODAiIGN5PSI4MCIgcj0iMjgiIGZpbGw9IiMzOGJkZjgiIG9wYWNpdHk9IjAuMiIvPjx0ZXh0IHg9IjgwIiB5PSI4NiIgZm9udC1zaXplPSIzMiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzM4YmRmOCI+8J+OuTwvdGV4dD48L3N2Zz4='">
           <div class="vinyl-center-hole"></div>
+          <!-- Pulse ring animation when playing -->
+          <div class="vinyl-pulse" id="vinylPulse"></div>
         </div>
 
-        <div style="display:flex; flex-direction:column; align-items:center; gap:4px; max-width:90%; text-align:center;">
-          <div id="playerTrackTitle" style="font-size:1rem; font-weight:900; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;">اختر مقطعاً صوتياً للاستماع</div>
-          <div id="playerArtistTitle" style="font-size:0.8rem; font-weight:700; color:var(--primary);">SDN Lark Player</div>
+        <!-- Track Info with marquee for long titles -->
+        <div style="display:flex; flex-direction:column; align-items:center; gap:4px; max-width:92%; text-align:center; overflow:hidden;">
+          <div id="playerTrackTitle"
+            style="font-size:1.05rem; font-weight:900; color:var(--text-main); width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; letter-spacing:-0.3px;">
+            اختر مقطعاً صوتياً للاستماع
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div id="playerArtistTitle" style="font-size:0.8rem; font-weight:700; color:var(--primary);">SDN Lark Player</div>
+            <div id="playerFormatBadge" style="display:none; font-size:0.65rem; font-weight:800; color:var(--green); background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.25); border-radius:6px; padding:2px 6px;">MP3</div>
+          </div>
         </div>
 
         <!-- Controls Box -->
         <div class="player-controls-card">
+          <!-- Seek bar with waveform feel -->
           <div class="seek-container">
             <input type="range" id="playerSeeker" class="seek-bar" value="0" min="0" max="100" step="0.1">
             <div class="time-row">
@@ -1269,9 +1288,10 @@ input:checked + .slider:before { transform: translateX(20px); }
             </div>
           </div>
 
+          <!-- Main Controls -->
           <div class="ctrl-buttons-row">
-            <button class="ctrl-btn" id="repeatBtn" onclick="toggleRepeatMode()" title="التكرار">
-              <i class="fas fa-redo" id="repeatIcon"></i>
+            <button class="ctrl-btn" id="shuffleBtn" onclick="toggleShuffleMode()" title="تشغيل عشوائي">
+              <i class="fas fa-random" id="shuffleIcon"></i>
             </button>
 
             <button class="ctrl-btn" onclick="playPrevTrack()" title="المقطع السابق">
@@ -1286,23 +1306,71 @@ input:checked + .slider:before { transform: translateX(20px); }
               <i class="fas fa-step-forward"></i>
             </button>
 
-            <button class="ctrl-btn" id="shuffleBtn" onclick="toggleShuffleMode()" title="تشغيل عشوائي">
-              <i class="fas fa-random" id="shuffleIcon"></i>
+            <button class="ctrl-btn" id="repeatBtn" onclick="toggleRepeatMode()" title="التكرار">
+              <i class="fas fa-redo" id="repeatIcon"></i>
             </button>
+          </div>
+
+          <!-- Volume + Speed Row -->
+          <div style="display:flex; align-items:center; gap:10px; margin-top:10px; padding:0 4px;">
+            <button onclick="toggleMute()" id="muteBtn" style="background:none; border:none; cursor:pointer; color:var(--muted); font-size:0.9rem; padding:4px;">
+              <i class="fas fa-volume-up" id="muteIcon"></i>
+            </button>
+            <input type="range" id="volumeSlider" min="0" max="1" step="0.02" value="1"
+              style="flex:1; height:4px; accent-color:var(--primary); cursor:pointer;"
+              oninput="onVolumeChange(this.value)">
+            <span id="volumePct" style="font-size:0.72rem; color:var(--muted); min-width:28px; text-align:center;">100%</span>
           </div>
         </div>
       </div>
 
-      <!-- Downloaded Audio Playlist -->
+      <!-- Playlist Section -->
       <div class="playlist-section">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-top:4px;">
-          <h4 style="font-size:0.95rem; font-weight:800; color:var(--text-main);">🎶 قائمة المقاطع المحملة</h4>
-          <span style="font-size:0.78rem; font-weight:700; color:var(--primary);" id="playlistCount">0 مقطع</span>
+        <!-- Playlist Toolbar -->
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-top:4px; gap:8px; flex-wrap:wrap;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.95rem; font-weight:800; color:var(--text-main);">🎶 قائمة الأغاني</span>
+            <span id="playlistCount" style="font-size:0.75rem; font-weight:700; color:var(--primary); background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.25); border-radius:8px; padding:2px 8px;">0</span>
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <!-- Scan download folder -->
+            <button id="scanMusicBtn" onclick="onScanMusicFolder()" title="مسح مجلد التنزيلات وتحديث القائمة"
+              style="display:flex; align-items:center; gap:5px; padding:5px 10px; border-radius:10px; background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.25); color:var(--primary); font-size:0.75rem; font-weight:800; cursor:pointer; transition:all 0.2s;"
+              onmouseover="this.style.background='rgba(56,189,248,0.22)'" onmouseout="this.style.background='rgba(56,189,248,0.12)'">
+              <i class="fas fa-sync-alt" id="scanMusicIcon"></i> مسح المجلد
+            </button>
+            <!-- Add songs manually -->
+            <button onclick="onAddMusicFiles()" title="إضافة أغاني من الكمبيوتر"
+              style="display:flex; align-items:center; gap:5px; padding:5px 10px; border-radius:10px; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.25); color:var(--green); font-size:0.75rem; font-weight:800; cursor:pointer; transition:all 0.2s;"
+              onmouseover="this.style.background='rgba(52,211,153,0.22)'" onmouseout="this.style.background='rgba(52,211,153,0.12)'">
+              <i class="fas fa-folder-plus"></i> إضافة ملفات
+            </button>
+            <!-- Clear all -->
+            <button onclick="onClearAllMusic()" title="مسح قائمة الأغاني"
+              style="display:flex; align-items:center; gap:5px; padding:5px 10px; border-radius:10px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.2); color:#f87171; font-size:0.75rem; font-weight:800; cursor:pointer; transition:all 0.2s;"
+              onmouseover="this.style.background='rgba(239,68,68,0.18)'" onmouseout="this.style.background='rgba(239,68,68,0.08)'">
+              <i class="fas fa-trash-alt"></i> مسح الكل
+            </button>
+          </div>
         </div>
 
-        <div id="audioPlaylist" style="display:flex; flex-direction:column; gap:10px;">
-          <div class="empty-state" id="emptyMusicPlaylist" style="text-align:center; color:var(--muted); padding:25px; font-weight:700; font-size:0.85rem;">
-            لا توجد مقاطع صوتية محملة حتى الآن.<br>قم بتنزيل مقطع MP3 من الرئيسية للاستماع إليه هنا!
+        <!-- Search box -->
+        <div style="position:relative; margin-top:10px;">
+          <i class="fas fa-search" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:0.8rem; pointer-events:none;"></i>
+          <input type="text" id="musicSearchInp" placeholder="ابحث في الأغاني..." oninput="onMusicSearch(this.value)"
+            style="width:100%; padding:8px 36px 8px 12px; border-radius:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text-main); font-size:0.82rem; font-family:inherit; outline:none; transition:border-color 0.2s;"
+            onfocus="this.style.borderColor='rgba(56,189,248,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        </div>
+
+        <!-- Playlist Items -->
+        <div id="audioPlaylist" style="display:flex; flex-direction:column; gap:6px; margin-top:8px; padding-bottom:10px;">
+          <div id="emptyMusicPlaylist" style="text-align:center; color:var(--muted); padding:40px 20px; font-weight:700; font-size:0.88rem;">
+            <i class="fas fa-compact-disc" style="font-size:2.5rem; margin-bottom:12px; display:block; opacity:0.25;"></i>
+            <div style="font-size:0.95rem; font-weight:800; margin-bottom:6px;">لا توجد أغاني بعد</div>
+            <span style="font-size:0.78rem; font-weight:500; opacity:0.7; line-height:1.6;">
+              🔄 اضغط <b>"مسح المجلد"</b> لاستيراد أغاني من مجلد التنزيلات<br>
+              ➕ أو <b>"إضافة ملفات"</b> لاختيار ملفات من أي مكان في جهازك
+            </span>
           </div>
         </div>
       </div>
@@ -1411,6 +1479,15 @@ function switchTab(targetId) {
   document.getElementById('viewMusicPlayer')?.classList.toggle('active', targetId === 'viewMusicPlayer');
   document.getElementById('viewHistory')?.classList.toggle('active', targetId === 'viewHistory');
   document.getElementById('viewSettings')?.classList.toggle('active', targetId === 'viewSettings');
+
+  // Auto-scan music when switching to music tab
+  if (targetId === 'viewMusicPlayer' && window.pywebview?.api?.scan_music_folder) {
+    setTimeout(() => {
+      window.pywebview.api.scan_music_folder().then(res => {
+        if (res && res.tracks && res.tracks.length > 0) addTracksToPlaylist(res.tracks);
+      }).catch(() => {});
+    }, 300);
+  }
 }
 
 document.querySelectorAll('.nav-tab').forEach(tab => {
@@ -1471,6 +1548,10 @@ function initLarkPlayer() {
   gAudio.addEventListener('ended', onAudioEnded);
   gAudio.addEventListener('play', () => setPlaybackUI(true));
   gAudio.addEventListener('pause', () => setPlaybackUI(false));
+  gAudio.addEventListener('error', () => {
+    toast('⚠️ تعذر تشغيل الملف الصوتي - قد يكون محذوفاً أو غير متاح');
+    setPlaybackUI(false);
+  });
 
   const seeker = document.getElementById('playerSeeker');
   if (seeker) {
@@ -1481,7 +1562,29 @@ function initLarkPlayer() {
     });
   }
 
-  refreshAudioPlaylist();
+  // IMPORTANT: Do NOT load from localStorage — it causes phantom songs!
+  // Always scan real files from disk on startup
+  gPlaylist = [];
+  renderPlaylistUI();
+
+  // Auto-scan real files from downloads folder
+  setTimeout(() => {
+    if (window.pywebview?.api?.scan_music_folder) {
+      window.pywebview.api.scan_music_folder().then(res => {
+        if (res && res.tracks && res.tracks.length > 0) {
+          gPlaylist = res.tracks;
+          renderPlaylistUI();
+          // Update folder badge
+          const badge = document.getElementById('musicFolderBadge');
+          if (badge && res.folder) {
+            const folderName = res.folder.split(/[\\/]/).pop() || res.folder;
+            badge.textContent = '📂 ' + folderName;
+            badge.title = res.folder;
+          }
+        }
+      }).catch(() => {});
+    }
+  }, 1200);
 }
 
 function formatTime(secs) {
@@ -1549,18 +1652,26 @@ function playTrackAtIndex(idx) {
   const track = gPlaylist[idx];
 
   gAudio.src = track.url;
-  
+
   const title = track.title || 'مقطع صوتي';
   const artist = track.uploader || 'SDN Downloader';
-  const thumb = track.thumbnail || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300';
+  const thumb = track.thumbnail || '';
 
   document.getElementById('playerTrackTitle').innerText = title;
   document.getElementById('playerArtistTitle').innerText = artist;
   document.getElementById('playerCoverImg').src = thumb;
 
+  // Show format badge (MP3, FLAC, etc)
+  const fmtBadge = document.getElementById('playerFormatBadge');
+  if (fmtBadge) {
+    const ext = (track.filepath || track.url || '').split('.').pop().toUpperCase().substring(0, 4);
+    if (ext) { fmtBadge.textContent = ext; fmtBadge.style.display = 'inline-block'; }
+    else fmtBadge.style.display = 'none';
+  }
+
   document.getElementById('miniTitle').innerText = title;
   document.getElementById('miniArtist').innerText = artist;
-  document.getElementById('miniThumb').src = thumb;
+  document.getElementById('miniThumb').src = thumb || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100';
 
   document.getElementById('larkMiniPlayer').classList.add('active');
 
@@ -1569,17 +1680,45 @@ function playTrackAtIndex(idx) {
       title: title,
       artist: artist,
       album: 'SDN Lark Music',
-      artwork: [{ src: thumb, sizes: '512x512', type: 'image/jpeg' }]
+      artwork: thumb ? [{ src: thumb, sizes: '512x512', type: 'image/jpeg' }] : []
     });
-
     navigator.mediaSession.setActionHandler('play', () => gAudio.play());
     navigator.mediaSession.setActionHandler('pause', () => gAudio.pause());
     navigator.mediaSession.setActionHandler('previoustrack', () => playPrevTrack());
     navigator.mediaSession.setActionHandler('nexttrack', () => playNextTrack());
   }
 
-  gAudio.play().catch(e => console.log('Audio play catch:', e));
+  gAudio.play().catch(e => { toast('⚠️ تعذر تشغيل الملف الصوتي'); console.log('Audio play catch:', e); });
   renderPlaylistUI();
+}
+
+/* Volume helpers */
+function onVolumeChange(val) {
+  gAudio.volume = val;
+  const pct = document.getElementById('volumePct');
+  if (pct) pct.textContent = Math.round(val * 100) + '%';
+  const icon = document.getElementById('muteIcon');
+  if (icon) {
+    if (val == 0) icon.className = 'fas fa-volume-mute';
+    else if (val < 0.5) icon.className = 'fas fa-volume-down';
+    else icon.className = 'fas fa-volume-up';
+  }
+  gAudio._lastVolume = parseFloat(val);
+}
+
+function toggleMute() {
+  const slider = document.getElementById('volumeSlider');
+  if (!slider) return;
+  if (gAudio.volume > 0) {
+    gAudio._lastVolume = gAudio.volume;
+    gAudio.volume = 0;
+    slider.value = 0;
+  } else {
+    const v = gAudio._lastVolume || 0.8;
+    gAudio.volume = v;
+    slider.value = v;
+  }
+  onVolumeChange(gAudio.volume);
 }
 
 function playNextTrack() {
@@ -1656,67 +1795,230 @@ function closeMiniPlayer() {
 }
 
 function saveHistoryAudioTrack(item) {
-  try {
-    const list = JSON.parse(localStorage.getItem('sdn_music_history') || '[]');
-    list.unshift(item);
-    localStorage.setItem('sdn_music_history', JSON.stringify(list.slice(0, 50)));
-    refreshAudioPlaylist();
-  } catch(e) {}
+  // Use addTracksToPlaylist to avoid duplicates
+  if (item) addTracksToPlaylist([item]);
 }
 
 function refreshAudioPlaylist() {
-  try {
-    gPlaylist = JSON.parse(localStorage.getItem('sdn_music_history') || '[]');
-  } catch(e) { gPlaylist = []; }
+  // Only scan real files — no localStorage phantom songs!
+  if (window.pywebview?.api?.scan_music_folder) {
+    window.pywebview.api.scan_music_folder().then(res => {
+      gPlaylist = (res && res.tracks) ? res.tracks : [];
+      renderPlaylistUI();
+    }).catch(() => { gPlaylist = []; renderPlaylistUI(); });
+  } else {
+    gPlaylist = [];
+    renderPlaylistUI();
+  }
+}
 
-  if (gPlaylist.length === 0) {
-    gPlaylist = [
-      {
-        title: 'أنشودة هادئة - SDN Audio Track 1',
-        uploader: 'SDN Music Stream',
-        thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300',
-        url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
-      },
-      {
-        title: 'مقطع موسيقي بيانو - SDN Audio Track 2',
-        uploader: 'SDN Piano Beats',
-        thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300',
-        url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3'
+function addTracksToPlaylist(tracks) {
+  if (!tracks || !tracks.length) return;
+  // Merge by url, avoid duplicates
+  const existing = new Set(gPlaylist.map(t => t.url));
+  tracks.forEach(t => {
+    if (!existing.has(t.url)) {
+      gPlaylist.push(t);
+      existing.add(t.url);
+    }
+  });
+  renderPlaylistUI();
+}
+
+/* Scan download folder for audio files — replaces list with real files */
+function onScanMusicFolder() {
+  if (window.pywebview?.api?.scan_music_folder) {
+    const icon = document.getElementById('scanMusicIcon');
+    if (icon) { icon.className = 'fas fa-spinner fa-spin'; }
+    toast('🔄 جاري مسح مجلد التنزيلات...');
+    window.pywebview.api.scan_music_folder().then(res => {
+      if (icon) icon.className = 'fas fa-sync-alt';
+      if (res && res.tracks) {
+        // Merge scanned tracks with manually added ones (those without real filepath in download folder)
+        const scanUrls = new Set(res.tracks.map(t => t.url));
+        const manualOnly = gPlaylist.filter(t => t.uploader === 'مضافة يدوياً' && !scanUrls.has(t.url));
+        gPlaylist = [...res.tracks, ...manualOnly];
+        renderPlaylistUI();
+        // Update folder badge
+        const badge = document.getElementById('musicFolderBadge');
+        if (badge && res.folder) {
+          const folderName = res.folder.split(/[\\/]/).pop() || res.folder;
+          badge.textContent = '📂 ' + folderName;
+          badge.title = res.folder;
+        }
+        if (res.tracks.length > 0) {
+          toast(`✅ ${res.tracks.length} أغنية في مجلد التنزيلات`);
+        } else {
+          toast('📂 لا توجد ملفات صوتية في مجلد التنزيلات');
+        }
       }
-    ];
+    }).catch(() => {
+      if (icon) icon.className = 'fas fa-sync-alt';
+      toast('❌ تعذر مسح المجلد');
+    });
+  } else {
+    toast('⚠️ هذه الميزة تعمل في نسخة سطح المكتب فقط');
+  }
+}
+
+/* Add audio files via file dialog */
+function onAddMusicFiles() {
+  if (window.pywebview?.api?.add_music_files) {
+    window.pywebview.api.add_music_files().then(res => {
+      if (res && res.tracks && res.tracks.length > 0) {
+        addTracksToPlaylist(res.tracks);
+        toast(`✅ تمت إضافة ${res.tracks.length} أغنية`);
+      }
+    }).catch(() => toast('❌ تعذر فتح نافذة اختيار الملفات'));
+  } else {
+    toast('⚠️ هذه الميزة تعمل في نسخة سطح المكتب فقط');
+  }
+}
+
+/* Delete single track from playlist and optionally from disk */
+function onDeleteMusicTrack(idx, filepath) {
+  const trackTitle = gPlaylist[idx]?.title || 'الأغنية';
+  const isLocalFile = filepath && (filepath.match(/^[A-Za-z]:\//) || filepath.match(/^\//) );
+
+  if (gCurrentTrackIndex === idx) {
+    gAudio.pause();
+    gAudio.src = '';
+    document.getElementById('playerTrackTitle').innerText = 'اختر مقطعاً صوتياً للاستماع';
+    document.getElementById('playerArtistTitle').innerText = 'SDN Lark Player';
+    document.getElementById('playerCoverImg').src = '';
+    document.getElementById('playerFormatBadge').style.display = 'none';
+    document.getElementById('larkMiniPlayer').classList.remove('active');
+    gCurrentTrackIndex = -1;
+  } else if (gCurrentTrackIndex > idx) {
+    gCurrentTrackIndex--;
   }
 
+  gPlaylist.splice(idx, 1);
+  renderPlaylistUI();
+
+  // Ask if user wants to delete from disk too
+  if (isLocalFile && window.pywebview?.api?.delete_music_track) {
+    // Show confirmation: remove from list only, or also from disk
+    setTimeout(() => {
+      const deleteFromDisk = confirm(`هل تريد حذف الملف "${trackTitle}" من القرص أيضاً؟\n(إلغاء = حذف من القائمة فقط)`);
+      if (deleteFromDisk) {
+        window.pywebview.api.delete_music_track(filepath).then(res => {
+          if (res?.ok) toast('🗑️ تم حذف الملف من القرص بنجاح');
+          else toast('⚠️ تم الحذف من القائمة (الملف محمي أو غير موجود على القرص)');
+        }).catch(() => toast('تم الحذف من القائمة فقط'));
+      } else {
+        toast('✂️ تم حذف الأغنية من القائمة');
+      }
+    }, 100);
+  } else {
+    toast('✂️ تم حذف الأغنية من القائمة');
+  }
+}
+
+/* Clear all tracks from playlist */
+function onClearAllMusic() {
+  if (!gPlaylist.length) { toast('القائمة فارغة بالفعل'); return; }
+  if (!confirm(`هل تريد مسح قائمة الأغاني (${gPlaylist.length} أغنية)؟\nلن يتم حذف الملفات من القرص.`)) return;
+  gAudio.pause();
+  gAudio.src = '';
+  gPlaylist = [];
+  gCurrentTrackIndex = -1;
+  document.getElementById('playerTrackTitle').innerText = 'اختر مقطعاً صوتياً للاستماع';
+  document.getElementById('playerArtistTitle').innerText = 'SDN Lark Player';
+  document.getElementById('playerCoverImg').src = '';
+  document.getElementById('playerFormatBadge').style.display = 'none';
+  document.getElementById('larkMiniPlayer').classList.remove('active');
+  renderPlaylistUI();
+  toast('🧹 تم مسح قائمة الأغاني بالكامل');
+}
+
+/* Search filter state */
+let gMusicSearchQuery = '';
+
+function onMusicSearch(q) {
+  gMusicSearchQuery = (q || '').trim().toLowerCase();
   renderPlaylistUI();
 }
 
 function renderPlaylistUI() {
   const container = document.getElementById('audioPlaylist');
   const countEl = document.getElementById('playlistCount');
+  const emptyEl = document.getElementById('emptyMusicPlaylist');
   if (!container) return;
 
-  if (countEl) countEl.innerText = `${gPlaylist.length} مقطع`;
+  if (countEl) countEl.innerText = gPlaylist.length;
+
+  const filtered = gMusicSearchQuery
+    ? gPlaylist.filter(t => (t.title || '').toLowerCase().includes(gMusicSearchQuery) || (t.uploader || '').toLowerCase().includes(gMusicSearchQuery))
+    : gPlaylist;
+
+  if (gPlaylist.length === 0) {
+    container.innerHTML = '';
+    if (emptyEl) {
+      emptyEl.style.display = 'block';
+      container.appendChild(emptyEl);
+    }
+    return;
+  }
+
+  if (emptyEl) emptyEl.style.display = 'none';
   container.innerHTML = '';
 
-  gPlaylist.forEach((track, idx) => {
+  if (filtered.length === 0) {
+    container.innerHTML = `<div style="text-align:center; color:var(--muted); padding:24px; font-weight:700; font-size:0.85rem;">
+      <i class="fas fa-search" style="font-size:1.5rem; margin-bottom:8px; display:block; opacity:0.3;"></i>
+      لا توجد نتائج للبحث</div>`;
+    return;
+  }
+
+  filtered.forEach((track, filteredIdx) => {
+    const idx = gPlaylist.indexOf(track);
     const isPlaying = idx === gCurrentTrackIndex;
+    const fp = (track.filepath || '').replace(/\\/g, '/').replace(/'/g, "\\'");
+    // Get file extension
+    const ext = (track.filepath || track.url || '').split('.').pop().toUpperCase().substring(0, 4);
     const item = document.createElement('div');
     item.className = `playlist-item ${isPlaying ? 'playing' : ''}`;
-    item.onclick = () => playTrackAtIndex(idx);
+    item.setAttribute('data-idx', idx);
+    item.style.cssText = `display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:14px;
+      background:${isPlaying ? 'rgba(56,189,248,0.1)' : 'rgba(255,255,255,0.03)'};
+      border:1px solid ${isPlaying ? 'rgba(56,189,248,0.3)' : 'rgba(255,255,255,0.06)'};
+      cursor:pointer; transition:all 0.2s;`;
     item.innerHTML = `
-      <div style="display:flex; align-items:center; gap:12px; overflow:hidden;">
-        <img src="${track.thumbnail || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100'}" style="width:42px; height:42px; border-radius:12px; object-fit:cover; flex-shrink:0;">
-        <div style="display:flex; flex-direction:column; overflow:hidden;">
-          <span style="font-size:0.88rem; font-weight:800; color:${isPlaying ? 'var(--primary)' : 'var(--text-main)'}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${track.title || 'مقطع صوتي'}</span>
-          <span style="font-size:0.75rem; color:var(--text-sub);">${track.uploader || 'SDN Music'}</span>
+      <div onclick="playTrackAtIndex(${idx})" style="display:flex; align-items:center; gap:10px; flex:1; overflow:hidden; min-width:0;">
+        <!-- Track number / play icon -->
+        <div style="width:36px; height:36px; border-radius:10px;
+          background:${isPlaying ? 'rgba(56,189,248,0.2)' : 'rgba(255,255,255,0.05)'};
+          display:flex; align-items:center; justify-content:center; flex-shrink:0; position:relative;">
+          ${isPlaying
+            ? '<i class="fas fa-volume-up" style="color:var(--primary); font-size:0.9rem; animation:pulse 1.2s infinite;"></i>'
+            : `<span style="font-size:0.7rem; font-weight:800; color:var(--muted);">${idx + 1}</span>`
+          }
+        </div>
+        <!-- Title & artist -->
+        <div style="display:flex; flex-direction:column; overflow:hidden; flex:1; min-width:0;">
+          <span style="font-size:0.85rem; font-weight:800; color:${isPlaying ? 'var(--primary)' : 'var(--text-main)'};
+            white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${track.title || 'مقطع صوتي'}</span>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-size:0.7rem; color:var(--text-sub); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${track.uploader || 'SDN Music'}</span>
+            ${ext ? `<span style="font-size:0.6rem; font-weight:800; color:var(--green); background:rgba(52,211,153,0.1); border-radius:4px; padding:1px 4px; flex-shrink:0;">${ext}</span>` : ''}
+          </div>
         </div>
       </div>
-      <button style="background:none; border:none; color:${isPlaying ? 'var(--primary)' : 'var(--muted)'}; font-size:1.1rem; cursor:pointer;">
-        <i class="fas ${isPlaying ? 'fa-volume-up' : 'fa-play-circle'}"></i>
-      </button>
+      <!-- Action buttons -->
+      <div style="display:flex; gap:4px; flex-shrink:0;">
+        <button onclick="event.stopPropagation(); onDeleteMusicTrack(${idx}, '${fp}')"
+          title="حذف"
+          style="width:30px; height:30px; border-radius:8px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.18); color:#f87171; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s;"
+          onmouseover="this.style.background='rgba(239,68,68,0.22)'" onmouseout="this.style.background='rgba(239,68,68,0.08)'">
+          <i class="fas fa-trash" style="font-size:0.72rem;"></i>
+        </button>
+      </div>
     `;
     container.appendChild(item);
   });
 }
+
 
 document.getElementById('viewAllBtn')?.addEventListener('click', () => {
   document.querySelector('.nav-tab[data-target="viewHistory"]')?.click();
@@ -2225,7 +2527,7 @@ function incrementDlCounter() {
   num.style.animation = 'dlBadgeBump 0.35s ease';
 }
 
-const CURRENT_VERSION = '0.1.0';
+const CURRENT_VERSION = '0.3.0';
 let gLatestReleaseUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
 
 /* ── Auto Update Checker & Header Button (With Tags API Fallback) ── */
