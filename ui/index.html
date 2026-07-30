@@ -2336,7 +2336,7 @@ function onUpdateProgress(payload) {
   }
   else if (payload.status === 'complete') {
     modal.classList.add('active');
-    gPendingSetupPath = payload.setup_path;
+    window.gPendingSetupPath = payload.setup_path || '';
 
     if (fill) fill.style.width = '100%';
     if (pctText) pctText.innerText = '100%';
@@ -2356,11 +2356,13 @@ function onUpdateProgress(payload) {
   }
 }
 window.onUpdateProgress = onUpdateProgress;
+window.gPendingSetupPath = '';
 
 function onConfirmRestartNow() {
   toast('🚀 جاري إعادة التشغيل لتطبيق التحديث...');
+  const path = window.gPendingSetupPath || '';
   if (window.pywebview?.api?.launch_installer) {
-    window.pywebview.api.launch_installer(gPendingSetupPath);
+    window.pywebview.api.launch_installer(path);
   } else {
     closeUpdateModal();
   }

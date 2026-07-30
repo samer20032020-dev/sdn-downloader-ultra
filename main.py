@@ -638,9 +638,20 @@ class DownloaderBridgeAPI:
 
     def launch_installer(self, setup_path=None):
         try:
-            path = setup_path or getattr(self, 'pending_setup_path', None)
-            if not path or not os.path.exists(path):
-                _log.warning("Update package not found")
+            path = setup_path if (setup_path and str(setup_path) != 'undefined' and os.path.exists(str(setup_path))) else None
+            if not path:
+                path = getattr(self, 'pending_setup_path', None)
+
+            if not path or not os.path.exists(str(path)):
+                import glob, tempfile
+                temp_dir = tempfile.gettempdir()
+                candidates = glob.glob(os.path.join(temp_dir, "SDN_Update_*.exe")) + glob.glob(os.path.join(temp_dir, "SDN_Downloader_Setup*.exe"))
+                if candidates:
+                    candidates.sort(key=os.path.getmtime, reverse=True)
+                    path = candidates[0]
+
+            if not path or not os.path.exists(str(path)):
+                _log.warning(f"Update package not found. path was: {setup_path}")
                 return {'success': False, 'error': 'ملف التحديث غير موجود'}
 
             _log.info(f"Performing 100% silent update without popups using package: {path}")
