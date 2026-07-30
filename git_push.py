@@ -119,6 +119,13 @@ def github_request(url, method="GET", data=None, headers=None, token=None):
 
 def get_or_create_release(token):
     """يجلب الـ Release الحالي أو ينشئ واحداً جديداً"""
+    # 1. Try latest release
+    url_latest = f"https://api.github.com/repos/{REPO}/releases/latest"
+    data = github_request(url_latest, token=token)
+    if data and data.get("id"):
+        print(f"  ✅ تم العثور على أحدث Release على GitHub: {data.get('tag_name')} (ID={data['id']})")
+        return data
+
     url = f"https://api.github.com/repos/{REPO}/releases/tags/{RELEASE_TAG}"
     data = github_request(url, token=token)
     if data and data.get("id"):
@@ -179,6 +186,27 @@ def upload_asset(release_data, asset_name, asset_path, content_type, token):
     return False
 
 
+def get_github_token():
+    token = os.environ.get("GITHUB_TOKEN", "").strip()
+    if token:
+        return token
+    try:
+        git_exe = find_git()
+        if git_exe:
+            res = subprocess.run(
+                [git_exe, 'credential', 'fill'],
+                input='protocol=https\nhost=github.com\n',
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            for line in res.stdout.splitlines():
+                if line.startswith('password='):
+                    return line.split('password=')[1].strip()
+    except Exception:
+        pass
+    return None
+
 # ============================================================
 # الدالة الرئيسية
 # ============================================================
@@ -206,7 +234,7 @@ def main():
     print("✅ Push تم بنجاح (أو لا يوجد تغييرات جديدة)")
 
     # 3. GITHUB_TOKEN
-    token = os.environ.get("GITHUB_TOKEN", "").strip()
+    token = get_github_token()
     if not token:
         print("\n⚠️  GITHUB_TOKEN غير محدد — سيتم تخطي رفع الـ Release assets.")
         print("   لتفعيل الرفع التلقائي: set GITHUB_TOKEN=<your_token>")
