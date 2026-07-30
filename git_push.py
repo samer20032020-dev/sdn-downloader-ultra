@@ -121,21 +121,14 @@ def github_request(url, method="GET", data=None, headers=None, token=None):
 
 
 def get_or_create_release(token):
-    """يجلب الـ Release الحالي أو ينشئ واحداً جديداً"""
-    # 1. Try latest release
-    url_latest = f"https://api.github.com/repos/{REPO}/releases/latest"
-    data = github_request(url_latest, token=token)
-    if data and data.get("id"):
-        print(f"  ✅ تم العثور على أحدث Release على GitHub: {data.get('tag_name')} (ID={data['id']})")
-        return data
-
+    """يجلب الـ Release الحالي أو ينشئ واحداً جديداً لـ RELEASE_TAG"""
     url = f"https://api.github.com/repos/{REPO}/releases/tags/{RELEASE_TAG}"
     data = github_request(url, token=token)
     if data and data.get("id"):
-        print(f"  ✅ تم العثور على Release موجود: ID={data['id']}")
+        print(f"  ✅ تم العثور على Release موجود لـ {RELEASE_TAG}: ID={data['id']}")
         return data
 
-    print(f"  📌 إنشاء Release جديد: {RELEASE_TAG}...")
+    print(f"  📌 إنشاء Release جديد برقم: {RELEASE_TAG}...")
     payload = json.dumps({
         "tag_name": RELEASE_TAG,
         "name": RELEASE_NAME,
@@ -151,7 +144,7 @@ def get_or_create_release(token):
         token=token,
     )
     if data and data.get("id"):
-        print(f"  ✅ تم إنشاء Release جديد: ID={data['id']}")
+        print(f"  ✅ تم إنشاء Release جديد لـ {RELEASE_TAG}: ID={data['id']}")
         return data
     print("  ❌ فشل إنشاء الـ Release")
     return None
