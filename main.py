@@ -168,9 +168,8 @@ class ExtensionHTTPHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({'status': 'error', 'msg': 'No URL provided'}).encode('utf-8'))
         except Exception as e:
             _log.debug(f"Extension handler error: {e}")
-            self.wfile.write(json.dumps({'status': 'error', 'msg': str(e)}).encode('utf-8'))
 
-CURRENT_APP_VERSION = "0.3.0"
+CURRENT_APP_VERSION = "0.4.0"
 GITHUB_REPO = "samer20032020-dev/sdn-downloader-ultra"
 
 class DownloaderBridgeAPI:
@@ -703,7 +702,9 @@ class DownloaderBridgeAPI:
 
     def launch_installer(self, setup_path=None):
         try:
-            path = setup_path if (setup_path and str(setup_path) != 'undefined' and os.path.exists(str(setup_path))) else None
+            _log.info(f"launch_installer called with parameter: {setup_path}")
+            path = str(setup_path) if (setup_path and str(setup_path) != 'undefined' and str(setup_path).strip() != '' and os.path.exists(str(setup_path))) else None
+            
             if not path:
                 path = getattr(self, 'pending_setup_path', None)
 
@@ -716,50 +717,31 @@ class DownloaderBridgeAPI:
                     path = candidates[0]
 
             if not path or not os.path.exists(str(path)):
+                base_dir = os.path.dirname(os.path.abspath(__file__))
+                local_dist = os.path.join(base_dir, "dist", "SDN_Downloader_Setup.exe")
+                if os.path.exists(local_dist):
+                    path = local_dist
+
+            if not path or not os.path.exists(str(path)):
                 _log.warning(f"Update package not found. path was: {setup_path}")
                 return {'success': False, 'error': 'ملف التحديث غير موجود'}
 
-            _log.info(f"Performing 100% silent update without popups using package: {path}")
+            _log.info(f"Executing installer update package: {path}")
 
-            current_exe = os.path.abspath(sys.executable)
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-
-            if getattr(sys, 'frozen', False):
-                relaunch_cmd = f'"{current_exe}"'
+            if sys.platform == 'win32':
+                try:
+                    os.startfile(path)
+                except Exception as e1:
+                    _log.warning(f"os.startfile failed: {e1}, trying Popen...")
+                    subprocess.Popen([path])
             else:
-                main_py = os.path.join(base_dir, "main.py")
-                py_exe = sys.executable
-                relaunch_cmd = f'"{py_exe}" "{main_py}"'
-
-            temp_dir = tempfile.gettempdir()
-            now_t = int(time.time())
-            bat_path = os.path.join(temp_dir, f"sdn_silent_update_{now_t}.bat")
-            vbs_path = os.path.join(temp_dir, f"sdn_silent_update_{now_t}.vbs")
-
-            # Batch script runs setup completely silently without language dialogs or windows
-            bat_content = f"""@echo off
-timeout /t 2 /nobreak > nul
-start /wait "" "{path}" /VERYSILENT /SUPPRESSMSGBOXES /SP- /NORESTART
-timeout /t 1 /nobreak > nul
-start "" {relaunch_cmd}
-del "%~f0"
-"""
-            with open(bat_path, "w", encoding="utf-8", errors="replace") as f:
-                f.write(bat_content)
-
-            # VBScript executes batch script silently in background (0 window)
-            vbs_content = f'CreateObject("WScript.Shell").Run "{bat_path}", 0, False'
-            with open(vbs_path, "w", encoding="utf-8") as f:
-                f.write(vbs_content)
-
-            _log.info(f"Triggering silent background update runner: {vbs_path}")
-            subprocess.Popen(["wscript.exe", vbs_path])
+                subprocess.Popen([path])
 
             time.sleep(0.5)
             os._exit(0)
             return {'success': True}
         except Exception as e:
-            _log.error(f"Silent update launch failed: {e}")
+            _log.error(f"Launch installer failed: {e}")
             return {'success': False, 'error': str(e)}
 
 

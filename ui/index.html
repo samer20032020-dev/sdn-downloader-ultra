@@ -2527,7 +2527,7 @@ function incrementDlCounter() {
   num.style.animation = 'dlBadgeBump 0.35s ease';
 }
 
-const CURRENT_VERSION = '0.3.0';
+const CURRENT_VERSION = '0.4.0';
 let gLatestReleaseUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
 
 /* ── Auto Update Checker & Header Button (With Tags API Fallback) ── */
@@ -2648,7 +2648,7 @@ function onUpdateProgress(payload) {
     if (pctText) pctText.innerText = '100%';
     if (icon) icon.innerText = '✨';
     if (title) title.innerText = 'اكتمل تنزيل التحديث!';
-    if (msg) msg.innerText = 'جاري إعادة تشغيل البرنامج فوراً لتطبيق التحديث السريع...';
+    if (msg) msg.innerText = 'جاري فتح برنامج التثبيت لتحديث البرنامج...';
 
     if (actionsBox) actionsBox.style.display = 'flex';
 
@@ -2665,10 +2665,14 @@ window.onUpdateProgress = onUpdateProgress;
 window.gPendingSetupPath = '';
 
 function onConfirmRestartNow() {
-  toast('🚀 جاري إعادة التشغيل لتطبيق التحديث...');
+  toast('🚀 جاري تشغيل المثبت للتحديث...');
   const path = window.gPendingSetupPath || '';
   if (window.pywebview?.api?.launch_installer) {
-    window.pywebview.api.launch_installer(path);
+    window.pywebview.api.launch_installer(path).then(res => {
+      if (res && res.error) toast('❌ ' + res.error);
+    }).catch(err => {
+      toast('❌ خطأ في تشغيل المثبت');
+    });
   } else {
     closeUpdateModal();
   }
