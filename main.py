@@ -34,7 +34,7 @@ except ImportError:
 
 _log = setup_logger("SDN.Main")
 _log.info("═" * 60)
-_log.info("SDN Downloader Ultra Edition v2.6.0 - STARTING")
+_log.info("SDN v0.1.0 - STARTING")
 _log.info("═" * 60)
 
 # ============================================================
@@ -50,7 +50,7 @@ except Exception as e:
 
 try:
     # Set AppUserModelID for Windows taskbar grouping
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("SDN.Downloader.Ultra.App.2.0")
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("SDN.App.0.1")
 except Exception as e:
     _log.debug(f"AppUserModelID not set: {e}")
 
@@ -170,7 +170,7 @@ class ExtensionHTTPHandler(BaseHTTPRequestHandler):
             _log.debug(f"Extension handler error: {e}")
             self.wfile.write(json.dumps({'status': 'error', 'msg': str(e)}).encode('utf-8'))
 
-CURRENT_APP_VERSION = "3.0.0"
+CURRENT_APP_VERSION = "0.1.0"
 GITHUB_REPO = "samer20032020-dev/sdn-downloader-ultra"
 
 class DownloaderBridgeAPI:
@@ -702,7 +702,7 @@ del "%~f0"
 # ULTRA MAIN - Optimized startup sequence
 # ================================================================
 def main():
-    _log.info(f"🚀 SDN Downloader Ultra v{CURRENT_APP_VERSION} starting...")
+    _log.info(f"🚀 SDN v{CURRENT_APP_VERSION} starting...")
     
     api = DownloaderBridgeAPI()
     
@@ -720,7 +720,7 @@ def main():
     _preload_done.wait(timeout=2.0)
     
     window = webview.create_window(
-        title='SDN Downloader ⚡ Ultra Edition',
+        title='SDN',
         url=html_file,
         width=820,
         height=640,

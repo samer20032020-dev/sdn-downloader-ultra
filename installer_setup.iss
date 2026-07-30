@@ -1,7 +1,7 @@
 ; Script generated for Inno Setup - SDN Downloader Setup
-#define MyAppName "SDN Downloader ⚡ Ultra"
-#define MyAppVersion "3.0.0"
-#define MyAppPublisher "SDN Software"
+#define MyAppName "SDN"
+#define MyAppVersion "0.1.0"
+#define MyAppPublisher "SDN"
 #define MyAppExeName "SDN_Downloader_Standalone.exe"
 
 [Setup]

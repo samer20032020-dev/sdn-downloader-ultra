@@ -1,3 +1,1 @@
-# هذا الملف يضمن تتبع مجلد dist/ في Git
-# الملفات الكبيرة (EXE, APK) تُرفع عبر GitHub Releases
-# راجع .gitignore للمزيد
+keep
