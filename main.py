@@ -19,10 +19,114 @@ import hashlib
 import mimetypes
 import re
 import secrets
+import shutil
+import tempfile
 from pathlib import Path
 from http.server import HTTPServer, ThreadingHTTPServer, BaseHTTPRequestHandler
 
 from version import APP_VERSION as CURRENT_APP_VERSION, GITHUB_REPO
+
+WINDOWS_PORTABLE_ASSET = "SDN_Downloader_Standalone.exe"
+WINDOWS_INSTALLER_ASSET = "SDN_Downloader_Setup.exe"
+TRUSTED_UPDATE_HOSTS = {
+    "github.com",
+    "www.github.com",
+    "objects.githubusercontent.com",
+    "release-assets.githubusercontent.com",
+}
+
+
+def _release_asset_details(assets, asset_name):
+    """Return normalized metadata for one exact GitHub release asset."""
+    for asset in assets or []:
+        if asset.get("name") != asset_name:
+            continue
+        digest = asset.get("digest")
+        return {
+            "name": asset_name,
+            "url": asset.get("browser_download_url"),
+            "sha256": (
+                digest.split(":", 1)[1]
+                if isinstance(digest, str) and digest.startswith("sha256:")
+                else None
+            ),
+            "size": asset.get("size"),
+        }
+    return None
+
+
+SILENT_PORTABLE_UPDATER_SCRIPT = r"""
+param(
+    [int]$ParentPid,
+    [string]$UpdatePath,
+    [string]$TargetPath,
+    [string]$BackupPath,
+    [string]$LogPath,
+    [string]$ScriptPath
+)
+
+$ErrorActionPreference = 'Stop'
+
+function Write-UpdateLog([string]$Message) {
+    try {
+        $stamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+        Add-Content -LiteralPath $LogPath -Value "$stamp | $Message" -Encoding UTF8
+    } catch {}
+}
+
+try {
+    Write-UpdateLog "Waiting for SDN process $ParentPid to exit"
+    Wait-Process -Id $ParentPid -ErrorAction SilentlyContinue
+
+    $installed = $false
+    $deadline = (Get-Date).AddMinutes(2)
+    while ((Get-Date) -lt $deadline -and -not $installed) {
+        try {
+            if (Test-Path -LiteralPath $BackupPath) {
+                Remove-Item -LiteralPath $BackupPath -Force
+            }
+            Move-Item -LiteralPath $TargetPath -Destination $BackupPath -Force
+            try {
+                Move-Item -LiteralPath $UpdatePath -Destination $TargetPath -Force
+                $installed = $true
+            } catch {
+                if ((Test-Path -LiteralPath $BackupPath) -and -not (Test-Path -LiteralPath $TargetPath)) {
+                    Move-Item -LiteralPath $BackupPath -Destination $TargetPath -Force
+                }
+                throw
+            }
+        } catch {
+            Start-Sleep -Milliseconds 500
+        }
+    }
+
+    if (-not $installed) {
+        throw 'Timed out while replacing the running application'
+    }
+
+    Write-UpdateLog "Update installed at $TargetPath"
+    Start-Process -FilePath $TargetPath -WorkingDirectory (Split-Path -Parent $TargetPath)
+    Start-Sleep -Seconds 2
+    if (Test-Path -LiteralPath $BackupPath) {
+        Remove-Item -LiteralPath $BackupPath -Force
+    }
+    Write-UpdateLog 'Updated SDN restarted successfully'
+} catch {
+    Write-UpdateLog "Update failed: $($_.Exception.Message)"
+    try {
+        if ((Test-Path -LiteralPath $BackupPath) -and -not (Test-Path -LiteralPath $TargetPath)) {
+            Move-Item -LiteralPath $BackupPath -Destination $TargetPath -Force
+        }
+        if (Test-Path -LiteralPath $TargetPath) {
+            Start-Process -FilePath $TargetPath -WorkingDirectory (Split-Path -Parent $TargetPath)
+        }
+    } catch {
+        Write-UpdateLog "Rollback failed: $($_.Exception.Message)"
+    }
+} finally {
+    try { Remove-Item -LiteralPath $ScriptPath -Force } catch {}
+}
+""".strip()
 
 
 def _version_key(value):
@@ -318,7 +422,12 @@ class DownloaderBridgeAPI:
         self.downloader = None
         self.latest_update_info = None
         self._startup_time = time.time()
-        self._installer_launched = False
+        self._update_restart_started = False
+        self._update_download_active = False
+        self.pending_update_path = None
+        self.pending_update_kind = None
+        self.pending_update_sha256 = None
+        self.pending_update_size = None
         self._download_thread = None
         self._media_server = None
         self._media_port = None
@@ -1005,62 +1114,129 @@ class DownloaderBridgeAPI:
                 tag_name = data.get('tag_name', '').lstrip('v')
                 body = data.get('body', '')
                 assets = data.get('assets', [])
-                exe_download_url = None
-                exe_digest = None
-                exe_size = None
                 release_html_url = data.get('html_url', f"https://github.com/{GITHUB_REPO}/releases/latest")
-
-                for asset in assets:
-                    if asset.get('name') == 'SDN_Downloader_Setup.exe':
-                        exe_download_url = asset.get('browser_download_url')
-                        exe_digest = asset.get('digest')
-                        exe_size = asset.get('size')
-                        break
+                portable = _release_asset_details(assets, WINDOWS_PORTABLE_ASSET)
+                installer = _release_asset_details(assets, WINDOWS_INSTALLER_ASSET)
 
                 if tag_name and _version_key(tag_name) > _version_key(CURRENT_APP_VERSION):
+                    preferred = portable or installer or {}
                     return {
                         'has_update': True,
                         'latest_version': tag_name,
                         'current_version': CURRENT_APP_VERSION,
-                        'download_url': exe_download_url or release_html_url,
+                        'download_url': preferred.get('url') or release_html_url,
                         'html_url': release_html_url,
-                        'sha256': exe_digest.split(':', 1)[1] if isinstance(exe_digest, str) and exe_digest.startswith('sha256:') else None,
-                        'size': exe_size,
+                        'sha256': preferred.get('sha256'),
+                        'size': preferred.get('size'),
+                        'update_kind': 'portable' if portable else 'installer',
+                        'portable_url': portable.get('url') if portable else None,
+                        'portable_sha256': portable.get('sha256') if portable else None,
+                        'portable_size': portable.get('size') if portable else None,
+                        'installer_url': installer.get('url') if installer else None,
+                        'installer_sha256': installer.get('sha256') if installer else None,
+                        'installer_size': installer.get('size') if installer else None,
                         'notes': body or 'تحديث جديد لتحسين الأداء وحل المشاكل.'
                     }
         except Exception as e:
             _log.debug(f"Update check failed (offline?): {e}")
         return {'has_update': False, 'current_version': CURRENT_APP_VERSION}
 
+    def _current_application_path(self):
+        if getattr(sys, 'frozen', False):
+            return Path(sys.executable).resolve()
+        return Path(__file__).resolve()
+
+    def _can_replace_current_executable(self):
+        """Check whether the packaged app can safely replace itself in place."""
+        if not getattr(sys, 'frozen', False):
+            return False
+        target = self._current_application_path()
+        if target.suffix.lower() != '.exe' or not target.is_file():
+            return False
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode='wb',
+                prefix='.sdn-update-probe-',
+                suffix='.tmp',
+                dir=str(target.parent),
+                delete=True,
+            ) as probe:
+                probe.write(b'SDN')
+                probe.flush()
+            return True
+        except OSError as exc:
+            _log.info(f"Direct in-place update unavailable for {target.parent}: {exc}")
+            return False
+
+    def _select_update_package(self, update_info):
+        """Prefer zero-window portable replacement, then a silent installer."""
+        if self._can_replace_current_executable() and update_info.get('portable_url'):
+            return {
+                'kind': 'portable',
+                'url': update_info.get('portable_url'),
+                'sha256': update_info.get('portable_sha256'),
+                'size': update_info.get('portable_size'),
+            }
+        if update_info.get('installer_url'):
+            return {
+                'kind': 'installer',
+                'url': update_info.get('installer_url'),
+                'sha256': update_info.get('installer_sha256'),
+                'size': update_info.get('installer_size'),
+            }
+        return None
+
     def apply_app_update(self, download_url=None):
         _log.info(f"apply_app_update requested with url: {download_url}")
-        default_exe_url = (
-            f"https://github.com/{GITHUB_REPO}/releases/latest/download/"
-            "SDN_Downloader_Setup.exe"
-        )
-        target_url = str(download_url or '')
-        if not target_url.lower().endswith('.exe'):
-            target_url = default_exe_url
+        if getattr(self, '_update_download_active', False):
+            return {'success': True, 'status': 'already_downloading'}
+
+        update_info = self.latest_update_info
+        if not update_info or not update_info.get('has_update'):
+            update_info = self.check_app_update()
+            if update_info.get('has_update'):
+                self.latest_update_info = update_info
+
+        if not update_info or not update_info.get('has_update'):
+            return {'success': False, 'error': 'لا يوجد تحديث جديد متاح'}
+
+        package = self._select_update_package(update_info)
+        if not package or not package.get('url'):
+            return {'success': False, 'error': 'لا توجد حزمة تحديث مناسبة لـ Windows'}
+
+        target_url = str(package['url'])
+        expected_sha256 = package.get('sha256')
+        expected_size = int(package.get('size') or 0)
+        package_kind = package['kind']
+
         try:
             parsed = urllib.parse.urlsplit(target_url)
-            if parsed.scheme != 'https' or parsed.hostname not in {'github.com', 'www.github.com'}:
-                target_url = default_exe_url
+            if (
+                parsed.scheme != 'https'
+                or parsed.hostname not in {'github.com', 'www.github.com'}
+                or not target_url.lower().endswith('.exe')
+            ):
+                return {'success': False, 'error': 'تم رفض رابط تحديث غير موثوق'}
         except Exception:
-            target_url = default_exe_url
+            return {'success': False, 'error': 'رابط التحديث غير صالح'}
 
-        expected_sha256 = None
-        if self.latest_update_info and self.latest_update_info.get('download_url') == target_url:
-            expected_sha256 = self.latest_update_info.get('sha256')
+        if not expected_sha256:
+            return {'success': False, 'error': 'تعذر التحقق من بصمة التحديث الآمنة'}
+
+        self._update_download_active = True
+        self.pending_update_path = None
+        self.pending_update_kind = None
+        self.pending_update_sha256 = None
+        self.pending_update_size = None
 
         def _do_update():
             try:
                 import urllib.request
-                import tempfile
 
                 temp_dir = tempfile.gettempdir()
-                setup_filename = f"SDN_Update_{int(time.time())}.exe"
-                setup_path = os.path.join(temp_dir, setup_filename)
-                self.pending_setup_path = setup_path
+                package_label = 'Portable' if package_kind == 'portable' else 'Setup'
+                update_filename = f"SDN_Update_{package_label}_{int(time.time())}.exe"
+                update_path = os.path.join(temp_dir, update_filename)
 
                 _log.info(f"Downloading update from: {target_url}")
                 req = urllib.request.Request(
@@ -1068,14 +1244,9 @@ class DownloaderBridgeAPI:
                     headers={'User-Agent': f'SDN-Downloader-App/{CURRENT_APP_VERSION}'},
                 )
                 digest = hashlib.sha256()
-                with urllib.request.urlopen(req, timeout=180) as resp, open(setup_path, 'wb') as out_f:
+                with urllib.request.urlopen(req, timeout=180) as resp, open(update_path, 'wb') as out_f:
                     final_host = (urllib.parse.urlsplit(resp.geturl()).hostname or '').lower()
-                    trusted_hosts = {
-                        'github.com',
-                        'objects.githubusercontent.com',
-                        'release-assets.githubusercontent.com',
-                    }
-                    if final_host not in trusted_hosts and not final_host.endswith('.githubusercontent.com'):
+                    if final_host not in TRUSTED_UPDATE_HOSTS and not final_host.endswith('.githubusercontent.com'):
                         raise RuntimeError('تم رفض مصدر تحديث غير موثوق.')
 
                     total_size = int(resp.headers.get('content-length', 0) or 0)
@@ -1101,81 +1272,183 @@ class DownloaderBridgeAPI:
                                 f'onUpdateProgress({json.dumps(payload)});'
                             )
 
-                if os.path.getsize(setup_path) < 1024 * 1024:
+                if os.path.getsize(update_path) < 1024 * 1024:
                     raise RuntimeError('ملف التحديث أصغر من الحجم المتوقع.')
-                with open(setup_path, 'rb') as setup_file:
-                    if setup_file.read(2) != b'MZ':
+                if expected_size and downloaded != expected_size:
+                    raise RuntimeError('حجم ملف التحديث لا يطابق الإصدار المنشور.')
+                with open(update_path, 'rb') as update_file:
+                    if update_file.read(2) != b'MZ':
                         raise RuntimeError('ملف التحديث ليس ملف Windows صالحًا.')
-                if expected_sha256 and digest.hexdigest().lower() != str(expected_sha256).lower():
+                if digest.hexdigest().lower() != str(expected_sha256).lower():
                     raise RuntimeError('فشل التحقق من بصمة ملف التحديث.')
 
-                _log.info(f"Update download complete: {setup_path}")
-                clean_path = setup_path.replace('\\', '/')
+                self.pending_update_path = update_path
+                self.pending_update_kind = package_kind
+                self.pending_update_sha256 = expected_sha256.lower()
+                self.pending_update_size = downloaded
+                _log.info(f"Verified {package_kind} update ready: {update_path}")
+                clean_path = update_path.replace('\\', '/')
                 if self._window:
-                    payload = {'status': 'complete', 'setup_path': clean_path}
+                    payload = {
+                        'status': 'complete',
+                        'update_path': clean_path,
+                        'setup_path': clean_path,
+                        'update_kind': package_kind,
+                    }
                     self._window.evaluate_js(f'if (typeof onUpdateProgress === "function") onUpdateProgress({json.dumps(payload)});')
 
             except Exception as e:
                 _log.error(f"Update download failed: {e}")
                 try:
-                    if 'setup_path' in locals() and os.path.exists(setup_path):
-                        os.remove(setup_path)
+                    if 'update_path' in locals() and os.path.exists(update_path):
+                        os.remove(update_path)
                 except Exception:
                     pass
                 if self._window:
                     payload = {'status': 'error', 'error': f'فشل التنزيل التلقائي: {str(e)}'}
                     self._window.evaluate_js(f'if (typeof onUpdateProgress === "function") onUpdateProgress({json.dumps(payload)});')
+            finally:
+                self._update_download_active = False
 
         threading.Thread(target=_do_update, daemon=True, name="UpdateDownloader").start()
-        return {'success': True}
+        return {'success': True, 'update_kind': package_kind}
 
-    def launch_installer(self, setup_path=None):
-        if getattr(self, '_installer_launched', False):
-            _log.info("launch_installer already executed, skipping duplicate call.")
-            return {'success': True}
-        self._installer_launched = True
+    def _resolve_pending_update(self, update_path=None):
+        pending = getattr(self, 'pending_update_path', None)
+        if not pending:
+            raise RuntimeError('ملف التحديث غير موجود')
+
+        pending_path = Path(pending).resolve(strict=True)
+        requested = str(update_path or '').strip()
+        if requested and requested != 'undefined':
+            requested_path = Path(requested).resolve(strict=True)
+            if os.path.normcase(str(requested_path)) != os.path.normcase(str(pending_path)):
+                raise RuntimeError('تم رفض مسار تحديث غير متوقع')
+
+        if pending_path.stat().st_size < 1024 * 1024:
+            raise RuntimeError('ملف التحديث غير مكتمل')
+        expected_size = int(getattr(self, 'pending_update_size', 0) or 0)
+        if expected_size and pending_path.stat().st_size != expected_size:
+            raise RuntimeError('تغيّر حجم ملف التحديث بعد تنزيله')
+
+        digest = hashlib.sha256()
+        with pending_path.open('rb') as update_file:
+            first_chunk = update_file.read(1024 * 1024)
+            if not first_chunk.startswith(b'MZ'):
+                raise RuntimeError('ملف التحديث غير صالح')
+            digest.update(first_chunk)
+            while True:
+                chunk = update_file.read(1024 * 1024)
+                if not chunk:
+                    break
+                digest.update(chunk)
+
+        expected_sha256 = str(getattr(self, 'pending_update_sha256', '') or '').lower()
+        if not expected_sha256 or digest.hexdigest().lower() != expected_sha256:
+            raise RuntimeError('تغيّرت بصمة ملف التحديث بعد تنزيله')
+        return pending_path
+
+    def _launch_portable_updater(self, update_path):
+        if not getattr(sys, 'frozen', False):
+            raise RuntimeError('التحديث الصامت يعمل من النسخة المبنية فقط')
+
+        target_path = self._current_application_path()
+        if not self._can_replace_current_executable():
+            raise RuntimeError('مجلد البرنامج لا يسمح بالتحديث المباشر')
+
+        log_dir = Path.home() / '.sdn_logs'
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_path = log_dir / 'sdn_update.log'
+        backup_path = target_path.with_name(target_path.name + '.old')
+        script_path = Path(tempfile.gettempdir()) / f"SDN_SilentUpdater_{os.getpid()}_{int(time.time())}.ps1"
+        script_path.write_text(SILENT_PORTABLE_UPDATER_SCRIPT, encoding='utf-8-sig')
+
+        powershell = (
+            shutil.which('powershell.exe')
+            or os.path.join(os.environ.get('SystemRoot', r'C:\Windows'), 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
+        )
+        if not os.path.isfile(powershell):
+            script_path.unlink(missing_ok=True)
+            raise RuntimeError('تعذر العثور على أداة التحديث الصامت في Windows')
+
+        command = [
+            powershell,
+            '-NoLogo',
+            '-NoProfile',
+            '-NonInteractive',
+            '-ExecutionPolicy', 'Bypass',
+            '-WindowStyle', 'Hidden',
+            '-File', str(script_path),
+            '-ParentPid', str(os.getpid()),
+            '-UpdatePath', str(update_path),
+            '-TargetPath', str(target_path),
+            '-BackupPath', str(backup_path),
+            '-LogPath', str(log_path),
+            '-ScriptPath', str(script_path),
+        ]
+        subprocess.Popen(
+            command,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            close_fds=True,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0,
+        )
+        _log.info(f"Silent portable updater launched for: {target_path}")
+
+    def _launch_silent_installer(self, update_path):
+        target_dir = self._current_application_path().parent
+        installer_log = Path(tempfile.gettempdir()) / 'SDN_Silent_Installer.log'
+        command = [
+            str(update_path),
+            '/VERYSILENT',
+            '/SUPPRESSMSGBOXES',
+            '/NORESTART',
+            '/SP-',
+            '/CLOSEAPPLICATIONS',
+            '/RESTARTAPPLICATIONS',
+            '/LANG=arabic',
+            f'/DIR={target_dir}',
+            f'/LOG={installer_log}',
+        ]
+        subprocess.Popen(
+            command,
+            cwd=str(target_dir),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            close_fds=True,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0,
+        )
+        _log.info(f"Silent installer launched for directory: {target_dir}")
+
+    def restart_and_apply_update(self, update_path=None):
+        if getattr(self, '_update_restart_started', False):
+            return {'success': True, 'status': 'already_started'}
+
         try:
-            _log.info(f"launch_installer called with parameter: {setup_path}")
-            path = str(setup_path) if (setup_path and str(setup_path) != 'undefined' and str(setup_path).strip() != '' and os.path.exists(str(setup_path))) else None
-            
-            if not path:
-                path = getattr(self, 'pending_setup_path', None)
-
-            if not path or not os.path.exists(str(path)):
-                import glob, tempfile
-                temp_dir = tempfile.gettempdir()
-                candidates = glob.glob(os.path.join(temp_dir, "SDN_Update_*.exe")) + glob.glob(os.path.join(temp_dir, "SDN_Downloader_Setup*.exe"))
-                if candidates:
-                    candidates.sort(key=os.path.getmtime, reverse=True)
-                    path = candidates[0]
-
-            if not path or not os.path.exists(str(path)):
-                base_dir = os.path.dirname(os.path.abspath(__file__))
-                local_dist = os.path.join(base_dir, "dist", "SDN_Downloader_Setup.exe")
-                if os.path.exists(local_dist):
-                    path = local_dist
-
-            if not path or not os.path.exists(str(path)):
-                _log.warning(f"Update package not found. path was: {setup_path}")
-                return {'success': False, 'error': 'ملف التحديث غير موجود'}
-
-            _log.info(f"Executing installer update package: {path}")
-
-            if sys.platform == 'win32':
-                try:
-                    os.startfile(path)
-                except Exception as e1:
-                    _log.warning(f"os.startfile failed: {e1}, trying Popen...")
-                    subprocess.Popen([path])
+            verified_path = self._resolve_pending_update(update_path)
+            update_kind = getattr(self, 'pending_update_kind', None)
+            if update_kind == 'portable':
+                self._launch_portable_updater(verified_path)
+            elif update_kind == 'installer':
+                self._launch_silent_installer(verified_path)
             else:
-                subprocess.Popen([path])
+                raise RuntimeError('نوع حزمة التحديث غير معروف')
 
-            time.sleep(0.5)
+            self._update_restart_started = True
+            _log.info(f"Closing SDN to apply {update_kind} update in the background")
+            time.sleep(0.35)
             os._exit(0)
             return {'success': True}
         except Exception as e:
-            _log.error(f"Launch installer failed: {e}")
+            self._update_restart_started = False
+            _log.error(f"Silent update launch failed: {e}")
             return {'success': False, 'error': str(e)}
+
+    def launch_installer(self, setup_path=None):
+        """Compatibility alias for older bundled UI code."""
+        return self.restart_and_apply_update(setup_path)
 
 
 # ================================================================
