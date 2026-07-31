@@ -325,6 +325,8 @@ class DownloaderBridgeAPI:
         self._media_lock = threading.Lock()
         self._media_tokens = {}
         self._media_path_tokens = {}
+        self._media_prepare_lock = threading.Lock()
+        self._media_cache_dir = None
         
         ExtensionHTTPHandler.bridge_api = self
         MediaHTTPHandler.bridge_api = self
@@ -371,6 +373,16 @@ class DownloaderBridgeAPI:
                                     cleaned_count += 1
                             except Exception:
                                 pass
+
+                    # Compatibility copies are disposable and recreated on demand.
+                    media_cache = self._get_media_cache_dir()
+                    for cache_file in media_cache.glob("*.mp3"):
+                        try:
+                            if (now - cache_file.stat().st_atime) > 30 * 86400:
+                                cache_file.unlink()
+                                cleaned_count += 1
+                        except OSError:
+                            pass
 
                     # Clean old logs
                     cleanup_old_logs()
@@ -485,6 +497,135 @@ class DownloaderBridgeAPI:
     def get_media_url(self, filepath):
         """Bridge method for resolving a local file to a WebView-playable URL."""
         return self._register_media_file(filepath)
+
+    def _get_media_cache_dir(self):
+        """Return the private cache used for WebView-compatible audio copies."""
+        if self._media_cache_dir:
+            cache_dir = Path(self._media_cache_dir)
+        else:
+            local_app_data = os.environ.get("LOCALAPPDATA")
+            cache_root = Path(local_app_data) if local_app_data else Path.home() / ".cache"
+            cache_dir = cache_root / "SDN" / "media_cache"
+            self._media_cache_dir = str(cache_dir)
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        return cache_dir
+
+    def prepare_media_playback(self, filepath):
+        """
+        Return a WebView-safe playback URL without modifying the source file.
+
+        WebView2 codec availability differs between Windows editions. MP3 and
+        WAV can be served directly; other supported formats are converted once
+        to an MP3 cache and reused while the source file is unchanged.
+        """
+        audio_exts = {'.mp3', '.m4a', '.aac', '.flac', '.ogg', '.wav', '.opus', '.wma'}
+        try:
+            source = Path(filepath).resolve(strict=True)
+            if not source.is_file() or source.suffix.lower() not in audio_exts:
+                return {'ok': False, 'error': 'الملف الصوتي غير موجود أو غير مدعوم'}
+
+            source_ext = source.suffix.lower()
+            if source_ext in {'.mp3', '.wav'}:
+                return {
+                    'ok': True,
+                    'url': self._register_media_file(str(source)),
+                    'filepath': str(source),
+                    'transcoded': False,
+                }
+
+            stat = source.stat()
+            cache_key = hashlib.sha256(
+                f"{os.path.normcase(str(source))}|{stat.st_size}|{stat.st_mtime_ns}".encode("utf-8")
+            ).hexdigest()
+            cache_file = self._get_media_cache_dir() / f"{cache_key}.mp3"
+
+            with self._media_prepare_lock:
+                if not cache_file.is_file() or cache_file.stat().st_size == 0:
+                    from downloader import get_ffmpeg_path
+
+                    ffmpeg_path = get_ffmpeg_path()
+                    partial_file = cache_file.with_suffix(".partial.mp3")
+                    try:
+                        partial_file.unlink(missing_ok=True)
+                    except OSError:
+                        pass
+
+                    _log.info(f"Preparing WebView-compatible audio: {source.name}")
+                    process = subprocess.run(
+                        [
+                            ffmpeg_path,
+                            "-nostdin",
+                            "-hide_banner",
+                            "-loglevel", "error",
+                            "-y",
+                            "-i", str(source),
+                            "-map", "0:a:0",
+                            "-vn",
+                            "-c:a", "libmp3lame",
+                            "-b:a", "192k",
+                            "-id3v2_version", "3",
+                            str(partial_file),
+                        ],
+                        capture_output=True,
+                        text=True,
+                        encoding="utf-8",
+                        errors="replace",
+                        timeout=900,
+                        creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+                    )
+                    if process.returncode != 0 or not partial_file.is_file() or partial_file.stat().st_size == 0:
+                        try:
+                            partial_file.unlink(missing_ok=True)
+                        except OSError:
+                            pass
+                        detail = (process.stderr or process.stdout or "FFmpeg failed").strip()
+                        _log.warning(f"Audio compatibility conversion failed for {source}: {detail[:500]}")
+                        return {'ok': False, 'error': 'تعذر تجهيز الملف الصوتي للتشغيل'}
+
+                    os.replace(partial_file, cache_file)
+                    _log.info(f"Audio compatibility copy ready: {cache_file.name}")
+
+            return {
+                'ok': True,
+                'url': self._register_media_file(str(cache_file)),
+                'filepath': str(source),
+                'transcoded': True,
+                'cached_filepath': str(cache_file),
+            }
+        except subprocess.TimeoutExpired:
+            _log.warning(f"Audio compatibility conversion timed out: {filepath}")
+            return {'ok': False, 'error': 'استغرق تجهيز الملف الصوتي وقتاً طويلاً'}
+        except Exception as exc:
+            _log.warning(f"Could not prepare audio playback for {filepath}: {exc}")
+            return {'ok': False, 'error': 'تعذر تجهيز الملف الصوتي للتشغيل'}
+
+    def _build_audio_track(self, filepath, uploader):
+        """Build one player record and prefer the compatible cached URL."""
+        path_obj = Path(filepath).resolve(strict=True)
+        prepared = self.prepare_media_playback(str(path_obj))
+        playable_url = (
+            prepared.get('url')
+            if prepared.get('ok')
+            else self._register_media_file(str(path_obj))
+        )
+        return {
+            'title': path_obj.stem,
+            'uploader': uploader,
+            'url': playable_url,
+            'playable_url': playable_url,
+            'filepath': str(path_obj),
+            'format': path_obj.suffix.lstrip('.').upper(),
+            'size': path_obj.stat().st_size,
+            'thumbnail': '',
+            'playback_ready': bool(prepared.get('ok')),
+            'playback_transcoded': bool(prepared.get('transcoded')),
+            'playback_error': prepared.get('error', ''),
+        }
+
+    def report_audio_error(self, filepath='', error=''):
+        """Receive compact player diagnostics from the WebView."""
+        _log.warning(f"Audio player error | file={filepath!r} | detail={str(error)[:500]}")
+        return True
 
     # ================================================================
     # Config & History management with corruption recovery
@@ -660,18 +801,8 @@ class DownloaderBridgeAPI:
             for entry in Path(scan_dir).rglob('*'):
                 if not entry.is_file() or entry.suffix.lower() not in audio_exts:
                     continue
-                resolved = str(entry.resolve())
-                playable_url = self._register_media_file(resolved)
-                tracks.append({
-                    'title': entry.stem,
-                    'uploader': entry.parent.name if entry.parent != Path(scan_dir) else 'مجلد التنزيلات',
-                    'url': playable_url,
-                    'playable_url': playable_url,
-                    'filepath': resolved,
-                    'format': entry.suffix.lstrip('.').upper(),
-                    'size': entry.stat().st_size,
-                    'thumbnail': ''
-                })
+                uploader = entry.parent.name if entry.parent != Path(scan_dir) else 'مجلد التنزيلات'
+                tracks.append(self._build_audio_track(entry, uploader))
         except Exception as e:
             _log.warning(f"Music scan error: {e}")
         tracks.sort(key=lambda x: os.path.getmtime(x['filepath']), reverse=True)
@@ -694,17 +825,7 @@ class DownloaderBridgeAPI:
                 tracks = []
                 for fpath in result:
                     path_obj = Path(fpath).resolve()
-                    playable_url = self._register_media_file(str(path_obj))
-                    tracks.append({
-                        'title': path_obj.stem,
-                        'uploader': 'مضافة يدوياً',
-                        'url': playable_url,
-                        'playable_url': playable_url,
-                        'filepath': str(path_obj),
-                        'format': path_obj.suffix.lstrip('.').upper(),
-                        'size': path_obj.stat().st_size if path_obj.exists() else 0,
-                        'thumbnail': ''
-                    })
+                    tracks.append(self._build_audio_track(path_obj, 'مضافة يدوياً'))
                 return {'tracks': tracks}
         return {'tracks': []}
 
@@ -811,7 +932,15 @@ class DownloaderBridgeAPI:
                 for file_item in downloaded_files:
                     filepath = file_item.get('filepath') or ''
                     if filepath:
-                        file_item['playable_url'] = self._register_media_file(filepath)
+                        prepared = self.prepare_media_playback(filepath)
+                        file_item['playable_url'] = (
+                            prepared.get('url')
+                            if prepared.get('ok')
+                            else self._register_media_file(filepath)
+                        )
+                        file_item['playback_ready'] = bool(prepared.get('ok'))
+                        file_item['playback_transcoded'] = bool(prepared.get('transcoded'))
+                        file_item['playback_error'] = prepared.get('error', '')
             for file_item in downloaded_files:
                 self.add_history({
                     'title': file_item.get('title') or media_title,

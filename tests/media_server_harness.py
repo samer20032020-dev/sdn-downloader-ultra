@@ -18,9 +18,14 @@ def run():
     api._media_lock = threading.Lock()
     api._media_tokens = {}
     api._media_path_tokens = {}
+    api._media_prepare_lock = threading.Lock()
+    api._media_cache_dir = None
     main.MediaHTTPHandler.bridge_api = api
     api._start_local_media_server()
-    print(api._register_media_file(filepath), flush=True)
+    prepared = api.prepare_media_playback(filepath)
+    if not prepared.get("ok"):
+        raise RuntimeError(prepared.get("error") or "Could not prepare media")
+    print(prepared["url"], flush=True)
     try:
         while True:
             time.sleep(30)
