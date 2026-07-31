@@ -16,9 +16,11 @@ import ctypes
 import time
 import logging
 import hashlib
+import mimetypes
 import re
+import secrets
 from pathlib import Path
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import HTTPServer, ThreadingHTTPServer, BaseHTTPRequestHandler
 
 from version import APP_VERSION as CURRENT_APP_VERSION, GITHUB_REPO
 
@@ -201,6 +203,112 @@ class ExtensionHTTPHandler(BaseHTTPRequestHandler):
             except Exception:
                 pass
 
+
+class MediaHTTPHandler(BaseHTTPRequestHandler):
+    """Loopback-only, tokenized media server with HTTP range support."""
+
+    bridge_api = None
+
+    def log_message(self, format, *args):
+        pass
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Range")
+        self.end_headers()
+
+    def do_HEAD(self):
+        self._serve_media(send_body=False)
+
+    def do_GET(self):
+        self._serve_media(send_body=True)
+
+    def _serve_media(self, send_body):
+        bridge = MediaHTTPHandler.bridge_api
+        path = urllib.parse.urlsplit(self.path).path
+        if not bridge or not path.startswith("/media/"):
+            self.send_error(404)
+            return
+
+        token = urllib.parse.unquote(path[len("/media/"):])
+        if not re.fullmatch(r"[A-Za-z0-9_-]{20,128}", token):
+            self.send_error(404)
+            return
+
+        filepath = bridge.resolve_media_token(token)
+        if not filepath:
+            self.send_error(404)
+            return
+
+        try:
+            file_size = os.path.getsize(filepath)
+            start = 0
+            end = max(0, file_size - 1)
+            status = 200
+            range_header = self.headers.get("Range", "").strip()
+            if range_header:
+                match = re.fullmatch(r"bytes=(\d*)-(\d*)", range_header)
+                if not match or not any(match.groups()):
+                    self._send_range_error(file_size)
+                    return
+                start_text, end_text = match.groups()
+                if start_text:
+                    start = int(start_text)
+                    end = int(end_text) if end_text else file_size - 1
+                else:
+                    suffix_length = int(end_text)
+                    if suffix_length <= 0:
+                        self._send_range_error(file_size)
+                        return
+                    start = max(0, file_size - suffix_length)
+                    end = file_size - 1
+                if start >= file_size or end < start:
+                    self._send_range_error(file_size)
+                    return
+                end = min(end, file_size - 1)
+                status = 206
+
+            content_length = max(0, end - start + 1)
+            content_type = mimetypes.guess_type(filepath)[0] or "application/octet-stream"
+            self.send_response(status)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(content_length))
+            self.send_header("Accept-Ranges", "bytes")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Cache-Control", "no-store")
+            if status == 206:
+                self.send_header("Content-Range", f"bytes {start}-{end}/{file_size}")
+            self.end_headers()
+
+            if not send_body:
+                return
+            with open(filepath, "rb") as media_file:
+                media_file.seek(start)
+                remaining = content_length
+                while remaining > 0:
+                    chunk = media_file.read(min(128 * 1024, remaining))
+                    if not chunk:
+                        break
+                    self.wfile.write(chunk)
+                    remaining -= len(chunk)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        except OSError as exc:
+            _log.debug(f"Media streaming error: {exc}")
+            try:
+                self.send_error(404)
+            except Exception:
+                pass
+
+    def _send_range_error(self, file_size):
+        self.send_response(416)
+        self.send_header("Content-Range", f"bytes */{file_size}")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+
+
 class DownloaderBridgeAPI:
     """ULTRA Bridge API - Interface between Python backend and WebView frontend"""
     
@@ -212,12 +320,19 @@ class DownloaderBridgeAPI:
         self._startup_time = time.time()
         self._installer_launched = False
         self._download_thread = None
+        self._media_server = None
+        self._media_port = None
+        self._media_lock = threading.Lock()
+        self._media_tokens = {}
+        self._media_path_tokens = {}
         
         ExtensionHTTPHandler.bridge_api = self
+        MediaHTTPHandler.bridge_api = self
         
         _log.info(f"Bridge API initialized. Save dir: {self.save_dir}")
         
         # Start all background services
+        self._start_local_media_server()
         self._start_local_extension_server()
         self._trigger_bg_auto_updates()
         self._start_auto_cache_cleaner()
@@ -321,6 +436,55 @@ class DownloaderBridgeAPI:
             js_code = f"if (typeof handleExtensionInput === 'function') handleExtensionInput({json.dumps(url)});"
             self._window.evaluate_js(js_code)
             _log.debug(f"Extension URL forwarded to UI: {url[:80]}...")
+
+    def _start_local_media_server(self):
+        """Start a private random-port server used only for local media playback."""
+        try:
+            self._media_server = ThreadingHTTPServer(("127.0.0.1", 0), MediaHTTPHandler)
+            self._media_server.daemon_threads = True
+            self._media_port = int(self._media_server.server_port)
+            threading.Thread(
+                target=self._media_server.serve_forever,
+                daemon=True,
+                name="MediaServer",
+            ).start()
+            _log.info(f"Local media server started on port {self._media_port}")
+        except Exception as exc:
+            self._media_server = None
+            self._media_port = None
+            _log.warning(f"Local media server failed: {exc}")
+
+    def _register_media_file(self, filepath):
+        """Return a tokenized HTTP URL for a real local audio file."""
+        try:
+            path = Path(filepath).resolve(strict=True)
+            if not path.is_file() or not self._media_port:
+                return path.as_uri()
+            normalized = os.path.normcase(str(path))
+            with self._media_lock:
+                token = self._media_path_tokens.get(normalized)
+                if not token:
+                    token = secrets.token_urlsafe(32)
+                    self._media_path_tokens[normalized] = token
+                    self._media_tokens[token] = str(path)
+            return f"http://127.0.0.1:{self._media_port}/media/{token}"
+        except Exception as exc:
+            _log.debug(f"Could not register media file {filepath}: {exc}")
+            try:
+                return Path(filepath).resolve().as_uri()
+            except Exception:
+                return str(filepath).replace("\\", "/")
+
+    def resolve_media_token(self, token):
+        with self._media_lock:
+            filepath = self._media_tokens.get(token)
+        if filepath and os.path.isfile(filepath):
+            return filepath
+        return None
+
+    def get_media_url(self, filepath):
+        """Bridge method for resolving a local file to a WebView-playable URL."""
+        return self._register_media_file(filepath)
 
     # ================================================================
     # Config & History management with corruption recovery
@@ -497,10 +661,7 @@ class DownloaderBridgeAPI:
                 if not entry.is_file() or entry.suffix.lower() not in audio_exts:
                     continue
                 resolved = str(entry.resolve())
-                try:
-                    playable_url = entry.resolve().as_uri()
-                except Exception:
-                    playable_url = resolved.replace('\\', '/')
+                playable_url = self._register_media_file(resolved)
                 tracks.append({
                     'title': entry.stem,
                     'uploader': entry.parent.name if entry.parent != Path(scan_dir) else 'مجلد التنزيلات',
@@ -533,7 +694,7 @@ class DownloaderBridgeAPI:
                 tracks = []
                 for fpath in result:
                     path_obj = Path(fpath).resolve()
-                    playable_url = path_obj.as_uri()
+                    playable_url = self._register_media_file(str(path_obj))
                     tracks.append({
                         'title': path_obj.stem,
                         'uploader': 'مضافة يدوياً',
@@ -646,6 +807,11 @@ class DownloaderBridgeAPI:
             quality_label = option.get('label') or option.get('quality_tag') or 'جودة افتراضية'
             media_type = option.get('type') or 'video'
             downloaded_files = result.get('files') or []
+            if media_type == 'audio':
+                for file_item in downloaded_files:
+                    filepath = file_item.get('filepath') or ''
+                    if filepath:
+                        file_item['playable_url'] = self._register_media_file(filepath)
             for file_item in downloaded_files:
                 self.add_history({
                     'title': file_item.get('title') or media_title,

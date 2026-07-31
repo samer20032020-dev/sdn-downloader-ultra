@@ -66,6 +66,23 @@ def clean_url(url: str) -> str:
         parsed = urllib.parse.urlsplit(value)
         host = (parsed.hostname or "").lower()
         query = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
+        playlist_id = (query.get("list") or [""])[0].strip()
+
+        if playlist_id and (
+            host in {"youtu.be", "www.youtu.be"}
+            or host.endswith("youtube.com")
+        ):
+            # A watch/share link copied while browsing a playlist should expose
+            # the complete list in the UI. Individual items remain selectable.
+            return urllib.parse.urlunsplit(
+                (
+                    "https",
+                    "www.youtube.com",
+                    "/playlist",
+                    urllib.parse.urlencode({"list": playlist_id}),
+                    "",
+                )
+            )
 
         if host in {"youtu.be", "www.youtu.be"}:
             video_id = parsed.path.strip("/").split("/", 1)[0]

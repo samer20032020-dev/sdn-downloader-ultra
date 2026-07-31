@@ -1099,7 +1099,7 @@ input:checked + .slider:before { transform: translateX(20px); }
       <!-- Update Header Button -->
       <button id="headerUpdateBtn" onclick="onHeaderUpdateClick()" class="update-header-btn" title="فحص التحديثات" style="display:none;">
         <i class="fas fa-cog" id="updateHeaderIcon"></i>
-        <span id="updateHeaderTxt">v1.0.0</span>
+        <span id="updateHeaderTxt">v1.0.1</span>
       </button>
     </div>
   </header>
@@ -1153,7 +1153,7 @@ input:checked + .slider:before { transform: translateX(20px); }
           </div>
         </div>
 
-        <div style="background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.3); color:#38bdf8; padding:5px 14px; border-radius:20px; font-size:0.8rem; font-weight:800; margin-bottom:12px; display:inline-flex; align-items:center; gap:6px;">✨ الإصدار المتكامل v1.0.0 - Smart Media Engine ⚡</div>
+        <div style="background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.3); color:#38bdf8; padding:5px 14px; border-radius:20px; font-size:0.8rem; font-weight:800; margin-bottom:12px; display:inline-flex; align-items:center; gap:6px;">✨ الإصدار المتكامل v1.0.1 - Smart Media Engine ⚡</div>
         <h1 class="shimmer-title">مركز التحميل الذكي ⚡</h1>
         <p style="font-size:0.95rem; color:#94a3b8; font-weight:500; max-width:440px; line-height:1.6; z-index:2; margin-bottom:14px;">ضع رابطك أعلاه لتنزيل الفيديوهات والصوتيات بأعلى جودة فوراً 🚀</p>
 
@@ -1179,7 +1179,7 @@ input:checked + .slider:before { transform: translateX(20px); }
         </div>
 
         <button onclick="toast('✨ تم تفعيل وضع المحلل الهولوجرامي بنجاح!')" style="padding:6px 16px; border-radius:12px; background:linear-gradient(135deg, rgba(56,189,248,0.2) 0%, rgba(99,102,241,0.2) 100%); border:1px solid rgba(56,189,248,0.4); color:var(--primary); font-size:0.78rem; font-weight:800; cursor:pointer; font-family:inherit; transition:all 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-          🚀 محرك التنزيل الذكي v1.0.0
+          🚀 محرك التنزيل الذكي v1.0.1
         </button>
       </section>
 
@@ -1370,7 +1370,7 @@ input:checked + .slider:before { transform: translateX(20px); }
         <div class="settings-item">
           <div class="settings-label">
             <span class="settings-title">إصدار التطبيق الحالي</span>
-            <span class="settings-desc">SDN v1.0.0</span>
+            <span class="settings-desc">SDN v1.0.1</span>
           </div>
           <button class="header-btn" id="checkUpdatesManualBtn" style="width:auto; padding:0 10px; font-size:0.78rem; color:var(--primary);">فحص التحديثات</button>
         </div>
@@ -1601,6 +1601,20 @@ function getPlayableTrackUrl(track) {
   return /^[A-Za-z]:\//.test(normalized) ? encodeURI('file:///' + normalized) : encodeURI(normalized);
 }
 
+function normalizeMediaSourceUrl(value) {
+  const source = String(value || '').trim();
+  try {
+    const parsed = new URL(source);
+    const host = parsed.hostname.toLowerCase();
+    const playlistId = parsed.searchParams.get('list');
+    const isYouTube = host === 'youtu.be' || host === 'youtube.com' || host.endsWith('.youtube.com');
+    if (isYouTube && playlistId) {
+      return `https://www.youtube.com/playlist?list=${encodeURIComponent(playlistId)}`;
+    }
+  } catch (_) {}
+  return source;
+}
+
 function scanMusicLibrary() {
   if (window.pywebview?.api?.scan_music_folder) {
     return window.pywebview.api.scan_music_folder();
@@ -1723,6 +1737,8 @@ if (window.pywebview?.api?.get_save_dir) {
 
 /* ── Lark Player Audio Engine & Playlist State ── */
 const gAudio = new Audio();
+gAudio.preload = 'metadata';
+gAudio.crossOrigin = 'anonymous';
 let gPlaylist = [];
 let gCurrentTrackIndex = -1;
 let gRepeatMode = 'none'; // 'none' | 'one' | 'all'
@@ -2476,8 +2492,10 @@ window.onAndroidMediaInfo = function(payload) {
 
 /* ── Fetch Action ── */
 function doFetch() {
-  const url = document.getElementById('urlInp').value.trim();
+  const input = document.getElementById('urlInp');
+  const url = normalizeMediaSourceUrl(input.value);
   if (!url) { toast('⚠️ أدخل رابطاً أولاً'); return; }
+  if (input.value.trim() !== url) input.value = url;
   if (gBusy) return;
   gBusy = true;
 
@@ -2693,11 +2711,18 @@ function renderTabOptions(optionsList) {
 function updateDownloadPlaylistSummary() {
   const items = Array.from(document.querySelectorAll('.download-playlist-check'));
   const selected = items.filter(item => item.checked).length;
+  const isFullPlaylist = items.length > 0 && selected === items.length;
   const summary = document.getElementById('downloadPlaylistSummary');
-  if (summary) summary.textContent = `📚 تم تحديد ${selected} من ${items.length}`;
+  if (summary) {
+    summary.textContent = isFullPlaylist
+      ? `📚 القائمة كاملة: ${items.length} عنصر`
+      : `📚 تم تحديد ${selected} من ${items.length}`;
+  }
   const dlBtn = document.getElementById('dlBtn');
   if (dlBtn && !gDownloadActive) {
-    dlBtn.textContent = selected > 0 ? `⚡ تنزيل ${selected} عنصر` : '⚠️ اختر عناصر للتنزيل';
+    dlBtn.textContent = selected === 0
+      ? '⚠️ اختر عناصر للتنزيل'
+      : (isFullPlaylist ? `⚡ تنزيل القائمة كاملة (${items.length})` : `⚡ تنزيل ${selected} عنصر`);
   }
 }
 
@@ -2794,20 +2819,30 @@ document.getElementById('dlBtn').addEventListener('click', async () => {
   document.getElementById('progFill').style.background = '';
   document.getElementById('progFill').style.width = '0%';
 
-  const playlistItems = Array.from(document.querySelectorAll('.download-playlist-check:checked'))
+  const playlistCheckboxes = Array.from(document.querySelectorAll('.download-playlist-check'));
+  const selectedPlaylistItems = playlistCheckboxes
+    .filter(item => item.checked)
     .map(item => Number(item.dataset.index))
     .filter(Number.isFinite);
-  if (gData.is_playlist && playlistItems.length === 0) {
+  if (gData.is_playlist && selectedPlaylistItems.length === 0) {
     toast('⚠️ اختر عنصرًا واحدًا على الأقل من القائمة');
     return;
   }
+  const downloadFullPlaylist = Boolean(
+    gData.is_playlist
+    && playlistCheckboxes.length > 0
+    && selectedPlaylistItems.length === playlistCheckboxes.length
+  );
 
   const sourceUrl = gData.cleaned_url || gData.source_url || document.getElementById('urlInp').value;
   const requestOption = {
     ...gOpt,
     is_playlist: Boolean(gData.is_playlist),
-    playlist_items: playlistItems,
-    playlist_count: playlistItems.length || gData.entry_count || 1,
+    playlist_items: downloadFullPlaylist ? [] : selectedPlaylistItems,
+    playlist_mode: downloadFullPlaylist ? 'all' : 'selected',
+    playlist_count: downloadFullPlaylist
+      ? (gData.entry_count || playlistCheckboxes.length)
+      : (selectedPlaylistItems.length || 1),
     media_title: gData.title || '',
     media_uploader: gData.uploader || '',
   };
@@ -2991,7 +3026,7 @@ function incrementDlCounter() {
   num.style.animation = 'dlBadgeBump 0.35s ease';
 }
 
-const CURRENT_VERSION = '1.0.0';
+const CURRENT_VERSION = '1.0.1';
 let gLatestReleaseUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
 
 function compareVersions(left, right) {

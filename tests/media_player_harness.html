@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>SDN media playback test</title>
+<body>
+  <audio id="player" preload="metadata" crossorigin="anonymous"></audio>
+  <button id="playButton" type="button">Play test audio</button>
+  <output id="status">waiting</output>
+  <script>
+    const player = document.getElementById('player');
+    const status = document.getElementById('status');
+    player.src = new URLSearchParams(location.search).get('url') || '';
+    player.addEventListener('loadedmetadata', () => {
+      status.textContent = `ready:${player.duration.toFixed(2)}`;
+    });
+    player.addEventListener('timeupdate', () => {
+      if (!player.paused && player.currentTime > 0) {
+        status.textContent = `playing:${player.currentTime.toFixed(2)}`;
+      }
+    });
+    player.addEventListener('error', () => {
+      status.textContent = `error:${player.error?.code || 0}`;
+    });
+    document.getElementById('playButton').addEventListener('click', async () => {
+      try {
+        await player.play();
+        status.textContent = 'playing:0.00';
+      } catch (error) {
+        status.textContent = `rejected:${error.name}`;
+      }
+    });
+  </script>
+</body>
+</html>

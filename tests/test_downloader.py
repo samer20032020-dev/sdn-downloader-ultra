@@ -74,10 +74,15 @@ class DownloaderTests(unittest.TestCase):
     def setUp(self):
         FakeYoutubeDL.instances = []
 
-    def test_clean_url_preserves_playlist_parameters(self):
+    def test_clean_url_promotes_playlist_links_to_the_complete_list(self):
         cleaned = downloader.clean_url("https://youtu.be/abc123?list=PL42&t=5")
+        parsed = downloader.urllib.parse.urlsplit(cleaned)
+        self.assertEqual(parsed.path, "/playlist")
+        self.assertEqual(downloader.urllib.parse.parse_qs(parsed.query), {"list": ["PL42"]})
+
+    def test_clean_url_keeps_a_single_shared_video(self):
+        cleaned = downloader.clean_url("https://youtu.be/abc123?t=5")
         self.assertIn("v=abc123", cleaned)
-        self.assertIn("list=PL42", cleaned)
         self.assertIn("t=5", cleaned)
 
     def test_options_have_distinct_quality_tags(self):
@@ -139,6 +144,23 @@ class DownloaderTests(unittest.TestCase):
         self.assertEqual(settings["postprocessors"][0]["preferredcodec"], "m4a")
         self.assertEqual(result["media_type"], "audio")
         self.assertTrue(result["files"][0]["playable_url"].startswith("file:"))
+
+    @patch("downloader.yt_dlp.YoutubeDL", FakeYoutubeDL)
+    def test_full_playlist_download_does_not_limit_playlist_items(self):
+        option = {
+            "type": "video",
+            "ext": "mp4",
+            "quality_tag": "720p",
+            "format_id": "best",
+            "is_playlist": True,
+            "playlist_items": [],
+            "playlist_count": 25,
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            downloader.MediaDownloader().download("https://example.com/list", option, directory)
+        settings = FakeYoutubeDL.instances[-1].options
+        self.assertFalse(settings["noplaylist"])
+        self.assertNotIn("playlist_items", settings)
 
     def test_error_messages_are_user_friendly(self):
         self.assertIn("خاص", downloader.clean_error_message("ERROR: Private video"))
