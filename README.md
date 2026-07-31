@@ -1,44 +1,66 @@
-# ⚡ SDN Downloader Ultra Edition
+# ⚡ SDN Downloader Ultra
 
-تطبيق تنزيل الفيديوهات والصوتيات الفائق والأسرع لهواتف الأندرويد (**Android APK**) وأجهزة الكمبيوتر (**Windows EXE**).
+تطبيق عربي متكامل لتنزيل الفيديو والصوت وقوائم التشغيل على Windows وAndroid، مبني على `yt-dlp` و`FFmpeg`.
 
 [![GitHub release](https://img.shields.io/github/v/release/samer20032020-dev/sdn-downloader-ultra?color=38bdf8&style=for-the-badge)](https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest)
 [![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Windows-6366f1?style=for-the-badge)](https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest)
 
----
+## التنزيل
 
-## 📥 روابط التنزيل المباشر (Direct Downloads)
+| المنصة | الملف | رابط مباشر لأحدث إصدار |
+|---|---|---|
+| Android | `SDN_Downloader_Ultra.apk` | [تنزيل APK](https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest/download/SDN_Downloader_Ultra.apk) |
+| Windows Setup | `SDN_Downloader_Setup.exe` | [تنزيل المثبت](https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest/download/SDN_Downloader_Setup.exe) |
+| Windows Portable | `SDN_Downloader_Standalone.exe` | [تنزيل النسخة المحمولة](https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest/download/SDN_Downloader_Standalone.exe) |
 
-| المنصة | نوع الملف | رابط التحميل المباشر |
-| :--- | :--- | :--- |
-| 📱 **أندرويد (Android)** | APK Application | [👇 تنزيل SDN_Downloader_Ultra.apk](https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/download/v2.0.0/SDN_Downloader_Ultra.apk) |
-| 💻 **ويندوز (Windows Setup)** | Installer | [👇 تنزيل SDN_Downloader_Setup.exe](https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/download/v2.0.0/SDN_Downloader_Setup.exe) |
-| ⚡ **ويندوز محمول (Portable)** | Portable EXE | [👇 تنزيل SDN_Downloader_Standalone.exe](https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/download/v2.0.0/SDN_Downloader_Standalone.exe) |
+## أهم الميزات
 
----
+- تنزيل فيديو واحد أكثر من مرة بجودات مختلفة أو بالجودة نفسها من دون استبدال الملفات السابقة.
+- تنزيل قائمة تشغيل كاملة أو تحديد عناصر معيّنة منها.
+- جودات فيديو من 144p حتى 4K وأفضل جودة متاحة، مع دمج الفيديو والصوت تلقائيًا.
+- صيغ صوت MP3 بعدة معدلات، وM4A وFLAC.
+- مشغل أغاني مدمج يدعم MP3 وM4A وAAC وFLAC وOGG وOPUS وWAV وWMA.
+- فحص مجلد التنزيل بكل مجلداته الفرعية، وهذا يشمل مجلدات قوائم التشغيل.
+- تقدم تفصيلي، سرعة، وقت متبقٍ، تقدم كل عنصر في القائمة، وإلغاء التنزيل.
+- استكمال التنزيل المتقطع وإعادة المحاولة تلقائيًا عند أخطاء الشبكة المؤقتة.
+- دعم Cookies من المتصفح أو ملف Cookies للمحتوى الذي يسمح حساب المستخدم بالوصول إليه.
+- فحص تحديثات تلقائي من GitHub، وتنزيل آمن لمثبت Windows مع التحقق من الملف وبصمته عند توفرها.
+- محرك `yt-dlp + FFmpeg` مدمج في تطبيق Android، مع تحديث دوري لمحرك الاستخراج.
+- استقبال الروابط من قائمة المشاركة في Android.
 
-## 🌟 أبرز مميزات التطبيق
+يدعم `yt-dlp` عددًا كبيرًا من المنصات. قد تتغير آليات بعض المواقع دون إشعار، لذلك يُنصح دائمًا باستخدام أحدث إصدار من التطبيق.
 
-1. ⚡ **تكامل تام مع نظام المشاركة (Android Share Sheet)**:
-   - قم بمشاركة أي رابط فيديو من إنستغرام، يوتيوب، تيك توك، أو فيسبوك مباشرة إلى التطبيق ليتم جلبه وبدء التنزيل فوراً.
-2. 🚀 **دعم +1000 موقع ومنصة ميديا**:
-   - تنزيل بجودة Full HD 1080p, 720p, 480p أو استخراج الصوت بوضوح عالي MP3.
-3. 🎨 **تصميم عصري بـ 3 أقسام فقط**:
-   - الرئيسية 🏠 | السجل 🕒 | الإعدادات ⚙️
-4. 🌙 **دعم الثيم الداكن والفاتح (Dark / Light Theme)**.
-5. 🔔 **تحديثات تلقائية من GitHub**:
-   - التنبيه الفوري داخل التطبيق عند نشر أي إصدار جديد.
+## التشغيل والتطوير
 
----
+يتطلب إصدار Windows بيئة Python حديثة:
 
-## 🛠️ للتطوير والتجميع المحلي (Local Development)
-
-```bash
-# تشغيل نسخة الكمبيوتر:
+```powershell
+python -m pip install -r requirements.txt
 python main.py
-
-# تجميع تطبيق الأندرويد:
-npx cap sync
-cd android
-./gradlew assembleDebug
 ```
+
+فحص المصدر:
+
+```powershell
+python -m unittest discover -s tests -v
+python -m py_compile main.py downloader.py installer_gui.py
+```
+
+بناء Windows:
+
+```powershell
+python -m PyInstaller --noconfirm --clean build_onefile.spec
+python -m PyInstaller --noconfirm --clean installer_gui.spec
+```
+
+بناء Android داخل `dist/`:
+
+```powershell
+python build_and_upload_apk.py --no-upload
+```
+
+## ملاحظات
+
+- استخدم التطبيق فقط لتنزيل محتوى تملكه أو لديك إذن بتنزيله، والتزم بشروط المنصة والقوانين المحلية.
+- مكتبة Android `youtubedl-android` مرخصة بـ GPL-3.0. راجع [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+- ملفات الإصدار الكبيرة لا تُحفظ في Git، بل تُرفع كأصول داخل GitHub Releases.

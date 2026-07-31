@@ -13,6 +13,7 @@ if os.path.exists('ffmpeg.exe'):
 hiddenimports = [
     'requests', 'urllib.parse', 'http.server', 'wsgiref.simple_server',
     'app_logger', 'concurrent.futures', 'certifi', 'urllib3',
+    'version',
     'yt_dlp.utils', 'yt_dlp.extractor', 'yt_dlp.postprocessor',
 ]
 

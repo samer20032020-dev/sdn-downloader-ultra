@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 > NUL
-title SDN v0.1.0
+title SDN v1.0.0
 echo جاري تشغيل SDN...
 pythonw "%~dp0main.py"
 if errorlevel 1 (

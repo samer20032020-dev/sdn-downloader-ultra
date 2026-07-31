@@ -14,7 +14,7 @@ elif os.path.exists('SDN_Downloader_Standalone.exe'):
 elif os.path.exists('dist/SDN_Downloader_App'):
     datas.append(('dist/SDN_Downloader_App', 'SDN_Downloader_App'))
 binaries = []
-hiddenimports = ['webview', 'clr', 'pythonnet', 'clr_loader']
+hiddenimports = ['webview', 'clr', 'pythonnet', 'clr_loader', 'version']
 
 for pkg in ('pywebview', 'clr_loader', 'pythonnet'):
     try:

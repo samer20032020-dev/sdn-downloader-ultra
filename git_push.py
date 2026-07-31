@@ -11,6 +11,7 @@ import json
 import urllib.request
 import urllib.error
 import shutil
+from version import APP_VERSION, RELEASE_TAG
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
@@ -20,21 +21,17 @@ if hasattr(sys.stdout, 'reconfigure'):
 # ============================================================
 REPO          = "samer20032020-dev/sdn-downloader-ultra"
 BRANCH        = "main"
-RELEASE_TAG   = "v0.7.0"
-RELEASE_NAME  = "SDN v0.7.0"
+RELEASE_NAME  = f"SDN v{APP_VERSION}"
 RELEASE_BODY  = (
-    "## ⚡ SDN v0.7.0 — المحلل الهولوجرامي والمؤثرات النيونية الفائقة\n\n"
+    f"## ⚡ SDN v{APP_VERSION} — الإصدار المتكامل\n\n"
     "### ✨ الميزات والإصلاحات الجديدة:\n"
-    "- 🌌 إضافة ميزة Cyber Visualizer والمحلل الهولوجرامي بتأثيرات نيونية متحركة\n"
-    "- 🛑 حظر تكرار فتح نافذة المثبت نهائياً (Single Instance Protection)\n"
-    "- 🎵 مشغل صوتيات متكامل يمسح مجلد التنزيلات تلقائياً عند الفتح\n"
-    "- ➕ زر إضافة ملفات صوتية من أي مكان في الكمبيوتر\n"
-    "- 🗑️ زر حذف لكل أغنية مع خيار حذف الملف من القرص\n"
-    "- 🔢 ترقيم الأغاني في القائمة وعرض صيغة الملف (MP3/FLAC/...)\n"
-    "- 🔍 بحث في الأغاني بالاسم أو اسم المصدر\n"
-    "- 🔇 زر كتم الصوت مع عرض نسبة الصوت كنسبة مئوية\n"
-    "- 📂 شارة مجلد التنزيل قابلة للنقر لفتح المجلد\n"
-    "- ✅ حل مشكلة الأغاني الوهمية (localStorage محذوف)\n"
+    "- 📚 تنزيل قوائم التشغيل كاملة أو تحديد عناصر منها من YouTube والمنصات المدعومة\n"
+    "- 🎞️ تنزيل الفيديو نفسه بجودات مختلفة مع أسماء فريدة دون استبدال الملفات السابقة\n"
+    "- 🎵 إصلاح مشغل الصوت ومسح مجلدات القوائم الفرعية وتشغيل MP3/M4A/FLAC وغيرها\n"
+    "- 📱 محرك yt-dlp وFFmpeg حقيقي داخل نسخة Android بدل روابط تنزيل وهمية\n"
+    "- 🔄 فحص تحديثات تلقائي وآمن مع مقارنة صحيحة للإصدارات والتحقق من بصمة الملف\n"
+    "- ⏹️ إلغاء التنزيل، متابعة التنزيلات المتقطعة، وإظهار تقدم عناصر القوائم\n"
+    "- 🔐 تحسين التحقق من الروابط ورسائل الأخطاء وأمان بيانات الواجهة\n"
 )
 
 DIST_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dist")
@@ -107,7 +104,7 @@ def run_git(*args, cwd=None, check=True):
 # ============================================================
 def github_request(url, method="GET", data=None, headers=None, token=None):
     """إرسال طلب إلى GitHub API"""
-    _headers = {"User-Agent": "SDN-AutoPush/2.4.0", "Accept": "application/vnd.github+json"}
+    _headers = {"User-Agent": f"SDN-AutoPush/{APP_VERSION}", "Accept": "application/vnd.github+json"}
     if token:
         _headers["Authorization"] = f"Bearer {token}"
     if headers:
@@ -137,6 +134,7 @@ def get_or_create_release(token):
     print(f"  📌 إنشاء Release جديد برقم: {RELEASE_TAG}...")
     payload = json.dumps({
         "tag_name": RELEASE_TAG,
+        "target_commitish": BRANCH,
         "name": RELEASE_NAME,
         "body": RELEASE_BODY,
         "draft": False,
@@ -231,9 +229,15 @@ def main():
     # 2. Git Push
     print("\n📤 رفع الكود إلى GitHub...")
     run_git("add", "-A")
-    run_git("commit", "-m", f"🔄 Auto-sync: source code update [{RELEASE_TAG}]", check=False)
-    run_git("push", "origin", BRANCH, check=False)
-    print("✅ Push تم بنجاح (أو لا يوجد تغييرات جديدة)")
+    commit_result = run_git("commit", "-m", f"🚀 SDN {RELEASE_TAG}: integrated downloader release", check=False)
+    if commit_result.returncode not in (0, 1):
+        print("❌ تعذر إنشاء commit")
+        sys.exit(commit_result.returncode)
+    push_result = run_git("push", "origin", BRANCH, check=False)
+    if push_result.returncode != 0:
+        print("❌ فشل رفع الكود إلى GitHub")
+        sys.exit(push_result.returncode)
+    print("✅ تم رفع الكود إلى GitHub")
 
     # 3. GITHUB_TOKEN
     token = get_github_token()

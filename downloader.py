@@ -1,385 +1,735 @@
+# -*- coding: utf-8 -*-
+"""Reliable yt-dlp based media engine used by the desktop application."""
+
+from __future__ import annotations
+
+import glob
+import json
 import os
-import sys
+import re
 import shutil
 import subprocess
-import re
+import sys
+import threading
+import time
 import urllib.parse
+import uuid
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Callable
+
 import yt_dlp
 
-def get_ffmpeg_path():
-    if getattr(sys, 'frozen', False):
+
+ProgressCallback = Callable[[dict[str, Any]], None]
+StatusCallback = Callable[[str], None]
+
+MEDIA_EXTENSIONS = {
+    ".mp4", ".mkv", ".webm", ".mov", ".avi",
+    ".mp3", ".m4a", ".aac", ".flac", ".ogg", ".opus", ".wav", ".wma",
+}
+
+
+class DownloadCancelled(Exception):
+    """Raised from a yt-dlp hook when the user cancels the active download."""
+
+
+def get_ffmpeg_path() -> str:
+    if getattr(sys, "frozen", False):
         base = sys._MEIPASS
     else:
         base = os.path.dirname(os.path.abspath(__file__))
-    candidate = os.path.join(base, 'ffmpeg.exe')
-    if os.path.exists(candidate):
+
+    candidate = os.path.join(base, "ffmpeg.exe")
+    if os.path.isfile(candidate):
         return candidate
 
     try:
         import imageio_ffmpeg
+
         ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
-        if ffmpeg_exe and os.path.exists(ffmpeg_exe):
+        if ffmpeg_exe and os.path.isfile(ffmpeg_exe):
             return ffmpeg_exe
     except Exception:
         pass
 
-    return shutil.which('ffmpeg') or 'ffmpeg'
+    return shutil.which("ffmpeg") or "ffmpeg"
 
-def clean_url(url):
-    url = (url or '').strip()
-    if 'youtu.be/' in url:
-        part = url.split('youtu.be/')[1].split('?')[0].split('/')[0]
-        return f'https://www.youtube.com/watch?v={part}'
-    if 'youtube.com/shorts/' in url:
-        part = url.split('/shorts/')[1].split('?')[0].split('/')[0]
-        return f'https://www.youtube.com/watch?v={part}'
-    return url
 
-def clean_error_message(err):
-    err_str = str(err)
-    if 'video unavailable' in err_str.lower() or 'is unavailable' in err_str.lower():
-        return '❌ هذا المقطع لم يعد متوفر في يوتيوب.'
-    if 'private video' in err_str.lower() or "sign in if you've been granted access" in err_str.lower():
-        return '🔒 هذا المقطع خاص.'
-    if '404' in err_str or 'not found' in err_str.lower():
-        return '🔒 هذه القائمة خاصة بك في يوتيوب أو غير موجودة.'
-    if 'network' in err_str.lower() or 'connection' in err_str.lower() or 'timed out' in err_str.lower():
-        return '🌐 تعذر الاتصال بالشبكة. يرجى التحقق من اتصال الإنترنت.'
-    err_str = re.sub(r'ERROR:\s*\[.*?\]\s*', '', err_str)
-    return err_str.strip()
+def clean_url(url: str) -> str:
+    """Normalize common YouTube links without discarding playlist parameters."""
+    value = (url or "").strip()
+    if not value:
+        return ""
 
-def validate_link(url, proxy=None):
-    url = clean_url(url)
-    ydl_opts = {
-        'quiet': True,
-        'no_warnings': True,
-        'extract_flat': True,
-        'nocheckcertificate': True,
-        'socket_timeout': 10,
-    }
-    if proxy:
-        ydl_opts['proxy'] = proxy
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            if not info:
-                return {'valid': False, 'reason': 'تعذر الوصول للرابط أو المنصة غير مدعومة'}
-            title = info.get('title') or 'مقطع فيديو'
-            platform = info.get('extractor_key') or 'منصة غير معروفة'
-            return {
-                'valid': True,
-                'title': title,
-                'platform': platform,
-                'cleaned_url': url
-            }
-    except Exception as e:
-        err = str(e)
-        if 'Private video' in err or 'خاص' in err:
-            reason = 'الفيديو خاص (Private)'
-        elif 'unavailable' in err or 'محذوف' in err:
-            reason = 'الفيديو غير متاح أو محذوف'
-        elif 'Geo' in err or 'country' in err:
-            reason = 'الفيديو محظور في منطقتك الجغرافية'
-        else:
-            reason = clean_error_message(err) or 'فشل فحص الرابط'
-        return {'valid': False, 'reason': reason}
+        parsed = urllib.parse.urlsplit(value)
+        host = (parsed.hostname or "").lower()
+        query = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
 
-def auto_update_ytdlp():
-    try:
-        if not getattr(sys, 'frozen', False):
-            subprocess.run([sys.executable, '-m', 'pip', 'install', '-U', 'yt-dlp'], capture_output=True)
+        if host in {"youtu.be", "www.youtu.be"}:
+            video_id = parsed.path.strip("/").split("/", 1)[0]
+            if video_id:
+                query["v"] = [video_id]
+                return urllib.parse.urlunsplit(
+                    ("https", "www.youtube.com", "/watch", urllib.parse.urlencode(query, doseq=True), "")
+                )
+
+        if host.endswith("youtube.com") and parsed.path.startswith("/shorts/"):
+            video_id = parsed.path.split("/shorts/", 1)[1].split("/", 1)[0]
+            if video_id:
+                query["v"] = [video_id]
+                return urllib.parse.urlunsplit(
+                    ("https", "www.youtube.com", "/watch", urllib.parse.urlencode(query, doseq=True), "")
+                )
     except Exception:
-        pass
+        return value
 
-def parse_time_to_seconds(t_str):
-    if not t_str:
+    return value
+
+
+def _is_web_url(url: str) -> bool:
+    try:
+        parsed = urllib.parse.urlsplit(url)
+        return parsed.scheme.lower() in {"http", "https"} and bool(parsed.netloc)
+    except Exception:
+        return False
+
+
+def clean_error_message(err: Exception | str) -> str:
+    text = str(err or "").strip()
+    lowered = text.lower()
+
+    if isinstance(err, DownloadCancelled) or "download cancelled by user" in lowered:
+        return "تم إلغاء التنزيل."
+    if "video unavailable" in lowered or "is unavailable" in lowered:
+        return "❌ هذا المقطع غير متوفر أو حُذف من المنصة."
+    if "private video" in lowered or "sign in if you've been granted access" in lowered:
+        return "🔒 هذا المحتوى خاص. اختر ملف Cookies أو سجّل الدخول في المتصفح."
+    if "members-only" in lowered or "login required" in lowered or "sign in to confirm" in lowered:
+        return "🔐 يتطلب هذا المحتوى تسجيل الدخول. استخدم Cookies من المتصفح."
+    if "unsupported url" in lowered:
+        return "❌ الرابط غير مدعوم حاليًا أو ليس رابط وسائط صالحًا."
+    if "429" in text or "too many requests" in lowered:
+        return "⏳ المنصة حدّت عدد الطلبات مؤقتًا. انتظر قليلًا أو استخدم Cookies/Proxy."
+    if "geo" in lowered or "not available in your country" in lowered:
+        return "🌍 هذا المحتوى غير متاح في منطقتك الجغرافية."
+    if "404" in text or "not found" in lowered:
+        return "❌ الرابط غير موجود أو القائمة خاصة."
+    if any(part in lowered for part in ("network", "connection", "timed out", "temporary failure")):
+        return "🌐 تعذر الاتصال بالشبكة. تحقق من الإنترنت ثم أعد المحاولة."
+    if "ffmpeg" in lowered and ("not found" in lowered or "not installed" in lowered):
+        return "⚙️ ملف FFmpeg المطلوب لدمج الفيديو والصوت غير موجود."
+
+    text = re.sub(r"\x1b\[[0-9;]*m", "", text)
+    text = re.sub(r"(?i)ERROR:\s*(?:\[.*?\]\s*)?", "", text)
+    return text.strip() or "حدث خطأ غير متوقع أثناء معالجة الرابط."
+
+
+def _common_ydl_options(proxy: str | None = None) -> dict[str, Any]:
+    options: dict[str, Any] = {
+        "quiet": True,
+        "no_warnings": True,
+        "noprogress": True,
+        "socket_timeout": 20,
+        "retries": 10,
+        "fragment_retries": 10,
+        "extractor_retries": 3,
+        "file_access_retries": 3,
+        "concurrent_fragment_downloads": 4,
+        "continuedl": True,
+        "windowsfilenames": True,
+    }
+    if proxy and proxy.strip():
+        options["proxy"] = proxy.strip()
+    return options
+
+
+def _apply_cookies(options: dict[str, Any], browser_cookies: str | None) -> None:
+    cookie_source = (browser_cookies or "").strip()
+    if not cookie_source or cookie_source == "none":
+        return
+    if os.path.isfile(cookie_source):
+        options["cookiefile"] = cookie_source
+    else:
+        options["cookiesfrombrowser"] = (cookie_source,)
+
+
+def validate_link(url: str, proxy: str | None = None) -> dict[str, Any]:
+    normalized = clean_url(url)
+    if not _is_web_url(normalized):
+        return {"valid": False, "reason": "أدخل رابطًا يبدأ بـ http:// أو https://"}
+
+    options = _common_ydl_options(proxy)
+    options.update({"extract_flat": True, "playlistend": 1})
+    try:
+        with yt_dlp.YoutubeDL(options) as ydl:
+            info = ydl.extract_info(normalized, download=False)
+        if not info:
+            return {"valid": False, "reason": "تعذر الوصول للرابط أو المنصة غير مدعومة."}
+        return {
+            "valid": True,
+            "title": info.get("title") or "مقطع وسائط",
+            "platform": info.get("extractor_key") or info.get("extractor") or "منصة وسائط",
+            "cleaned_url": normalized,
+        }
+    except Exception as exc:
+        return {"valid": False, "reason": clean_error_message(exc)}
+
+
+def auto_update_ytdlp(force: bool = False) -> dict[str, Any]:
+    """Update yt-dlp in development; packaged apps update it with the app release."""
+    if getattr(sys, "frozen", False):
+        return {
+            "updated": False,
+            "reason": "bundled",
+            "version": getattr(yt_dlp.version, "__version__", "unknown"),
+        }
+
+    state_path = os.path.join(os.path.expanduser("~"), ".sdn_ytdlp_update.json")
+    now = time.time()
+    if not force:
+        try:
+            with open(state_path, "r", encoding="utf-8") as handle:
+                state = json.load(handle)
+            if now - float(state.get("checked_at", 0)) < 24 * 60 * 60:
+                return {
+                    "updated": False,
+                    "reason": "recently_checked",
+                    "version": getattr(yt_dlp.version, "__version__", "unknown"),
+                }
+        except Exception:
+            pass
+
+    try:
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--disable-pip-version-check",
+                "--upgrade",
+                "yt-dlp",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=180,
+        )
+        try:
+            with open(state_path, "w", encoding="utf-8") as handle:
+                json.dump({"checked_at": now, "returncode": result.returncode}, handle)
+        except Exception:
+            pass
+        return {
+            "updated": result.returncode == 0,
+            "reason": "checked",
+            "version": getattr(yt_dlp.version, "__version__", "unknown"),
+        }
+    except Exception as exc:
+        return {"updated": False, "reason": clean_error_message(exc)}
+
+
+def parse_time_to_seconds(time_text: str | None) -> int | None:
+    if not time_text:
         return None
     try:
-        parts = list(map(int, t_str.strip().split(':')))
+        parts = [int(part) for part in time_text.strip().split(":")]
         if len(parts) == 3:
             return parts[0] * 3600 + parts[1] * 60 + parts[2]
-        elif len(parts) == 2:
+        if len(parts) == 2:
             return parts[0] * 60 + parts[1]
-        elif len(parts) == 1:
+        if len(parts) == 1:
             return parts[0]
     except Exception:
         pass
     return None
 
-def format_duration(seconds):
-    if not seconds:
-        return 'غير معروف'
-    try:
-        sec = int(seconds)
-        m, s = divmod(sec, 60)
-        h, m = divmod(m, 60)
-        if h > 0:
-            return f'{h:02d}:{m:02d}:{s:02d}'
-        return f'{m:02d}:{s:02d}'
-    except Exception:
-        return 'غير معروف'
 
-def format_bytes(bytes_num):
-    if not bytes_num:
-        return ''
+def format_duration(seconds: int | float | None) -> str:
+    if seconds is None:
+        return "غير معروف"
     try:
-        b = float(bytes_num)
-        if b < 1024:
-            return f'{b:.0f} B'
-        elif b < 1024 * 1024:
-            return f'{b / 1024:.1f} KB'
-        elif b < 1024 * 1024 * 1024:
-            return f'{b / (1024 * 1024):.1f} MB'
-        else:
-            return f'{b / (1024 * 1024 * 1024):.2f} GB'
+        total = max(0, int(seconds))
+        minutes, secs = divmod(total, 60)
+        hours, minutes = divmod(minutes, 60)
+        return f"{hours:02d}:{minutes:02d}:{secs:02d}" if hours else f"{minutes:02d}:{secs:02d}"
     except Exception:
-        return ''
+        return "غير معروف"
 
-def get_format_size(f, duration=None):
-    fs = f.get('filesize') or f.get('filesize_approx')
-    if fs:
-        return format_bytes(fs)
-    tbr = f.get('tbr')
-    if tbr and duration:
-        est = (tbr * 1000 / 8) * duration
-        return format_bytes(est)
-    return ''
+
+def format_bytes(bytes_num: int | float | None) -> str:
+    if bytes_num is None:
+        return ""
+    try:
+        size = float(bytes_num)
+        for unit in ("B", "KB", "MB", "GB", "TB"):
+            if size < 1024 or unit == "TB":
+                precision = 0 if unit == "B" else (2 if unit in {"GB", "TB"} else 1)
+                return f"{size:.{precision}f} {unit}"
+            size /= 1024
+    except Exception:
+        return ""
+    return ""
+
+
+def get_format_size(fmt: dict[str, Any], duration: int | float | None = None) -> str:
+    file_size = fmt.get("filesize") or fmt.get("filesize_approx")
+    if file_size:
+        return format_bytes(file_size)
+    total_bitrate = fmt.get("tbr")
+    if total_bitrate and duration:
+        return format_bytes((float(total_bitrate) * 1000 / 8) * float(duration))
+    return ""
+
+
+def _video_selector(height: int | None) -> str:
+    height_filter = f"[height<={height}]" if height else ""
+    # Prefer H.264 + M4A for broad Windows/Android compatibility, with resilient fallbacks.
+    return (
+        f"bestvideo{height_filter}[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/"
+        f"bestvideo{height_filter}[ext=mp4]+bestaudio[ext=m4a]/"
+        f"bestvideo{height_filter}+bestaudio/"
+        f"best{height_filter}[ext=mp4]/best{height_filter}/best"
+    )
+
+
+def build_download_options() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    video_specs = [
+        ("🎬 أفضل جودة متاحة", None, "Best"),
+        ("🎥 جودة 4K Ultra HD (2160p)", 2160, "2160p"),
+        ("📺 جودة 2K Quad HD (1440p)", 1440, "1440p"),
+        ("💻 جودة Full HD (1080p)", 1080, "1080p"),
+        ("📱 جودة HD (720p)", 720, "720p"),
+        ("⚙️ جودة SD (480p)", 480, "480p"),
+        ("⚡ جودة خفيفة (360p)", 360, "360p"),
+        ("📉 جودة اقتصادية (240p)", 240, "240p"),
+        ("📦 أصغر حجم فيديو متاح", 144, "144p"),
+    ]
+    video_options = [
+        {
+            "label": label,
+            "format_id": _video_selector(height),
+            "ext": "mp4",
+            "type": "video",
+            "quality_tag": tag,
+            "size_str": "أعلى جودة" if height is None else tag,
+        }
+        for label, height, tag in video_specs
+    ]
+
+    audio_options = [
+        {
+            "label": f"🎵 صوت MP3 بجودة {quality} kbps",
+            "format_id": "bestaudio/best",
+            "ext": "mp3",
+            "type": "audio",
+            "quality": str(quality),
+            "quality_tag": f"MP3-{quality}k",
+            "size_str": f"{quality}k",
+        }
+        for quality in (320, 256, 192, 128, 64)
+    ]
+    audio_options.extend(
+        [
+            {
+                "label": "🎶 صوت M4A/AAC متوافق وعالي الجودة",
+                "format_id": "bestaudio[ext=m4a]/bestaudio/best",
+                "ext": "m4a",
+                "type": "audio",
+                "quality": "256",
+                "quality_tag": "M4A",
+                "size_str": "M4A",
+            },
+            {
+                "label": "🎼 صوت FLAC بدون فقدان",
+                "format_id": "bestaudio/best",
+                "ext": "flac",
+                "type": "audio",
+                "quality": "0",
+                "quality_tag": "FLAC",
+                "size_str": "Lossless",
+            },
+        ]
+    )
+    return video_options, audio_options
+
+
+def _safe_quality_tag(option: dict[str, Any]) -> str:
+    raw = option.get("quality_tag") or option.get("quality") or option.get("ext") or option.get("type") or "media"
+    return re.sub(r"[^0-9A-Za-z._-]+", "-", str(raw)).strip("-")[:32] or "media"
+
+
+def _path_to_uri(path: str | None) -> str:
+    if not path:
+        return ""
+    try:
+        return Path(path).resolve().as_uri()
+    except Exception:
+        return ""
+
 
 class MediaDownloader:
-    def __init__(self):
+    def __init__(self) -> None:
         self.ffmpeg_path = get_ffmpeg_path()
+        self._cancel_event = threading.Event()
+        self._download_lock = threading.Lock()
 
-    def fetch_info(self, url, browser_cookies='none', proxy=None):
-        url = clean_url(url)
-        ydl_opts = {
-            'quiet': True,
-            'no_warnings': True,
-            'extract_flat': 'in_playlist',
-            'nocheckcertificate': True,
-            'ffmpeg_location': self.ffmpeg_path,
+    def cancel(self) -> bool:
+        self._cancel_event.set()
+        return True
+
+    def fetch_info(
+        self,
+        url: str,
+        browser_cookies: str = "none",
+        proxy: str | None = None,
+    ) -> dict[str, Any]:
+        normalized = clean_url(url)
+        if not _is_web_url(normalized):
+            raise ValueError("أدخل رابطًا صالحًا يبدأ بـ http:// أو https://")
+
+        ydl_options = _common_ydl_options(proxy)
+        ydl_options.update(
+            {
+                "extract_flat": "in_playlist",
+                "ffmpeg_location": self.ffmpeg_path,
+            }
+        )
+        _apply_cookies(ydl_options, browser_cookies)
+
+        with yt_dlp.YoutubeDL(ydl_options) as ydl:
+            info = ydl.extract_info(normalized, download=False)
+
+        if not info:
+            raise RuntimeError("تعذر جلب معلومات الرابط. تحقق من الرابط ثم أعد المحاولة.")
+
+        video_options, audio_options = build_download_options()
+        entries = info.get("entries")
+        is_playlist = info.get("_type") in {"playlist", "multi_video"} or isinstance(entries, (list, tuple))
+
+        if is_playlist:
+            items: list[dict[str, Any]] = []
+            for fallback_index, entry in enumerate(entries or [], 1):
+                if not entry:
+                    continue
+                media_id = entry.get("id") or ""
+                entry_url = entry.get("webpage_url") or entry.get("original_url") or entry.get("url") or ""
+                if entry_url and not str(entry_url).startswith(("http://", "https://")) and media_id:
+                    entry_url = f"https://www.youtube.com/watch?v={media_id}"
+                index = entry.get("playlist_index") or fallback_index
+                thumbnail = entry.get("thumbnail")
+                if not thumbnail and media_id:
+                    thumbnail = f"https://i.ytimg.com/vi/{media_id}/hqdefault.jpg"
+                items.append(
+                    {
+                        "index": int(index),
+                        "title": entry.get("title") or f"مقطع {fallback_index}",
+                        "url": entry_url,
+                        "duration": format_duration(entry.get("duration")),
+                        "thumbnail": thumbnail or "",
+                        "selected": True,
+                    }
+                )
+
+            if not items:
+                raise RuntimeError("القائمة فارغة أو خاصة ولا تحتوي عناصر قابلة للتنزيل.")
+
+            return {
+                "is_playlist": True,
+                "title": info.get("title") or "قائمة تشغيل",
+                "uploader": info.get("uploader") or info.get("channel") or info.get("extractor_key") or "منصة وسائط",
+                "thumbnail": info.get("thumbnail") or items[0].get("thumbnail") or "",
+                "entry_count": len(items),
+                "items": items,
+                "video_options": video_options,
+                "audio_options": audio_options,
+                "cleaned_url": normalized,
+            }
+
+        duration = info.get("duration")
+        media_id = info.get("id") or ""
+        thumbnail = info.get("thumbnail") or (
+            f"https://i.ytimg.com/vi/{media_id}/hqdefault.jpg" if media_id else ""
+        )
+        return {
+            "is_playlist": False,
+            "title": info.get("title") or "وسائط بدون عنوان",
+            "uploader": info.get("uploader") or info.get("channel") or "غير معروف",
+            "duration": format_duration(duration),
+            "thumbnail": thumbnail,
+            "extractor": info.get("extractor_key") or info.get("extractor") or "منصة وسائط",
+            "video_options": video_options,
+            "audio_options": audio_options,
+            "cleaned_url": normalized,
         }
-        if proxy:
-            ydl_opts['proxy'] = proxy
-        if browser_cookies and browser_cookies != 'none':
-            if os.path.exists(browser_cookies):
-                ydl_opts['cookiefile'] = browser_cookies
-            else:
-                ydl_opts['cookiesfrombrowser'] = (browser_cookies,)
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            if not info:
-                raise Exception('تعذر جلب معلومات الرابط. يُرجى التحقق من الرابط.')
+    def download(
+        self,
+        url: str,
+        option: dict[str, Any],
+        save_dir: str,
+        progress_callback: ProgressCallback | None = None,
+        status_callback: StatusCallback | None = None,
+        browser_cookies: str = "none",
+    ) -> dict[str, Any]:
+        normalized = clean_url(url)
+        if not _is_web_url(normalized):
+            raise ValueError("الرابط غير صالح.")
+        if not os.path.isdir(save_dir):
+            os.makedirs(save_dir, exist_ok=True)
 
-            is_pl = info.get('_type') == 'playlist' or ('entries' in info and len(info['entries']) > 1)
-            
-            if is_pl:
-                entries = info.get('entries', [])
-                items = []
-                for idx, entry in enumerate(entries, 1):
-                    if not entry:
-                        continue
-                    entry_url = entry.get('url') or entry.get('webpage_url') or f'https://www.youtube.com/watch?v={entry.get("id")}'
-                    items.append({
-                        'index': idx,
-                        'title': entry.get('title') or f'فيديو {idx}',
-                        'url': entry_url,
-                        'duration': format_duration(entry.get('duration')),
-                        'thumbnail': entry.get('thumbnail') or f'https://i.ytimg.com/vi/{entry.get("id")}/hqdefault.jpg',
-                        'selected': True,
-                    })
+        if not self._download_lock.acquire(blocking=False):
+            raise RuntimeError("يوجد تنزيل آخر قيد التنفيذ. انتظر اكتماله أو ألغِه أولًا.")
 
-                v_opts = [
-                    {'label': '🎬 أفضل جودة فائقة مدعومة (8K / 4K / 2K / 1080p)', 'format_id': 'bestvideo+bestaudio/best', 'ext': 'mp4', 'type': 'video', 'size_str': 'أعلى جودة'},
-                    {'label': '🎥 جودة 4K Ultra HD (2160p MP4)', 'format_id': 'bestvideo[height<=2160]+bestaudio/best[height<=2160]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '2160p'},
-                    {'label': '📺 جودة 2K Quad HD (1440p MP4)', 'format_id': 'bestvideo[height<=1440]+bestaudio/best[height<=1440]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '1440p'},
-                    {'label': '💻 جودة عالية جداً Full HD (1080p MP4)', 'format_id': 'bestvideo[height<=1080]+bestaudio/best[height<=1080]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '1080p'},
-                    {'label': '📱 جودة عالية HD (720p MP4)', 'format_id': 'bestvideo[height<=720]+bestaudio/best[height<=720]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '720p'},
-                    {'label': '⚙️ جودة متوسطة SD (480p MP4)', 'format_id': 'bestvideo[height<=480]+bestaudio/best[height<=480]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '480p'},
-                    {'label': '⚡ جودة منخفضة (360p MP4)', 'format_id': 'bestvideo[height<=360]+bestaudio/best[height<=360]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '360p'},
-                    {'label': '📉 جودة اقتصادية جداً (240p / 144p MP4)', 'format_id': 'bestvideo[height<=240]+bestaudio/best[height<=240]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '240p'},
-                ]
-                a_opts = [
-                    {'label': '🎵 صوت نقي عالي الجودة (320 kbps MP3)', 'format_id': 'bestaudio/best', 'ext': 'mp3', 'type': 'audio', 'quality': '320', 'size_str': '320k'},
-                    {'label': '🎧 صوت متوازن ممتازة (256 kbps MP3)', 'format_id': 'bestaudio/best', 'ext': 'mp3', 'type': 'audio', 'quality': '256', 'size_str': '256k'},
-                    {'label': '🎼 صوت قياسي ممتاز (192 kbps MP3)', 'format_id': 'bestaudio/best', 'ext': 'mp3', 'type': 'audio', 'quality': '192', 'size_str': '192k'},
-                    {'label': '🔊 صوت متوسط الجودة (128 kbps MP3)', 'format_id': 'bestaudio/best', 'ext': 'mp3', 'type': 'audio', 'quality': '128', 'size_str': '128k'},
-                    {'label': '💾 صوت اقتصادي صغير (64 kbps MP3)', 'format_id': 'bestaudio/best', 'ext': 'mp3', 'type': 'audio', 'quality': '64', 'size_str': '64k'},
-                    {'label': '🎶 صوت M4A/AAC الأصلي من السيرفر', 'format_id': 'bestaudio[ext=m4a]/bestaudio/best', 'ext': 'm4a', 'type': 'audio', 'quality': '256', 'size_str': 'M4A'},
-                ]
-                return {
-                    'is_playlist': True,
-                    'title': info.get('title') or 'قائمة تشغيل',
-                    'uploader': info.get('uploader') or info.get('channel') or info.get('extractor_key') or 'قناة',
-                    'entry_count': len(items),
-                    'items': items,
-                    'video_options': v_opts,
-                    'audio_options': a_opts,
-                    'cleaned_url': url,
-                }
-            else:
-                duration_sec = info.get('duration')
-                duration_str = format_duration(duration_sec)
-                thumb = info.get('thumbnail') or f'https://i.ytimg.com/vi/{info.get("id")}/hqdefault.jpg'
+        self._cancel_event.clear()
+        try:
+            return self._download_locked(
+                normalized,
+                option,
+                save_dir,
+                progress_callback,
+                status_callback,
+                browser_cookies,
+            )
+        finally:
+            self._download_lock.release()
+            self._cancel_event.clear()
 
-                v_opts = [
-                    {'label': '🎬 أفضل جودة فائقة مدعومة (8K / 4K / 2K / 1080p)', 'format_id': 'bestvideo+bestaudio/best', 'ext': 'mp4', 'type': 'video', 'size_str': 'أعلى جودة'},
-                    {'label': '🎥 جودة 4K Ultra HD (2160p MP4)', 'format_id': 'bestvideo[height<=2160]+bestaudio/best[height<=2160]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '2160p'},
-                    {'label': '📺 جودة 2K Quad HD (1440p MP4)', 'format_id': 'bestvideo[height<=1440]+bestaudio/best[height<=1440]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '1440p'},
-                    {'label': '💻 جودة عالية جداً Full HD (1080p MP4)', 'format_id': 'bestvideo[height<=1080]+bestaudio/best[height<=1080]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '1080p'},
-                    {'label': '📱 جودة عالية HD (720p MP4)', 'format_id': 'bestvideo[height<=720]+bestaudio/best[height<=720]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '720p'},
-                    {'label': '⚙️ جودة متوسطة SD (480p MP4)', 'format_id': 'bestvideo[height<=480]+bestaudio/best[height<=480]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '480p'},
-                    {'label': '⚡ جودة منخفضة (360p MP4)', 'format_id': 'bestvideo[height<=360]+bestaudio/best[height<=360]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '360p'},
-                    {'label': '📉 جودة اقتصادية جداً (240p / 144p MP4)', 'format_id': 'bestvideo[height<=240]+bestaudio/best[height<=240]/best', 'ext': 'mp4', 'type': 'video', 'size_str': '240p'},
-                ]
-                a_opts = [
-                    {'label': '🎵 صوت نقي عالي الجودة (320 kbps MP3)', 'format_id': 'bestaudio/best', 'ext': 'mp3', 'type': 'audio', 'quality': '320', 'size_str': '320k'},
-                    {'label': '🎧 صوت متوازن ممتازة (256 kbps MP3)', 'format_id': 'bestaudio/best', 'ext': 'mp3', 'type': 'audio', 'quality': '256', 'size_str': '256k'},
-                    {'label': '🎼 صوت قياسي ممتاز (192 kbps MP3)', 'format_id': 'bestaudio/best', 'ext': 'mp3', 'type': 'audio', 'quality': '192', 'size_str': '192k'},
-                    {'label': '🔊 صوت متوسط الجودة (128 kbps MP3)', 'format_id': 'bestaudio/best', 'ext': 'mp3', 'type': 'audio', 'quality': '128', 'size_str': '128k'},
-                    {'label': '💾 صوت اقتصادي صغير (64 kbps MP3)', 'format_id': 'bestaudio/best', 'ext': 'mp3', 'type': 'audio', 'quality': '64', 'size_str': '64k'},
-                    {'label': '🎶 صوت M4A/AAC الأصلي من السيرفر', 'format_id': 'bestaudio[ext=m4a]/bestaudio/best', 'ext': 'm4a', 'type': 'audio', 'quality': '256', 'size_str': 'M4A'},
-                ]
-                return {
-                    'is_playlist': False,
-                    'title': info.get('title') or 'فيديو بدون عنوان',
-                    'uploader': info.get('uploader') or info.get('channel') or 'غير معروف',
-                    'duration': duration_str,
-                    'thumbnail': thumb,
-                    'extractor': info.get('extractor_key') or 'منصة غير معروفة',
-                    'video_options': v_opts,
-                    'audio_options': a_opts,
-                    'cleaned_url': url,
-                }
+    def _download_locked(
+        self,
+        url: str,
+        option: dict[str, Any],
+        save_dir: str,
+        progress_callback: ProgressCallback | None,
+        status_callback: StatusCallback | None,
+        browser_cookies: str,
+    ) -> dict[str, Any]:
+        is_audio = option.get("type") == "audio"
+        is_playlist = bool(option.get("is_playlist"))
+        format_id = option.get("format_id") or ("bestaudio/best" if is_audio else _video_selector(None))
+        output_ext = str(option.get("ext") or ("mp3" if is_audio else "mp4")).lower()
+        quality_tag = _safe_quality_tag(option)
+        run_token = f"{datetime.now().strftime('%Y%m%d-%H%M%S-%f')[:-3]}-{uuid.uuid4().hex[:6]}"
 
-    def download(self, url, option, save_dir, progress_callback=None, status_callback=None, browser_cookies='none'):
-        url = clean_url(url)
-        os.makedirs(save_dir, exist_ok=True)
-
-        is_audio = option.get('type') == 'audio'
-        format_id = option.get('format_id', 'best')
-
-        out_tmpl = os.path.join(save_dir, '%(title)s.%(ext)s')
-
-        # Track the actual filename via progress hook
-        _final_filename = [None]
-
-        def ydl_progress_hook(d):
-            status = d.get('status')
-
-            # Capture the real output filename when download finishes
-            if status == 'finished':
-                raw_path = d.get('filename') or d.get('info_dict', {}).get('_filename')
-                if raw_path:
-                    _final_filename[0] = raw_path
-                if status_callback:
-                    status_callback('جاري المعالجة والدمج عبر ffmpeg...')
-
-            if not progress_callback:
-                return
-            if status == 'downloading':
-                downloaded = d.get('downloaded_bytes', 0)
-                total = d.get('total_bytes') or d.get('total_bytes_estimate', 0)
-                pct = (downloaded / total * 100) if total > 0 else 0
-                spd = d.get('speed', 0)
-                eta = d.get('eta', 0)
-
-                progress_callback({
-                    'status': 'downloading',
-                    'percent': pct,
-                    'downloaded_str': format_bytes(downloaded),
-                    'total_str': format_bytes(total),
-                    'speed_str': f'{format_bytes(spd)}/ثانية' if spd else 'جاري البدء...',
-                    'eta_str': f'{eta} ثانية' if eta else ''
-                })
-
-        ydl_opts = {
-            'format': format_id,
-            'outtmpl': out_tmpl,
-            'progress_hooks': [ydl_progress_hook],
-            'nocheckcertificate': True,
-            'quiet': True,
-            'no_warnings': True,
-            'ffmpeg_location': self.ffmpeg_path,
-        }
-        if not is_audio:
-            ydl_opts['merge_output_format'] = 'mp4'
-
-        # Only set proxy if it's a non-empty string
-        proxy_val = option.get('proxy') or ''
-        if proxy_val.strip():
-            ydl_opts['proxy'] = proxy_val.strip()
-
-        if browser_cookies and browser_cookies != 'none':
-            if os.path.exists(browser_cookies):
-                ydl_opts['cookiefile'] = browser_cookies
-            else:
-                ydl_opts['cookiesfrombrowser'] = (browser_cookies,)
-
-        if is_audio:
-            ydl_opts['postprocessors'] = [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': option.get('quality', '320'),
-            }]
-
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            if not info:
-                raise Exception('فشل التحميل - تعذر استخراج معلومات الوسائط من الرابط المحدد.')
-
-            # Determine saved file path
-            saved_file = None
-
-            if is_audio:
-                # For audio: the file is renamed to .mp3 by the postprocessor
-                # Use the captured filename from progress hook, then swap extension
-                raw = _final_filename[0] or ydl.prepare_filename(info)
-                base = os.path.splitext(raw)[0]
-                mp3_path = base + '.mp3'
-                if os.path.exists(mp3_path):
-                    saved_file = mp3_path
-                else:
-                    # Fallback: search for the most recently created mp3 in save_dir
-                    import glob as _glob
-                    candidates = sorted(
-                        _glob.glob(os.path.join(save_dir, '*.mp3')),
-                        key=os.path.getmtime,
-                        reverse=True
-                    )
-                    saved_file = candidates[0] if candidates else mp3_path
-            else:
-                # For video: use prepare_filename or the captured filename
-                raw = ydl.prepare_filename(info)
-                # yt-dlp may merge to .mp4 even if format was originally different
-                mp4_path = os.path.splitext(raw)[0] + '.mp4'
-                if os.path.exists(mp4_path):
-                    saved_file = mp4_path
-                elif os.path.exists(raw):
-                    saved_file = raw
-                else:
-                    saved_file = _final_filename[0] or raw
-
-        trim_start = option.get('trim_start')
-        trim_end = option.get('trim_end')
-        if saved_file and os.path.exists(saved_file) and (trim_start or trim_end):
-            if status_callback:
-                status_callback('جاري اقتطاع الفيديو بالزمن المحدد عبر FFmpeg...')
-            base_dir_path = os.path.dirname(saved_file)
-            base_name = os.path.basename(saved_file)
-            trimmed_file = os.path.join(base_dir_path, 'trimmed_' + base_name)
-
-            cmd = [self.ffmpeg_path, '-y']
-            if trim_start:
-                cmd.extend(['-ss', trim_start])
-            if trim_end:
-                cmd.extend(['-to', trim_end])
-            cmd.extend(['-i', saved_file, '-c', 'copy', trimmed_file])
+        selected_indices: list[int] = []
+        for value in option.get("playlist_items") or []:
             try:
-                subprocess.run(cmd, capture_output=True)
-                if os.path.exists(trimmed_file):
-                    os.replace(trimmed_file, saved_file)
+                index = int(value)
+                if 0 < index <= 100000 and index not in selected_indices:
+                    selected_indices.append(index)
+            except (TypeError, ValueError):
+                continue
+        selected_indices.sort()
+
+        if is_playlist:
+            template = os.path.join(
+                save_dir,
+                "%(playlist_title|Playlist).120B",
+                f"%(playlist_index)03d - %(title).160B [%(id)s] [{quality_tag}] [{run_token}].%(ext)s",
+            )
+        else:
+            template = os.path.join(
+                save_dir,
+                f"%(title).180B [%(id)s] [{quality_tag}] [{run_token}].%(ext)s",
+            )
+
+        captured_files: list[str] = []
+        captured_lock = threading.Lock()
+        requested_count = len(selected_indices) if selected_indices else int(option.get("playlist_count") or 0)
+
+        def capture_path(candidate: str | None) -> None:
+            if not candidate:
+                return
+            normalized_path = os.path.normpath(candidate)
+            if Path(normalized_path).suffix.lower() not in MEDIA_EXTENSIONS:
+                return
+            with captured_lock:
+                if normalized_path not in captured_files:
+                    captured_files.append(normalized_path)
+
+        def ydl_progress_hook(data: dict[str, Any]) -> None:
+            if self._cancel_event.is_set():
+                raise DownloadCancelled("Download cancelled by user")
+
+            status = data.get("status")
+            info_dict = data.get("info_dict") or {}
+            playlist_index = int(info_dict.get("playlist_index") or 1)
+            playlist_total = int(
+                info_dict.get("n_entries")
+                or info_dict.get("playlist_count")
+                or requested_count
+                or 1
+            )
+            if selected_indices:
+                try:
+                    playlist_position = selected_indices.index(playlist_index) + 1
+                except ValueError:
+                    playlist_position = min(playlist_index, len(selected_indices))
+                playlist_total = len(selected_indices)
+            else:
+                playlist_position = min(playlist_index, playlist_total)
+
+            if status == "finished":
+                capture_path(data.get("filename") or info_dict.get("filepath") or info_dict.get("_filename"))
+                if status_callback:
+                    status_callback("جاري معالجة ودمج الملف عبر FFmpeg...")
+                return
+
+            if status != "downloading" or not progress_callback:
+                return
+
+            downloaded = data.get("downloaded_bytes") or 0
+            total = data.get("total_bytes") or data.get("total_bytes_estimate") or 0
+            item_percent = (float(downloaded) / float(total) * 100) if total else 0
+            overall_percent = item_percent
+            if is_playlist and playlist_total > 0:
+                overall_percent = ((playlist_position - 1) + (item_percent / 100)) / playlist_total * 100
+
+            speed = data.get("speed") or 0
+            eta = data.get("eta")
+            progress_callback(
+                {
+                    "status": "downloading",
+                    "percent": max(0, min(overall_percent, 99.5)),
+                    "item_percent": max(0, min(item_percent, 100)),
+                    "downloaded_str": format_bytes(downloaded),
+                    "total_str": format_bytes(total),
+                    "speed_str": f"{format_bytes(speed)}/ثانية" if speed else "جاري الاتصال...",
+                    "eta_str": f"{int(eta)} ثانية" if eta is not None else "",
+                    "playlist_index": playlist_position if is_playlist else None,
+                    "playlist_count": playlist_total if is_playlist else None,
+                    "item_title": info_dict.get("title") or "",
+                }
+            )
+
+        def postprocessor_hook(data: dict[str, Any]) -> None:
+            if self._cancel_event.is_set():
+                raise DownloadCancelled("Download cancelled by user")
+            if data.get("status") == "finished":
+                info_dict = data.get("info_dict") or {}
+                capture_path(info_dict.get("filepath") or info_dict.get("_filename"))
+
+        ydl_options = _common_ydl_options(option.get("proxy"))
+        ydl_options.update(
+            {
+                "format": format_id,
+                "outtmpl": template,
+                "progress_hooks": [ydl_progress_hook],
+                "postprocessor_hooks": [postprocessor_hook],
+                "quiet": True,
+                "no_warnings": True,
+                "ffmpeg_location": self.ffmpeg_path,
+                "noplaylist": not is_playlist,
+                "ignoreerrors": is_playlist,
+                "overwrites": False,
+                "continuedl": True,
+            }
+        )
+        if selected_indices:
+            ydl_options["playlist_items"] = ",".join(str(index) for index in selected_indices)
+
+        _apply_cookies(ydl_options, browser_cookies)
+
+        postprocessors: list[dict[str, Any]] = []
+        if is_audio:
+            codec = output_ext if output_ext in {"mp3", "m4a", "flac", "wav", "opus"} else "mp3"
+            extract_audio: dict[str, Any] = {
+                "key": "FFmpegExtractAudio",
+                "preferredcodec": codec,
+            }
+            if codec == "mp3":
+                extract_audio["preferredquality"] = str(option.get("quality") or "320")
+            postprocessors.append(extract_audio)
+            postprocessors.append({"key": "FFmpegMetadata", "add_metadata": True})
+        else:
+            ydl_options["merge_output_format"] = "mp4"
+            postprocessors.append({"key": "FFmpegMetadata", "add_metadata": True})
+        ydl_options["postprocessors"] = postprocessors
+
+        try:
+            with yt_dlp.YoutubeDL(ydl_options) as ydl:
+                info = ydl.extract_info(url, download=True)
+        except DownloadCancelled:
+            raise
+        except Exception as exc:
+            if self._cancel_event.is_set():
+                raise DownloadCancelled("Download cancelled by user") from exc
+            raise RuntimeError(clean_error_message(exc)) from exc
+
+        if not info and not captured_files:
+            raise RuntimeError("فشل التنزيل ولم تُنتج المنصة أي ملف.")
+
+        # Post-processing hooks can omit the final path on some extractors. The
+        # unique run token makes this fallback deterministic and safe.
+        if not captured_files:
+            for candidate in glob.glob(os.path.join(save_dir, "**", f"*{run_token}*"), recursive=True):
+                capture_path(candidate)
+
+        final_files = [path for path in captured_files if os.path.isfile(path)]
+        if not final_files:
+            # Last fallback: inspect the returned info structure.
+            info_entries = info.get("entries") if isinstance(info, dict) else None
+            candidates = info_entries or [info]
+            for entry in candidates:
+                if not isinstance(entry, dict):
+                    continue
+                capture_path(entry.get("filepath") or entry.get("_filename"))
+                for requested in entry.get("requested_downloads") or []:
+                    capture_path(requested.get("filepath"))
+            final_files = [path for path in captured_files if os.path.isfile(path)]
+
+        trim_start = option.get("trim_start")
+        trim_end = option.get("trim_end")
+        if final_files and (trim_start or trim_end):
+            if status_callback:
+                status_callback("جاري تطبيق وقت البداية والنهاية المحدد...")
+            for file_path in list(final_files):
+                self._trim_file(file_path, trim_start, trim_end)
+
+        if not final_files:
+            raise RuntimeError("اكتمل الاستخراج لكن تعذر العثور على الملف النهائي.")
+
+        directory = os.path.dirname(final_files[0]) if is_playlist else save_dir
+        file_items = [
+            {
+                "filepath": path,
+                "playable_url": _path_to_uri(path) if Path(path).suffix.lower() in {
+                    ".mp3", ".m4a", ".aac", ".flac", ".ogg", ".opus", ".wav", ".wma"
+                } else "",
+                "title": Path(path).stem,
+            }
+            for path in final_files
+        ]
+        return {
+            "filepath": final_files[0],
+            "files": file_items,
+            "count": len(final_files),
+            "directory": directory,
+            "is_playlist": is_playlist,
+            "media_type": "audio" if is_audio else "video",
+            "quality_tag": quality_tag,
+        }
+
+    def _trim_file(self, file_path: str, trim_start: str | None, trim_end: str | None) -> None:
+        base, ext = os.path.splitext(file_path)
+        trimmed_path = f"{base}.trimmed{ext}"
+        command = [self.ffmpeg_path, "-y"]
+        if trim_start:
+            command.extend(["-ss", str(trim_start)])
+        command.extend(["-i", file_path])
+        if trim_end:
+            command.extend(["-to", str(trim_end)])
+        command.extend(["-map", "0", "-c", "copy", trimmed_path])
+        try:
+            completed = subprocess.run(command, capture_output=True, timeout=600)
+            if completed.returncode == 0 and os.path.isfile(trimmed_path) and os.path.getsize(trimmed_path) > 0:
+                os.replace(trimmed_path, file_path)
+            elif os.path.exists(trimmed_path):
+                os.remove(trimmed_path)
+        except Exception:
+            try:
+                if os.path.exists(trimmed_path):
+                    os.remove(trimmed_path)
             except Exception:
                 pass
-
-        return saved_file

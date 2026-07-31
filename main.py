@@ -15,7 +15,18 @@ import urllib.parse
 import ctypes
 import time
 import logging
+import hashlib
+import re
+from pathlib import Path
 from http.server import HTTPServer, BaseHTTPRequestHandler
+
+from version import APP_VERSION as CURRENT_APP_VERSION, GITHUB_REPO
+
+
+def _version_key(value):
+    """Return a comparable semantic-version tuple and ignore a leading v."""
+    numbers = [int(part) for part in re.findall(r'\d+', str(value or '').lstrip('vV'))[:4]]
+    return tuple((numbers + [0, 0, 0, 0])[:4])
 
 # ============================================================
 # ULTRA LOGGING & DIAGNOSTICS
@@ -34,7 +45,7 @@ except ImportError:
 
 _log = setup_logger("SDN.Main")
 _log.info("═" * 60)
-_log.info("SDN v0.3.0 - STARTING")
+_log.info(f"SDN v{CURRENT_APP_VERSION} - STARTING")
 _log.info("═" * 60)
 
 # ============================================================
@@ -50,7 +61,7 @@ except Exception as e:
 
 try:
     # Set AppUserModelID for Windows taskbar grouping
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("SDN.App.0.1")
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(f"SDN.App.{CURRENT_APP_VERSION}")
 except Exception as e:
     _log.debug(f"AppUserModelID not set: {e}")
 
@@ -151,26 +162,44 @@ class ExtensionHTTPHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_POST(self):
-        content_length = int(self.headers.get('Content-Length', 0))
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+        except (TypeError, ValueError):
+            content_length = 0
+        if content_length <= 0 or content_length > 65536:
+            self.send_response(413)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            return
         post_data = self.rfile.read(content_length)
-        self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Content-Type', 'application/json')
-        self.end_headers()
 
         try:
             payload = json.loads(post_data.decode('utf-8'))
-            url = payload.get('url')
-            if url and ExtensionHTTPHandler.bridge_api:
+            url = str(payload.get('url') or '').strip()
+            parsed = urllib.parse.urlsplit(url)
+            if parsed.scheme in ('http', 'https') and parsed.netloc and ExtensionHTTPHandler.bridge_api:
+                self.send_response(200)
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
                 ExtensionHTTPHandler.bridge_api.handle_extension_url(url)
                 self.wfile.write(json.dumps({'status': 'ok'}).encode('utf-8'))
             else:
+                self.send_response(400)
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
                 self.wfile.write(json.dumps({'status': 'error', 'msg': 'No URL provided'}).encode('utf-8'))
         except Exception as e:
             _log.debug(f"Extension handler error: {e}")
-
-CURRENT_APP_VERSION = "0.7.0"
-GITHUB_REPO = "samer20032020-dev/sdn-downloader-ultra"
+            try:
+                self.send_response(400)
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'status': 'error'}).encode('utf-8'))
+            except Exception:
+                pass
 
 class DownloaderBridgeAPI:
     """ULTRA Bridge API - Interface between Python backend and WebView frontend"""
@@ -182,6 +211,7 @@ class DownloaderBridgeAPI:
         self.latest_update_info = None
         self._startup_time = time.time()
         self._installer_launched = False
+        self._download_thread = None
         
         ExtensionHTTPHandler.bridge_api = self
         
@@ -218,25 +248,12 @@ class DownloaderBridgeAPI:
                     now = time.time()
                     
                     # Clean temp files older than 4 hours
-                    for pattern in ('SDN_Update_*.exe', '*.ytdl', '*.part', '*.tmp'):
+                    for pattern in ('SDN_Update_*.exe', 'SDN_*.ytdl', 'SDN_*.part', 'SDN_*.tmp'):
                         for f_path in glob.glob(os.path.join(temp_dir, pattern)):
                             try:
                                 if os.path.exists(f_path) and (now - os.path.getmtime(f_path)) > 14400:
                                     os.remove(f_path)
                                     cleaned_count += 1
-                            except Exception:
-                                pass
-
-                    # Clean yt-dlp cache
-                    yt_cache_dirs = [
-                        os.path.join(os.path.expanduser('~'), 'AppData', 'Local', 'yt-dlp', 'cache'),
-                        os.path.join(os.path.expanduser('~'), '.cache', 'yt-dlp')
-                    ]
-                    for yt_c in yt_cache_dirs:
-                        if os.path.exists(yt_c):
-                            try:
-                                shutil.rmtree(yt_c, ignore_errors=True)
-                                cleaned_count += 1
                             except Exception:
                                 pass
 
@@ -261,8 +278,8 @@ class DownloaderBridgeAPI:
             time.sleep(3)  # Let UI settle
             try:
                 from downloader import auto_update_ytdlp
-                auto_update_ytdlp()
-                _log.info("yt-dlp auto-update check completed")
+                update_result = auto_update_ytdlp()
+                _log.info(f"yt-dlp update check: {update_result}")
             except Exception as e:
                 _log.warning(f"yt-dlp auto-update failed: {e}")
 
@@ -339,6 +356,19 @@ class DownloaderBridgeAPI:
         except Exception as e:
             _log.warning(f"Failed to save config: {e}")
 
+    def get_app_info(self):
+        try:
+            import yt_dlp
+            yt_dlp_version = getattr(yt_dlp.version, '__version__', 'unknown')
+        except Exception:
+            yt_dlp_version = 'unknown'
+        return {
+            'version': CURRENT_APP_VERSION,
+            'repo': GITHUB_REPO,
+            'yt_dlp_version': yt_dlp_version,
+            'save_dir': self.save_dir,
+        }
+
     def get_history(self):
         config_path = os.path.join(os.path.expanduser("~"), ".sdn_history.json")
         try:
@@ -359,17 +389,26 @@ class DownloaderBridgeAPI:
 
     def add_history(self, item):
         history = self.get_history()
-        # Dedup: remove if same URL already exists
-        item_url = item.get('url', '')
-        history = [h for h in history if h.get('url') != item_url]
+        if not isinstance(item, dict):
+            return False
+        # A media URL may legitimately be downloaded multiple times at different
+        # qualities. Deduplicate only the exact output file.
+        item_path = os.path.normcase(os.path.normpath(str(item.get('filepath') or '')))
+        if item_path:
+            history = [
+                existing for existing in history
+                if os.path.normcase(os.path.normpath(str(existing.get('filepath') or ''))) != item_path
+            ]
         history.insert(0, item)
-        history = history[:50]
+        history = history[:200]
         config_path = os.path.join(os.path.expanduser("~"), ".sdn_history.json")
         try:
             with open(config_path, 'w', encoding='utf-8') as f:
                 json.dump(history, f, ensure_ascii=False, indent=2)
+            return True
         except Exception as e:
             _log.warning(f"Failed to save history: {e}")
+            return False
 
     def clear_history(self):
         config_path = os.path.join(os.path.expanduser("~"), ".sdn_history.json")
@@ -447,24 +486,33 @@ class DownloaderBridgeAPI:
     # Music Player APIs
     # ================================================================
     def scan_music_folder(self, folder_path=None):
-        """Scan a folder for all audio files and return their metadata"""
-        import glob, json
+        """Recursively scan the download folder and return playable local tracks."""
         scan_dir = folder_path or self.save_dir
         if not os.path.isdir(scan_dir):
             return {'tracks': [], 'folder': scan_dir}
-        audio_exts = ['*.mp3', '*.m4a', '*.aac', '*.flac', '*.ogg', '*.wav', '*.opus', '*.wma']
+        audio_exts = {'.mp3', '.m4a', '.aac', '.flac', '.ogg', '.wav', '.opus', '.wma'}
         tracks = []
-        for ext in audio_exts:
-            for fpath in glob.glob(os.path.join(scan_dir, ext)):
-                fname = os.path.basename(fpath)
-                name = os.path.splitext(fname)[0]
+        try:
+            for entry in Path(scan_dir).rglob('*'):
+                if not entry.is_file() or entry.suffix.lower() not in audio_exts:
+                    continue
+                resolved = str(entry.resolve())
+                try:
+                    playable_url = entry.resolve().as_uri()
+                except Exception:
+                    playable_url = resolved.replace('\\', '/')
                 tracks.append({
-                    'title': name,
-                    'uploader': 'مجلد التنزيلات',
-                    'url': fpath.replace('\\', '/'),
-                    'filepath': fpath,
+                    'title': entry.stem,
+                    'uploader': entry.parent.name if entry.parent != Path(scan_dir) else 'مجلد التنزيلات',
+                    'url': playable_url,
+                    'playable_url': playable_url,
+                    'filepath': resolved,
+                    'format': entry.suffix.lstrip('.').upper(),
+                    'size': entry.stat().st_size,
                     'thumbnail': ''
                 })
+        except Exception as e:
+            _log.warning(f"Music scan error: {e}")
         tracks.sort(key=lambda x: os.path.getmtime(x['filepath']), reverse=True)
         _log.info(f"Scanned {len(tracks)} audio files in {scan_dir}")
         return {'tracks': tracks, 'folder': scan_dir}
@@ -484,13 +532,16 @@ class DownloaderBridgeAPI:
             if result:
                 tracks = []
                 for fpath in result:
-                    fname = os.path.basename(fpath)
-                    name = os.path.splitext(fname)[0]
+                    path_obj = Path(fpath).resolve()
+                    playable_url = path_obj.as_uri()
                     tracks.append({
-                        'title': name,
+                        'title': path_obj.stem,
                         'uploader': 'مضافة يدوياً',
-                        'url': fpath.replace('\\', '/'),
-                        'filepath': fpath,
+                        'url': playable_url,
+                        'playable_url': playable_url,
+                        'filepath': str(path_obj),
+                        'format': path_obj.suffix.lstrip('.').upper(),
+                        'size': path_obj.stat().st_size if path_obj.exists() else 0,
                         'thumbnail': ''
                     })
                 return {'tracks': tracks}
@@ -543,13 +594,26 @@ class DownloaderBridgeAPI:
             return {'data': None, 'error': err_msg}
 
     def start_download(self, url, option, browser_cookies='none'):
+        if self._download_thread and self._download_thread.is_alive():
+            return {'started': False, 'error': 'يوجد تنزيل آخر قيد التنفيذ.'}
+        if not isinstance(option, dict):
+            return {'started': False, 'error': 'خيار التنزيل غير صالح.'}
         _log.info(f"Download queued: {url[:80]}... (type: {option.get('type', 'video')})")
-        threading.Thread(
+        self._download_thread = threading.Thread(
             target=self._async_download,
             args=(url, option, browser_cookies),
             daemon=True,
             name=f"DL-{url[:20]}"
-        ).start()
+        )
+        self._download_thread.start()
+        return {'started': True}
+
+    def cancel_download(self):
+        if self.downloader:
+            self.downloader.cancel()
+            _log.info("Download cancellation requested")
+            return {'cancelled': True}
+        return {'cancelled': False}
 
     def _async_download(self, url, option, browser_cookies):
         start_t = time.time()
@@ -568,7 +632,7 @@ class DownloaderBridgeAPI:
                 from downloader import MediaDownloader
                 self.downloader = MediaDownloader()
 
-            saved_filepath = self.downloader.download(
+            result = self.downloader.download(
                 url, option, self.save_dir,
                 progress_callback=progress_callback,
                 status_callback=status_callback,
@@ -576,17 +640,50 @@ class DownloaderBridgeAPI:
             )
             
             elapsed = time.time() - start_t
-            _log.info(f"Download complete: {saved_filepath} ({elapsed:.1f}s)")
+            _log.info(f"Download complete: {result.get('count', 0)} file(s) ({elapsed:.1f}s)")
+
+            media_title = option.get('media_title') or 'وسائط محمّلة'
+            quality_label = option.get('label') or option.get('quality_tag') or 'جودة افتراضية'
+            media_type = option.get('type') or 'video'
+            downloaded_files = result.get('files') or []
+            for file_item in downloaded_files:
+                self.add_history({
+                    'title': file_item.get('title') or media_title,
+                    'quality': quality_label,
+                    'type': media_type,
+                    'filepath': file_item.get('filepath') or '',
+                    'url': url,
+                    'date': time.strftime('%Y-%m-%dT%H:%M:%S%z'),
+                })
             
             if self._window:
-                payload = {'status': 'complete', 'filepath': saved_filepath, 'elapsed': round(elapsed, 1)}
+                payload = {
+                    'status': 'complete',
+                    'filepath': result.get('filepath') or '',
+                    'files': downloaded_files,
+                    'count': result.get('count', len(downloaded_files)),
+                    'directory': result.get('directory') or self.save_dir,
+                    'media_type': result.get('media_type') or media_type,
+                    'is_playlist': bool(result.get('is_playlist')),
+                    'elapsed': round(elapsed, 1),
+                }
                 self._window.evaluate_js(f'updateProgress({json.dumps(payload)})')
         except Exception as e:
             elapsed = time.time() - start_t
-            _log.error(f"Download failed after {elapsed:.1f}s: {e}")
+            try:
+                from downloader import clean_error_message
+                error_message = clean_error_message(e)
+            except Exception:
+                error_message = str(e)
+            _log.error(f"Download failed after {elapsed:.1f}s: {error_message}")
             if self._window:
-                payload = {'status': 'error', 'error': str(e)}
+                payload = {
+                    'status': 'cancelled' if 'إلغاء' in error_message else 'error',
+                    'error': error_message,
+                }
                 self._window.evaluate_js(f'updateProgress({json.dumps(payload)})')
+        finally:
+            self._download_thread = None
 
     def resize_window(self, width, height):
         if self._window:
@@ -603,7 +700,10 @@ class DownloaderBridgeAPI:
             import urllib.request
             req = urllib.request.Request(
                 f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest",
-                headers={'User-Agent': 'SDN-Downloader-App/2.7.0'}
+                headers={
+                    'User-Agent': f'SDN-Downloader-App/{CURRENT_APP_VERSION}',
+                    'Accept': 'application/vnd.github+json',
+                }
             )
             with urllib.request.urlopen(req, timeout=8) as resp:
                 data = json.loads(resp.read().decode('utf-8'))
@@ -611,20 +711,26 @@ class DownloaderBridgeAPI:
                 body = data.get('body', '')
                 assets = data.get('assets', [])
                 exe_download_url = None
+                exe_digest = None
+                exe_size = None
                 release_html_url = data.get('html_url', f"https://github.com/{GITHUB_REPO}/releases/latest")
 
                 for asset in assets:
-                    if asset.get('name', '').endswith('.exe'):
+                    if asset.get('name') == 'SDN_Downloader_Setup.exe':
                         exe_download_url = asset.get('browser_download_url')
+                        exe_digest = asset.get('digest')
+                        exe_size = asset.get('size')
                         break
 
-                if tag_name and tag_name != CURRENT_APP_VERSION:
+                if tag_name and _version_key(tag_name) > _version_key(CURRENT_APP_VERSION):
                     return {
                         'has_update': True,
                         'latest_version': tag_name,
                         'current_version': CURRENT_APP_VERSION,
                         'download_url': exe_download_url or release_html_url,
                         'html_url': release_html_url,
+                        'sha256': exe_digest.split(':', 1)[1] if isinstance(exe_digest, str) and exe_digest.startswith('sha256:') else None,
+                        'size': exe_size,
                         'notes': body or 'تحديث جديد لتحسين الأداء وحل المشاكل.'
                     }
         except Exception as e:
@@ -633,67 +739,94 @@ class DownloaderBridgeAPI:
 
     def apply_app_update(self, download_url=None):
         _log.info(f"apply_app_update requested with url: {download_url}")
-        
-        # Direct raw EXE download link on GitHub main branch
-        default_exe_url = f"https://github.com/{GITHUB_REPO}/raw/main/dist/SDN_Downloader_Setup.exe"
-        target_url = download_url if (download_url and download_url.endswith('.exe')) else default_exe_url
+        default_exe_url = (
+            f"https://github.com/{GITHUB_REPO}/releases/latest/download/"
+            "SDN_Downloader_Setup.exe"
+        )
+        target_url = str(download_url or '')
+        if not target_url.lower().endswith('.exe'):
+            target_url = default_exe_url
+        try:
+            parsed = urllib.parse.urlsplit(target_url)
+            if parsed.scheme != 'https' or parsed.hostname not in {'github.com', 'www.github.com'}:
+                target_url = default_exe_url
+        except Exception:
+            target_url = default_exe_url
 
-        # Check for local compiled installer build for instant testing
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        local_dist_setup = os.path.join(base_dir, "dist", "SDN_Downloader_Setup.exe")
+        expected_sha256 = None
+        if self.latest_update_info and self.latest_update_info.get('download_url') == target_url:
+            expected_sha256 = self.latest_update_info.get('sha256')
 
         def _do_update():
             try:
                 import urllib.request
                 import tempfile
-                import shutil
 
                 temp_dir = tempfile.gettempdir()
                 setup_filename = f"SDN_Update_{int(time.time())}.exe"
                 setup_path = os.path.join(temp_dir, setup_filename)
                 self.pending_setup_path = setup_path
 
-                # Fast Path 1: If local build exists, copy instantly (0.1s)
-                if os.path.exists(local_dist_setup) and os.path.getsize(local_dist_setup) > 100000:
-                    _log.info(f"Instant local update copy: {local_dist_setup} -> {setup_path}")
-                    shutil.copy2(local_dist_setup, setup_path)
-                    time.sleep(0.3)
-                    if self._window:
-                        payload = {'status': 'downloading', 'pct': 100, 'downloaded': os.path.getsize(setup_path), 'total': os.path.getsize(setup_path)}
-                        self._window.evaluate_js(f'if (typeof onUpdateProgress === "function") onUpdateProgress({json.dumps(payload)});')
-                else:
-                    # Fast Path 2: Download directly from GitHub raw link
-                    _log.info(f"Downloading update from: {target_url}")
-                    req = urllib.request.Request(target_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
-                    with urllib.request.urlopen(req, timeout=120) as resp, open(setup_path, 'wb') as out_f:
-                        total_size = int(resp.headers.get('content-length', 0) or resp.headers.get('Content-Length', 0))
-                        downloaded = 0
-                        chunk_size = 512 * 1024  # 512KB chunks for high speed
+                _log.info(f"Downloading update from: {target_url}")
+                req = urllib.request.Request(
+                    target_url,
+                    headers={'User-Agent': f'SDN-Downloader-App/{CURRENT_APP_VERSION}'},
+                )
+                digest = hashlib.sha256()
+                with urllib.request.urlopen(req, timeout=180) as resp, open(setup_path, 'wb') as out_f:
+                    final_host = (urllib.parse.urlsplit(resp.geturl()).hostname or '').lower()
+                    trusted_hosts = {
+                        'github.com',
+                        'objects.githubusercontent.com',
+                        'release-assets.githubusercontent.com',
+                    }
+                    if final_host not in trusted_hosts and not final_host.endswith('.githubusercontent.com'):
+                        raise RuntimeError('تم رفض مصدر تحديث غير موثوق.')
 
-                        while True:
-                            chunk = resp.read(chunk_size)
-                            if not chunk:
-                                break
-                            out_f.write(chunk)
-                            downloaded += len(chunk)
-                            pct = min(int((downloaded / total_size) * 100), 99) if total_size > 0 else 50
-                            if self._window:
-                                payload = {'status': 'downloading', 'pct': pct, 'downloaded': downloaded, 'total': total_size}
-                                self._window.evaluate_js(f'if (typeof onUpdateProgress === "function") onUpdateProgress({json.dumps(payload)});')
+                    total_size = int(resp.headers.get('content-length', 0) or 0)
+                    downloaded = 0
+                    chunk_size = 512 * 1024
+                    while True:
+                        chunk = resp.read(chunk_size)
+                        if not chunk:
+                            break
+                        out_f.write(chunk)
+                        digest.update(chunk)
+                        downloaded += len(chunk)
+                        pct = min(int((downloaded / total_size) * 100), 99) if total_size > 0 else 50
+                        if self._window:
+                            payload = {
+                                'status': 'downloading',
+                                'pct': pct,
+                                'downloaded': downloaded,
+                                'total': total_size,
+                            }
+                            self._window.evaluate_js(
+                                f'if (typeof onUpdateProgress === "function") '
+                                f'onUpdateProgress({json.dumps(payload)});'
+                            )
+
+                if os.path.getsize(setup_path) < 1024 * 1024:
+                    raise RuntimeError('ملف التحديث أصغر من الحجم المتوقع.')
+                with open(setup_path, 'rb') as setup_file:
+                    if setup_file.read(2) != b'MZ':
+                        raise RuntimeError('ملف التحديث ليس ملف Windows صالحًا.')
+                if expected_sha256 and digest.hexdigest().lower() != str(expected_sha256).lower():
+                    raise RuntimeError('فشل التحقق من بصمة ملف التحديث.')
 
                 _log.info(f"Update download complete: {setup_path}")
-                time.sleep(0.5)
                 clean_path = setup_path.replace('\\', '/')
                 if self._window:
                     payload = {'status': 'complete', 'setup_path': clean_path}
                     self._window.evaluate_js(f'if (typeof onUpdateProgress === "function") onUpdateProgress({json.dumps(payload)});')
 
-                # Python backend auto-launches update installer after 0.8 seconds!
-                time.sleep(0.8)
-                self.launch_installer(setup_path)
-
             except Exception as e:
                 _log.error(f"Update download failed: {e}")
+                try:
+                    if 'setup_path' in locals() and os.path.exists(setup_path):
+                        os.remove(setup_path)
+                except Exception:
+                    pass
                 if self._window:
                     payload = {'status': 'error', 'error': f'فشل التنزيل التلقائي: {str(e)}'}
                     self._window.evaluate_js(f'if (typeof onUpdateProgress === "function") onUpdateProgress({json.dumps(payload)});')

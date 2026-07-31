@@ -18,9 +18,12 @@ import winreg
 import base64
 import ctypes
 import webview
+from version import APP_VERSION
 
 try:
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("SDN.Downloader.Ultra.Installer.2.0")
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+        f"SDN.Downloader.Ultra.Installer.{APP_VERSION}"
+    )
 except Exception:
     pass
 
@@ -255,7 +258,7 @@ class InstallerAPI:
             key_path = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\SDN_Downloader_Ultra"
             with winreg.CreateKey(winreg.HKEY_CURRENT_USER, key_path) as key:
                 winreg.SetValueEx(key, "DisplayName", 0, winreg.REG_SZ, "SDN Downloader Ultra")
-                winreg.SetValueEx(key, "DisplayVersion", 0, winreg.REG_SZ, "2.4.0")
+                winreg.SetValueEx(key, "DisplayVersion", 0, winreg.REG_SZ, APP_VERSION)
                 winreg.SetValueEx(key, "Publisher", 0, winreg.REG_SZ, "SDN Software")
                 winreg.SetValueEx(key, "InstallLocation", 0, winreg.REG_SZ, install_folder)
                 winreg.SetValueEx(key, "DisplayIcon", 0, winreg.REG_SZ, target_exe)

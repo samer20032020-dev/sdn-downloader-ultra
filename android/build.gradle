@@ -17,6 +17,16 @@ buildscript {
 
 apply from: "variables.gradle"
 
+// Keep generated Android build files outside cloud-synced workspaces when the
+// build helper provides a cache root. This prevents OneDrive file locks from
+// breaking clean/reproducible builds.
+def sdnAndroidBuildRoot = System.getenv("SDN_ANDROID_BUILD_ROOT")
+if (sdnAndroidBuildRoot) {
+    allprojects {
+        layout.buildDirectory.set(file("${sdnAndroidBuildRoot}/${project.name}"))
+    }
+}
+
 allprojects {
     repositories {
         google()
@@ -51,7 +61,6 @@ task clean(type: Delete) {
         exclude 'reports/**'
     }
 }
-
 
 
 

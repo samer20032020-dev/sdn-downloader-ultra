@@ -1,54 +1,28 @@
 # دليل بناء تطبيق Android
 
-لدى المشروع طريقتان لبناء تطبيق Android:
+النسخة الرسمية تستخدم Capacitor مع محرك تنزيل Android الأصلي.
 
----
+## المتطلبات
 
-## الطريقة الأولى: Capacitor (مُوصى بها)
+- Node.js 22 أو أحدث مع npm.
+- Java JDK 21 أو أحدث.
+- Android SDK مع API وBuild Tools 35.
 
-تستخدم إطار عمل Capacitor مع Gradle لتحويل محتوى الويب (`www/`) إلى تطبيق Android أصلي.
+## البناء المحلي
 
-### المتطلبات
-- **Node.js** و **npm**
-- **Java JDK 17**
-- **Android SDK** (API 34+, build-tools 34+)
-
-### خطوات البناء
+من جذر المشروع:
 
 ```bash
-npm install
-npx cap sync
-cd android
-./gradlew assembleDebug
+npm ci
+python build_and_upload_apk.py --no-upload
 ```
 
-**مخرج البناء:** `android/app/build/outputs/apk/debug/app-debug.apk`
+تقوم الأداة بمزامنة `ui/index.html` مع نسختي الويب وأندرويد، ثم تبني APK وتنسخه إلى:
 
-### البناء التلقائي عبر GitHub Actions
+`dist/SDN_Downloader_Ultra.apk`
 
-يوجد سير عمل جاهز في `.github/workflows/build_apk.yml` لبناء التطبيق عند كل push أو release.
+لحفظ APK مباشرة في إصدار GitHub الحالي بعد البناء، احذف الخيار `--no-upload`.
 
----
+## ملاحظة التوقيع
 
-## الطريقة الثانية: Buildozer (Kivy)
-
-تستخدم Buildozer مع Kivy لتغليف كود Python مباشرة إلى APK.
-
-### المتطلبات
-- **Buildozer** (`pip install buildozer`)
-- بيئة Linux أو WSL
-
-### خطوات البناء
-
-```bash
-cd android_app
-buildozer android debug
-```
-
----
-
-## الطريقتان قيد التطوير
-
-كلتا الطريقتين تعملان حالياً وموجودتان للمقارنة:
-- `android/` → Capacitor (أكثر حداثة، يدعم CI/CD)
-- `android_app/` → Buildozer (تطبيق Python أصلي)
+البناء المحلي الحالي يحافظ على توقيع نسخة Android الموجودة لتستطيع ترقية التثبيت السابق. عند الانتقال إلى متجر تطبيقات، استخدم مفتاح إصدار خاصاً وثابتاً واحفظه بأمان خارج المستودع.

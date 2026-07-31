@@ -172,6 +172,49 @@ html, body {
   .desktop-nav-tabs { display: none !important; }
   .desktop-folder-bar { display: none !important; }
   .bottom-nav { display: flex !important; }
+  .app-header {
+    height: 62px !important;
+    padding: 0 12px !important;
+  }
+  .header-brand-group { gap: 8px !important; }
+  .header-brand-lockup { gap: 7px !important; }
+  .header-actions-group { gap: 6px !important; }
+  #dlCounterBadge { padding: 5px 8px !important; gap: 4px !important; }
+  #dlCounterBadge .counter-label { display: none; }
+  #toastBox {
+    top: calc(env(safe-area-inset-top) + 72px);
+    width: calc(100% - 24px);
+  }
+  .url-action-card {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px !important;
+  }
+  .url-input-wrap {
+    order: 1;
+    flex: 1 1 calc(100% - 54px) !important;
+    height: 46px;
+    padding: 0 12px !important;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    background: rgba(255,255,255,0.04);
+  }
+  .url-clear-btn {
+    order: 2;
+    flex: 0 0 42px;
+    margin-left: 0 !important;
+  }
+  .url-paste-btn {
+    order: 3;
+    flex: 1 1 0;
+    justify-content: center;
+    padding: 0 12px !important;
+  }
+  .url-fetch-btn {
+    order: 4;
+    flex: 1.35 1 0;
+    min-width: 0 !important;
+  }
 }
 
 /* Header Bar */
@@ -421,15 +464,75 @@ body.light-theme .input-field-wrap input { background: #fff; }
 .q-option-row > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .q-option-row.selected { background: rgba(56, 189, 248, 0.15); border-color: var(--primary); }
 
+.download-playlist-picker {
+  display: none;
+  flex-direction: column;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  background: rgba(56, 189, 248, 0.05);
+}
+.download-playlist-picker.active { display: flex; }
+.download-playlist-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.download-playlist-actions { display: flex; gap: 6px; }
+.download-playlist-actions button {
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 9px;
+  background: rgba(56, 189, 248, 0.1);
+  color: var(--primary);
+  padding: 5px 9px;
+  font: 700 0.72rem inherit;
+  cursor: pointer;
+}
+.download-playlist-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 210px;
+  overflow-y: auto;
+}
+.download-playlist-entry {
+  display: grid;
+  grid-template-columns: auto 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.035);
+  cursor: pointer;
+}
+.download-playlist-entry img { width: 42px; height: 30px; object-fit: cover; border-radius: 6px; }
+.download-playlist-entry span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.download-playlist-entry small { color: var(--text-sub); }
+.download-actions-row { display: grid; grid-template-columns: 1fr auto; gap: 9px; }
 .btn-start-download {
   height: 48px; border-radius: 14px; background: linear-gradient(135deg, #34d399 0%, #38bdf8 100%);
   border: none; color: #000; font-size: 1rem; font-weight: 900; cursor: pointer; font-family: inherit;
   display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 4px;
 }
+.btn-start-download:disabled { opacity: 0.55; cursor: wait; }
+.btn-cancel-download {
+  display: none;
+  min-width: 102px;
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  border-radius: 14px;
+  background: rgba(248, 113, 113, 0.12);
+  color: #fca5a5;
+  font: 800 0.86rem inherit;
+  cursor: pointer;
+}
+.btn-cancel-download.active { display: block; }
 
 /* Toast System */
 #toastBox {
-  position: fixed; top: 18px; left: 50%; transform: translateX(-50%); z-index: 9999;
+  position: fixed; top: 78px; left: 50%; transform: translateX(-50%); z-index: 9999;
   display: flex; flex-direction: column; gap: 6px; pointer-events: none; width: 90%; max-width: 360px;
 }
 .toast-msg {
@@ -963,12 +1066,12 @@ input:checked + .slider:before { transform: translateX(20px); }
   <header class="app-header" style="display:flex; align-items:center; justify-content:space-between; padding:0 24px; background:rgba(9, 11, 22, 0.95); backdrop-filter:blur(20px); border-bottom:1px solid rgba(255,255,255,0.06); height:68px;">
     
     <!-- Right side (First element in RTL): Hamburger Menu + Brand Logo -->
-    <div style="display:flex; align-items:center; gap:14px;">
+    <div class="header-brand-group" style="display:flex; align-items:center; gap:14px;">
       <button onclick="toggleSideMenu(true)" style="width:42px; height:42px; border-radius:14px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:#fff; font-size:1.25rem; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s;" title="القائمة المنسدلة">
         <i class="fas fa-bars"></i>
       </button>
 
-      <div style="display:flex; align-items:center; gap:10px;">
+      <div class="header-brand-lockup" style="display:flex; align-items:center; gap:10px;">
         <div class="brand-badge" style="width:38px; height:38px; border-radius:12px; background:linear-gradient(135deg, #38bdf8 0%, #6366f1 100%); display:flex; align-items:center; justify-content:center; font-size:1.1rem; color:#fff; box-shadow:0 4px 18px rgba(56, 189, 248, 0.4);">
           ⚡
         </div>
@@ -979,7 +1082,7 @@ input:checked + .slider:before { transform: translateX(20px); }
     </div>
 
     <!-- Left side (Last element in RTL): Folder Selector & Update button -->
-    <div style="display:flex; align-items:center; gap:10px;">
+    <div class="header-actions-group" style="display:flex; align-items:center; gap:10px;">
       <div class="desktop-folder-bar" id="desktopFolderBar" style="display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); padding:6px 14px; border-radius:14px; font-size:0.82rem;">
         <i class="fas fa-folder-open" style="color:#fbbf24; font-size:1rem;"></i>
         <span class="folder-path-text" id="desktopSavePathTxt" style="color:var(--primary); font-weight:700; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; direction:ltr; text-align:left;">C:\Downloads</span>
@@ -990,13 +1093,13 @@ input:checked + .slider:before { transform: translateX(20px); }
       <div id="dlCounterBadge" title="عدد التحميلات في هذه الجلسة" style="display:flex; align-items:center; gap:6px; background:rgba(34,197,94,0.12); border:1px solid rgba(34,197,94,0.3); color:#4ade80; padding:5px 12px; border-radius:12px; font-size:0.8rem; font-weight:800; cursor:default; transition:all 0.3s; animation:dlBadgePop 0.4s ease;">
         <i class="fas fa-check-circle" style="font-size:0.85rem;"></i>
         <span id="dlCounterNum">0</span>
-        <span style="opacity:0.8; font-weight:600;">تحميل</span>
+        <span class="counter-label" style="opacity:0.8; font-weight:600;">تحميل</span>
       </div>
 
       <!-- Update Header Button -->
       <button id="headerUpdateBtn" onclick="onHeaderUpdateClick()" class="update-header-btn" title="فحص التحديثات" style="display:none;">
         <i class="fas fa-cog" id="updateHeaderIcon"></i>
-        <span id="updateHeaderTxt">v0.1.0</span>
+        <span id="updateHeaderTxt">v1.0.0</span>
       </button>
     </div>
   </header>
@@ -1008,25 +1111,25 @@ input:checked + .slider:before { transform: translateX(20px); }
     <div id="viewHome" style="display:flex; flex-direction:column; gap:24px; max-width:850px; margin:0 auto; width:100%;">
       
       <!-- Input Card Box -->
-      <section style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:24px; padding:10px 14px; display:flex; align-items:center; margin-top:10px; backdrop-filter:blur(15px); box-shadow:0 10px 30px rgba(0,0,0,0.3);">
-        
+      <section class="url-action-card" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:24px; padding:10px 14px; display:flex; align-items:center; margin-top:10px; backdrop-filter:blur(15px); box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+
         <!-- 1st child (Right side in RTL): Paste Button -->
-        <button id="pasteBtn" style="padding:0 20px; height:46px; border-radius:16px; background:rgba(255,255,255,0.06); border:1px solid rgba(56,189,248,0.3); font-size:0.95rem; font-weight:800; color:#f8fafc; cursor:pointer; display:flex; align-items:center; gap:8px; transition:all 0.2s;" title="لصق من الحافظة">
+        <button id="pasteBtn" class="url-paste-btn" style="padding:0 20px; height:46px; border-radius:16px; background:rgba(255,255,255,0.06); border:1px solid rgba(56,189,248,0.3); font-size:0.95rem; font-weight:800; color:#f8fafc; cursor:pointer; display:flex; align-items:center; gap:8px; transition:all 0.2s;" title="لصق من الحافظة">
           لصق 📋
         </button>
 
         <!-- 2nd child (Middle): Input -->
-        <div style="flex:1; padding:0 15px; position:relative; display:flex; align-items:center;">
+        <div class="url-input-wrap" style="flex:1; padding:0 15px; position:relative; display:flex; align-items:center;">
           <input type="text" id="urlInp" placeholder="...ألصق رابط الفيديو من يوتيوب، تيكتوك، إنستغرام، فيسبوك" autocomplete="off" spellcheck="false" style="width:100%; background:transparent; border:none; outline:none; font-size:0.95rem; font-weight:600; color:#f8fafc; font-family:inherit;">
         </div>
 
         <!-- 3rd child: Clear Button -->
-        <button id="clearBtn" style="width:42px; height:42px; border-radius:14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; justify-content:center; cursor:pointer; margin-left:10px; transition:all 0.2s;">
+        <button id="clearBtn" class="url-clear-btn" style="width:42px; height:42px; border-radius:14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; justify-content:center; cursor:pointer; margin-left:10px; transition:all 0.2s;">
           <i class="fas fa-times" style="color:#94a3b8; font-size:1.1rem;"></i>
         </button>
 
         <!-- 4th child (Left side in RTL): Fetch Button -->
-        <button id="fetchBtn" style="min-width:130px; height:46px; border-radius:16px; background:linear-gradient(135deg, #38bdf8 0%, #6366f1 100%); border:none; color:#fff; font-size:1rem; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 6px 20px rgba(56,189,248,0.35); font-family:inherit; transition:all 0.2s;">
+        <button id="fetchBtn" class="url-fetch-btn" style="min-width:130px; height:46px; border-radius:16px; background:linear-gradient(135deg, #38bdf8 0%, #6366f1 100%); border:none; color:#fff; font-size:1rem; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 6px 20px rgba(56,189,248,0.35); font-family:inherit; transition:all 0.2s;">
           <span id="fetchTxt">جلب الرابط ✨</span>
         </button>
       </section>
@@ -1050,11 +1153,11 @@ input:checked + .slider:before { transform: translateX(20px); }
           </div>
         </div>
 
-        <div style="background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.3); color:#38bdf8; padding:5px 14px; border-radius:20px; font-size:0.8rem; font-weight:800; margin-bottom:12px; display:inline-flex; align-items:center; gap:6px;">✨ الإصدار الهولوجرامي v0.7.0 - Cyber Visualizer ⚡</div>
+        <div style="background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.3); color:#38bdf8; padding:5px 14px; border-radius:20px; font-size:0.8rem; font-weight:800; margin-bottom:12px; display:inline-flex; align-items:center; gap:6px;">✨ الإصدار المتكامل v1.0.0 - Smart Media Engine ⚡</div>
         <h1 class="shimmer-title">مركز التحميل الذكي ⚡</h1>
         <p style="font-size:0.95rem; color:#94a3b8; font-weight:500; max-width:440px; line-height:1.6; z-index:2; margin-bottom:14px;">ضع رابطك أعلاه لتنزيل الفيديوهات والصوتيات بأعلى جودة فوراً 🚀</p>
-        
-        <!-- Cyber Neon Visualizer Widget (New Animation Feature v0.7.0) -->
+
+        <!-- Cyber Neon Visualizer Widget -->
         <div style="width:100%; max-width:380px; background:rgba(255,255,255,0.03); border:1px solid rgba(56,189,248,0.25); border-radius:18px; padding:12px 16px; margin:6px 0 10px 0; display:flex; flex-direction:column; align-items:center; gap:8px; backdrop-filter:blur(10px); box-shadow:0 8px 25px rgba(0,0,0,0.3);">
           <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
             <span style="font-size:0.78rem; font-weight:800; color:var(--primary); display:flex; align-items:center; gap:6px;">
@@ -1076,7 +1179,7 @@ input:checked + .slider:before { transform: translateX(20px); }
         </div>
 
         <button onclick="toast('✨ تم تفعيل وضع المحلل الهولوجرامي بنجاح!')" style="padding:6px 16px; border-radius:12px; background:linear-gradient(135deg, rgba(56,189,248,0.2) 0%, rgba(99,102,241,0.2) 100%); border:1px solid rgba(56,189,248,0.4); color:var(--primary); font-size:0.78rem; font-weight:800; cursor:pointer; font-family:inherit; transition:all 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-          🚀 تجربة التمييز الهولوجرامي v0.7.0
+          🚀 محرك التنزيل الذكي v1.0.0
         </button>
       </section>
 
@@ -1090,6 +1193,17 @@ input:checked + .slider:before { transform: translateX(20px); }
           </div>
         </div>
 
+        <div class="download-playlist-picker" id="downloadPlaylistPicker">
+          <div class="download-playlist-toolbar">
+            <strong id="downloadPlaylistSummary">قائمة التشغيل</strong>
+            <div class="download-playlist-actions">
+              <button type="button" onclick="setAllPlaylistItems(true)">تحديد الكل</button>
+              <button type="button" onclick="setAllPlaylistItems(false)">إلغاء الكل</button>
+            </div>
+          </div>
+          <div class="download-playlist-items" id="downloadPlaylistItems"></div>
+        </div>
+
         <!-- Format Category Tab Bar -->
         <div class="format-tabs-bar" id="formatTabsBar">
           <button class="format-tab-btn active" id="tabVideoBtn" onclick="switchFormatTab('video')">🎬 قسم الفيديو</button>
@@ -1097,7 +1211,10 @@ input:checked + .slider:before { transform: translateX(20px); }
         </div>
 
         <div class="quality-selector-grid" id="qGrid"></div>
-        <button class="btn-start-download" id="dlBtn">⚡ تنزيل الآن</button>
+        <div class="download-actions-row">
+          <button class="btn-start-download" id="dlBtn">⚡ تنزيل الآن</button>
+          <button class="btn-cancel-download" id="cancelDlBtn" type="button">إلغاء</button>
+        </div>
       </div>
 
       <!-- Live Progress Card -->
@@ -1204,7 +1321,7 @@ input:checked + .slider:before { transform: translateX(20px); }
         <div class="settings-item">
           <div class="settings-label">
             <span class="settings-title">🎯 الوضع الذكي المباشر للروابط (Smart Live Link Detection)</span>
-            <span class="settings-desc">تحليل الرابط وتحديد أعلى جودة متاحة تلقائياً في الإصدار v0.1.0</span>
+            <span class="settings-desc">تحليل الرابط والقوائم وتحديد أفضل جودة متوافقة تلقائياً</span>
           </div>
           <label class="toggle-switch">
             <input type="checkbox" id="smartLiveDetectToggle" checked onchange="toast('🎯 تم تفعيل الوضع الذكي المباشر!')">
@@ -1253,7 +1370,7 @@ input:checked + .slider:before { transform: translateX(20px); }
         <div class="settings-item">
           <div class="settings-label">
             <span class="settings-title">إصدار التطبيق الحالي</span>
-            <span class="settings-desc">SDN v0.7.0</span>
+            <span class="settings-desc">SDN v1.0.0</span>
           </div>
           <button class="header-btn" id="checkUpdatesManualBtn" style="width:auto; padding:0 10px; font-size:0.78rem; color:var(--primary);">فحص التحديثات</button>
         </div>
@@ -1455,7 +1572,46 @@ input:checked + .slider:before { transform: translateX(20px); }
 <script>
 'use strict';
 
-let gData = null, gOpt = null, gBusy = false;
+let gData = null, gOpt = null, gBusy = false, gDownloadActive = false;
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function parseBridgeJson(value, fallback = {}) {
+  if (value && typeof value === 'object') return value;
+  try { return JSON.parse(value || ''); } catch (_) { return fallback; }
+}
+
+function getPlayableTrackUrl(track) {
+  if (!track) return '';
+  if (track.playable_url) return track.playable_url;
+  const path = track.filepath || track.url || '';
+  if (!path) return '';
+  if (/^(https?|file|content|blob):/i.test(path)) return path;
+  if (window.Capacitor?.convertFileSrc) {
+    try { return window.Capacitor.convertFileSrc(path); } catch (_) {}
+  }
+  const normalized = path.replace(/\\/g, '/');
+  return /^[A-Za-z]:\//.test(normalized) ? encodeURI('file:///' + normalized) : encodeURI(normalized);
+}
+
+function scanMusicLibrary() {
+  if (window.pywebview?.api?.scan_music_folder) {
+    return window.pywebview.api.scan_music_folder();
+  }
+  if (window.androidInterface?.listAudioFiles) {
+    try {
+      return Promise.resolve(parseBridgeJson(window.androidInterface.listAudioFiles(), { tracks: [] }));
+    } catch (_) {}
+  }
+  return Promise.resolve({ tracks: [] });
+}
 
 /* ── Toast Handler (Single Instance & Anti-Spam) ── */
 let toastTimer = null;
@@ -1510,9 +1666,9 @@ function switchTab(targetId) {
   document.getElementById('viewSettings')?.classList.toggle('active', targetId === 'viewSettings');
 
   // Auto-scan music when switching to music tab
-  if (targetId === 'viewMusicPlayer' && window.pywebview?.api?.scan_music_folder) {
+  if (targetId === 'viewMusicPlayer') {
     setTimeout(() => {
-      window.pywebview.api.scan_music_folder().then(res => {
+      scanMusicLibrary().then(res => {
         if (res && res.tracks && res.tracks.length > 0) addTracksToPlaylist(res.tracks);
       }).catch(() => {});
     }, 300);
@@ -1598,8 +1754,8 @@ function initLarkPlayer() {
 
   // Auto-scan real files from downloads folder
   setTimeout(() => {
-    if (window.pywebview?.api?.scan_music_folder) {
-      window.pywebview.api.scan_music_folder().then(res => {
+    {
+      scanMusicLibrary().then(res => {
         if (res && res.tracks && res.tracks.length > 0) {
           gPlaylist = res.tracks;
           renderPlaylistUI();
@@ -1680,7 +1836,7 @@ function playTrackAtIndex(idx) {
   gCurrentTrackIndex = idx;
   const track = gPlaylist[idx];
 
-  gAudio.src = track.url;
+  gAudio.src = getPlayableTrackUrl(track);
 
   const title = track.title || 'مقطع صوتي';
   const artist = track.uploader || 'SDN Downloader';
@@ -1830,25 +1986,22 @@ function saveHistoryAudioTrack(item) {
 
 function refreshAudioPlaylist() {
   // Only scan real files — no localStorage phantom songs!
-  if (window.pywebview?.api?.scan_music_folder) {
-    window.pywebview.api.scan_music_folder().then(res => {
-      gPlaylist = (res && res.tracks) ? res.tracks : [];
-      renderPlaylistUI();
-    }).catch(() => { gPlaylist = []; renderPlaylistUI(); });
-  } else {
-    gPlaylist = [];
+  scanMusicLibrary().then(res => {
+    gPlaylist = (res && res.tracks) ? res.tracks : [];
     renderPlaylistUI();
-  }
+  }).catch(() => { gPlaylist = []; renderPlaylistUI(); });
 }
 
 function addTracksToPlaylist(tracks) {
   if (!tracks || !tracks.length) return;
-  // Merge by url, avoid duplicates
-  const existing = new Set(gPlaylist.map(t => t.url));
+  const trackKey = track => track.filepath || track.playable_url || track.url || '';
+  // Merge by real file path/URL and avoid duplicates.
+  const existing = new Set(gPlaylist.map(trackKey));
   tracks.forEach(t => {
-    if (!existing.has(t.url)) {
+    const key = trackKey(t);
+    if (key && !existing.has(key)) {
       gPlaylist.push(t);
-      existing.add(t.url);
+      existing.add(key);
     }
   });
   renderPlaylistUI();
@@ -1856,11 +2009,11 @@ function addTracksToPlaylist(tracks) {
 
 /* Scan download folder for audio files — replaces list with real files */
 function onScanMusicFolder() {
-  if (window.pywebview?.api?.scan_music_folder) {
+  if (window.pywebview?.api?.scan_music_folder || window.androidInterface?.listAudioFiles) {
     const icon = document.getElementById('scanMusicIcon');
     if (icon) { icon.className = 'fas fa-spinner fa-spin'; }
     toast('🔄 جاري مسح مجلد التنزيلات...');
-    window.pywebview.api.scan_music_folder().then(res => {
+    scanMusicLibrary().then(res => {
       if (icon) icon.className = 'fas fa-sync-alt';
       if (res && res.tracks) {
         // Merge scanned tracks with manually added ones (those without real filepath in download folder)
@@ -1907,7 +2060,7 @@ function onAddMusicFiles() {
 /* Delete single track from playlist and optionally from disk */
 function onDeleteMusicTrack(idx, filepath) {
   const trackTitle = gPlaylist[idx]?.title || 'الأغنية';
-  const isLocalFile = filepath && (filepath.match(/^[A-Za-z]:\//) || filepath.match(/^\//) );
+  const isLocalFile = filepath && (/^[A-Za-z]:[\\/]/.test(filepath) || /^\//.test(filepath));
 
   if (gCurrentTrackIndex === idx) {
     gAudio.pause();
@@ -1926,15 +2079,20 @@ function onDeleteMusicTrack(idx, filepath) {
   renderPlaylistUI();
 
   // Ask if user wants to delete from disk too
-  if (isLocalFile && window.pywebview?.api?.delete_music_track) {
+  if (isLocalFile && (window.pywebview?.api?.delete_music_track || window.androidInterface?.deleteFile)) {
     // Show confirmation: remove from list only, or also from disk
     setTimeout(() => {
       const deleteFromDisk = confirm(`هل تريد حذف الملف "${trackTitle}" من القرص أيضاً؟\n(إلغاء = حذف من القائمة فقط)`);
       if (deleteFromDisk) {
-        window.pywebview.api.delete_music_track(filepath).then(res => {
-          if (res?.ok) toast('🗑️ تم حذف الملف من القرص بنجاح');
-          else toast('⚠️ تم الحذف من القائمة (الملف محمي أو غير موجود على القرص)');
-        }).catch(() => toast('تم الحذف من القائمة فقط'));
+        if (window.pywebview?.api?.delete_music_track) {
+          window.pywebview.api.delete_music_track(filepath).then(res => {
+            if (res?.ok) toast('🗑️ تم حذف الملف من القرص بنجاح');
+            else toast('⚠️ تم الحذف من القائمة (الملف محمي أو غير موجود على القرص)');
+          }).catch(() => toast('تم الحذف من القائمة فقط'));
+        } else {
+          const deleted = window.androidInterface.deleteFile(filepath);
+          toast(deleted ? '🗑️ تم حذف الملف من الجهاز' : '⚠️ تعذر حذف الملف من الجهاز');
+        }
       } else {
         toast('✂️ تم حذف الأغنية من القائمة');
       }
@@ -2003,7 +2161,7 @@ function renderPlaylistUI() {
   filtered.forEach((track, filteredIdx) => {
     const idx = gPlaylist.indexOf(track);
     const isPlaying = idx === gCurrentTrackIndex;
-    const fp = (track.filepath || '').replace(/\\/g, '/').replace(/'/g, "\\'");
+    const fp = track.filepath || '';
     // Get file extension
     const ext = (track.filepath || track.url || '').split('.').pop().toUpperCase().substring(0, 4);
     const item = document.createElement('div');
@@ -2027,16 +2185,16 @@ function renderPlaylistUI() {
         <!-- Title & artist -->
         <div style="display:flex; flex-direction:column; overflow:hidden; flex:1; min-width:0;">
           <span style="font-size:0.85rem; font-weight:800; color:${isPlaying ? 'var(--primary)' : 'var(--text-main)'};
-            white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${track.title || 'مقطع صوتي'}</span>
+             white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(track.title || 'مقطع صوتي')}</span>
           <div style="display:flex; align-items:center; gap:6px;">
-            <span style="font-size:0.7rem; color:var(--text-sub); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${track.uploader || 'SDN Music'}</span>
-            ${ext ? `<span style="font-size:0.6rem; font-weight:800; color:var(--green); background:rgba(52,211,153,0.1); border-radius:4px; padding:1px 4px; flex-shrink:0;">${ext}</span>` : ''}
+            <span style="font-size:0.7rem; color:var(--text-sub); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(track.uploader || 'SDN Music')}</span>
+            ${ext ? `<span style="font-size:0.6rem; font-weight:800; color:var(--green); background:rgba(52,211,153,0.1); border-radius:4px; padding:1px 4px; flex-shrink:0;">${escapeHtml(ext)}</span>` : ''}
           </div>
         </div>
       </div>
       <!-- Action buttons -->
       <div style="display:flex; gap:4px; flex-shrink:0;">
-        <button onclick="event.stopPropagation(); onDeleteMusicTrack(${idx}, '${fp}')"
+        <button class="delete-track-btn"
           title="حذف"
           style="width:30px; height:30px; border-radius:8px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.18); color:#f87171; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s;"
           onmouseover="this.style.background='rgba(239,68,68,0.22)'" onmouseout="this.style.background='rgba(239,68,68,0.08)'">
@@ -2044,6 +2202,10 @@ function renderPlaylistUI() {
         </button>
       </div>
     `;
+    item.querySelector('.delete-track-btn')?.addEventListener('click', event => {
+      event.stopPropagation();
+      onDeleteMusicTrack(idx, fp);
+    });
     container.appendChild(item);
   });
 }
@@ -2198,10 +2360,13 @@ async function fetchWebMediaInfo(url) {
             title: data.filename || 'SDN Video ' + url.substring(0, 20),
             uploader: 'SDN Engine',
             thumbnail: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=500',
+            source_url: url,
+            cleaned_url: url,
+            is_playlist: false,
             options: [
-              { label: 'فيديو MP4 عالية الجودة (1080p)', quality: '1080', type: 'video', size_str: '24 MB', direct_url: directUrl },
-              { label: 'فيديو MP4 متوازن (720p)', quality: '720', type: 'video', size_str: '12 MB', direct_url: directUrl },
-              { label: 'صوت MP3 نقاء 320kbps', quality: '320', type: 'audio', size_str: '4 MB', direct_url: directUrl }
+              { label: 'فيديو MP4 عالية الجودة (1080p)', quality: '1080', quality_tag: '1080p', ext: 'mp4', type: 'video', size_str: '1080p', direct_url: directUrl },
+              { label: 'فيديو MP4 متوازن (720p)', quality: '720', quality_tag: '720p', ext: 'mp4', type: 'video', size_str: '720p', direct_url: directUrl },
+              { label: 'صوت MP3 نقاء 320kbps', quality: '320', quality_tag: 'MP3-320k', ext: 'mp3', type: 'audio', size_str: '320k', direct_url: directUrl }
             ]
           };
         }
@@ -2215,12 +2380,99 @@ async function fetchWebMediaInfo(url) {
     title: 'مقطع ميديا - ' + site,
     uploader: site,
     thumbnail: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=500',
+    source_url: url,
+    cleaned_url: url,
+    is_playlist: false,
     options: [
-      { label: 'تنزيل فيديو MP4 (1080p)', quality: '1080', type: 'video', size_str: 'مباشر', direct_url: url },
-      { label: 'تنزيل صوت MP3 (320kbps)', quality: '320', type: 'audio', size_str: 'مباشر', direct_url: url }
+      { label: 'تنزيل فيديو MP4 (1080p)', quality: '1080', quality_tag: '1080p', ext: 'mp4', type: 'video', size_str: '1080p', direct_url: url },
+      { label: 'تنزيل صوت MP3 (320kbps)', quality: '320', quality_tag: 'MP3-320k', ext: 'mp3', type: 'audio', size_str: '320k', direct_url: url }
     ]
   };
 }
+
+function buildClientDownloadOptions() {
+  const video = [
+    ['🎬 أفضل جودة متاحة', '', 'Best'],
+    ['🎥 جودة 4K Ultra HD (2160p)', 2160, '2160p'],
+    ['📺 جودة 2K Quad HD (1440p)', 1440, '1440p'],
+    ['💻 جودة Full HD (1080p)', 1080, '1080p'],
+    ['📱 جودة HD (720p)', 720, '720p'],
+    ['⚙️ جودة SD (480p)', 480, '480p'],
+    ['⚡ جودة خفيفة (360p)', 360, '360p'],
+    ['📉 جودة اقتصادية (240p)', 240, '240p'],
+  ].map(([label, height, tag]) => {
+    const filter = height ? `[height<=${height}]` : '';
+    return {
+      label,
+      format_id: `bestvideo${filter}[ext=mp4]+bestaudio[ext=m4a]/bestvideo${filter}+bestaudio/best${filter}/best`,
+      ext: 'mp4',
+      type: 'video',
+      quality_tag: tag,
+      size_str: height ? tag : 'أعلى جودة',
+    };
+  });
+  const audio = [320, 256, 192, 128, 64].map(quality => ({
+    label: `🎵 صوت MP3 بجودة ${quality} kbps`,
+    format_id: 'bestaudio/best',
+    ext: 'mp3',
+    type: 'audio',
+    quality: String(quality),
+    quality_tag: `MP3-${quality}k`,
+    size_str: `${quality}k`,
+  }));
+  audio.push({
+    label: '🎶 صوت M4A/AAC متوافق وعالي الجودة',
+    format_id: 'bestaudio[ext=m4a]/bestaudio/best',
+    ext: 'm4a',
+    type: 'audio',
+    quality: '256',
+    quality_tag: 'M4A',
+    size_str: 'M4A',
+  });
+  return { video, audio };
+}
+
+function normalizeAndroidMediaInfo(raw, sourceUrl) {
+  const options = buildClientDownloadOptions();
+  const entries = Array.isArray(raw?.entries) ? raw.entries.filter(Boolean) : [];
+  const isPlaylist = raw?._type === 'playlist' || entries.length > 0;
+  const items = entries.map((entry, index) => ({
+    index: Number(entry.playlist_index || index + 1),
+    title: entry.title || `مقطع ${index + 1}`,
+    url: entry.webpage_url || entry.url || '',
+    duration: entry.duration_string || (entry.duration ? formatTime(entry.duration) : ''),
+    thumbnail: entry.thumbnail || (entry.thumbnails?.length ? entry.thumbnails.at(-1)?.url : ''),
+    selected: true,
+  }));
+  return {
+    is_playlist: isPlaylist,
+    title: raw?.title || (isPlaylist ? 'قائمة تشغيل' : 'وسائط بدون عنوان'),
+    uploader: raw?.uploader || raw?.channel || raw?.extractor_key || 'منصة وسائط',
+    thumbnail: raw?.thumbnail || items[0]?.thumbnail || '',
+    duration: raw?.duration_string || (raw?.duration ? formatTime(raw.duration) : ''),
+    entry_count: items.length,
+    items,
+    video_options: options.video,
+    audio_options: options.audio,
+    source_url: sourceUrl,
+    cleaned_url: sourceUrl,
+  };
+}
+
+window.onAndroidMediaInfo = function(payload) {
+  const result = parseBridgeJson(payload, {});
+  const btn = document.getElementById('fetchBtn');
+  const txt = document.getElementById('fetchTxt');
+  gBusy = false;
+  if (btn) btn.disabled = false;
+  if (txt) txt.innerText = 'جلب الرابط ✨';
+  if (result.error) {
+    toast('❌ ' + result.error);
+    return;
+  }
+  const sourceUrl = result.source_url || document.getElementById('urlInp').value.trim();
+  renderMediaCard(normalizeAndroidMediaInfo(result.data || {}, sourceUrl));
+};
 
 /* ── Fetch Action ── */
 function doFetch() {
@@ -2241,6 +2493,14 @@ function doFetch() {
       gBusy = false; btn.disabled = false; txt.innerText = 'جلب الرابط ✨';
       toast('❌ فشل جلب تفاصيل الرابط');
     });
+  } else if (window.androidInterface?.fetchMediaInfo) {
+    try {
+      const started = window.androidInterface.fetchMediaInfo(url);
+      if (!started) throw new Error('not started');
+    } catch (_) {
+      gBusy = false; btn.disabled = false; txt.innerText = 'جلب الرابط ✨';
+      toast('❌ تعذر تشغيل محلل الروابط على Android');
+    }
   } else {
     fetchWebMediaInfo(url).then(data => {
       gBusy = false; btn.disabled = false; txt.innerText = 'جلب الرابط ✨';
@@ -2271,7 +2531,13 @@ function updateProgress(p) {
     const pctVal = Math.round(p.percent || 0);
     if (fill) fill.style.width = pctVal + '%';
     if (pct)  pct.innerText  = pctVal + '%';
-    if (stat) stat.innerText = '⬇️ جاري التحميل...';
+    if (stat) {
+      const playlistText = p.playlist_count
+        ? ` (${p.playlist_index || 1}/${p.playlist_count})`
+        : '';
+      const itemTitle = p.item_title ? ` — ${p.item_title}` : '';
+      stat.innerText = `⬇️ جاري التحميل${playlistText}${itemTitle}`;
+    }
     if (speed) speed.innerText = p.speed_str || 'جاري البدء...';
     if (sizes) sizes.innerText = p.downloaded_str && p.total_str ? `${p.downloaded_str} / ${p.total_str}` : '';
     if (eta && p.eta_str) eta.innerText = 'الوقت المتبقي: ' + p.eta_str;
@@ -2285,6 +2551,7 @@ function updateProgress(p) {
     if (eta)   eta.innerText = '';
 
   } else if (p.status === 'complete') {
+    setDownloadActive(false);
     card.style.display = 'flex';
     if (fill) fill.style.width = '100%';
     if (pct)  pct.innerText  = '100%';
@@ -2294,20 +2561,20 @@ function updateProgress(p) {
     if (sizes) sizes.innerText = '';
 
     // Save to history
-    const title = gData?.title || 'فيديو محمّل';
+    const title = gData?.title || 'وسائط محمّلة';
     const qualLabel = gOpt?.label || gOpt?.size_str || 'جودة افتراضية';
     const mediaType = gOpt?.type || 'video';
-    addRecentItem(title, qualLabel, mediaType === 'audio' ? 'tt' : 'yt', p.filepath || '');
-
-    // Save to Python history
-    if (window.pywebview?.api?.add_history) {
-      window.pywebview.api.add_history({
-        title: title,
-        quality: qualLabel,
-        type: mediaType,
-        filepath: p.filepath || '',
-        date: new Date().toISOString()
-      });
+    const firstFile = Array.isArray(p.files) && p.files.length ? p.files[0] : null;
+    const summaryTitle = p.count > 1 ? `${title} (${p.count} ملفات)` : title;
+    addRecentItem(
+      summaryTitle,
+      qualLabel,
+      mediaType === 'audio' ? 'audio' : 'yt',
+      p.filepath || firstFile?.filepath || '',
+      firstFile?.playable_url || ''
+    );
+    if (mediaType === 'audio') {
+      setTimeout(refreshAudioPlaylist, 500);
     }
 
     // Play completion sound
@@ -2325,14 +2592,28 @@ function updateProgress(p) {
       osc.stop(ctx.currentTime + 0.5);
     } catch(e) {}
 
-    toast('✅ تم تحميل الفيديو بنجاح!');
+    toast(
+      p.count > 1
+        ? `✅ اكتمل تنزيل ${p.count} ملفات بنجاح!`
+        : (mediaType === 'audio' ? '✅ تم تنزيل الصوت وأضيف إلى المشغل!' : '✅ تم تحميل الفيديو بنجاح!')
+    );
 
     // Auto-hide progress card after 4s
     setTimeout(() => {
       if (card) card.style.display = 'none';
     }, 4000);
 
+  } else if (p.status === 'cancelled') {
+    setDownloadActive(false);
+    card.style.display = 'flex';
+    if (fill) { fill.style.width = '0%'; fill.style.background = ''; }
+    if (pct) pct.innerText = '⏹️';
+    if (stat) stat.innerText = p.error || 'تم إلغاء التنزيل';
+    if (speed) speed.innerText = '';
+    if (eta) eta.innerText = '';
+    toast('⏹️ تم إلغاء التنزيل');
   } else if (p.status === 'error') {
+    setDownloadActive(false);
     card.style.display = 'flex';
     if (fill) { fill.style.width = '100%'; fill.style.background = 'var(--red)'; }
     if (pct)  pct.innerText = '❌';
@@ -2393,7 +2674,12 @@ function renderTabOptions(optionsList) {
   optionsList.forEach((o, i) => {
     const row = document.createElement('div');
     row.className = 'q-option-row' + (i === 0 ? ' selected' : '');
-    row.innerHTML = `<span>${o.label}</span><span style="color:var(--primary); font-weight:800;">${o.size_str || ''}</span>`;
+    const label = document.createElement('span');
+    label.textContent = o.label || 'خيار تنزيل';
+    const size = document.createElement('span');
+    size.style.cssText = 'color:var(--primary); font-weight:800;';
+    size.textContent = o.size_str || '';
+    row.append(label, size);
     row.addEventListener('click', () => {
       grid.querySelectorAll('.q-option-row').forEach(r => r.classList.remove('selected'));
       row.classList.add('selected');
@@ -2402,6 +2688,59 @@ function renderTabOptions(optionsList) {
     grid.appendChild(row);
     if (i === 0) gOpt = o;
   });
+}
+
+function updateDownloadPlaylistSummary() {
+  const items = Array.from(document.querySelectorAll('.download-playlist-check'));
+  const selected = items.filter(item => item.checked).length;
+  const summary = document.getElementById('downloadPlaylistSummary');
+  if (summary) summary.textContent = `📚 تم تحديد ${selected} من ${items.length}`;
+  const dlBtn = document.getElementById('dlBtn');
+  if (dlBtn && !gDownloadActive) {
+    dlBtn.textContent = selected > 0 ? `⚡ تنزيل ${selected} عنصر` : '⚠️ اختر عناصر للتنزيل';
+  }
+}
+
+function setAllPlaylistItems(checked) {
+  document.querySelectorAll('.download-playlist-check').forEach(item => { item.checked = checked; });
+  updateDownloadPlaylistSummary();
+}
+window.setAllPlaylistItems = setAllPlaylistItems;
+
+function renderDownloadPlaylist(data) {
+  const picker = document.getElementById('downloadPlaylistPicker');
+  const container = document.getElementById('downloadPlaylistItems');
+  if (!picker || !container) return;
+  container.innerHTML = '';
+  picker.classList.toggle('active', Boolean(data?.is_playlist));
+  if (!data?.is_playlist) return;
+
+  (data.items || []).forEach((item, position) => {
+    const row = document.createElement('label');
+    row.className = 'download-playlist-entry';
+
+    const check = document.createElement('input');
+    check.type = 'checkbox';
+    check.className = 'download-playlist-check';
+    check.checked = item.selected !== false;
+    check.dataset.index = String(item.index || position + 1);
+    check.addEventListener('change', updateDownloadPlaylistSummary);
+
+    const thumb = document.createElement('img');
+    thumb.alt = '';
+    thumb.loading = 'lazy';
+    if (item.thumbnail) thumb.src = item.thumbnail;
+
+    const title = document.createElement('span');
+    title.textContent = `${item.index || position + 1}. ${item.title || 'بدون عنوان'}`;
+    title.title = item.title || '';
+
+    const duration = document.createElement('small');
+    duration.textContent = item.duration || '';
+    row.append(check, thumb, title, duration);
+    container.appendChild(row);
+  });
+  updateDownloadPlaylistSummary();
 }
 
 function renderMediaCard(d) {
@@ -2413,6 +2752,7 @@ function renderMediaCard(d) {
   const vOpts = d.video_options || [];
   const aOpts = d.audio_options || [];
   const opts = d.options || [...vOpts, ...aOpts];
+  renderDownloadPlaylist(d);
 
   currentVideoOpts = opts.filter(o => o.type !== 'audio' && !o.label.includes('صوت') && !o.label.includes('MP3'));
   currentAudioOpts = opts.filter(o => o.type === 'audio' || o.label.includes('صوت') || o.label.includes('MP3'));
@@ -2431,33 +2771,88 @@ function renderMediaCard(d) {
   card.scrollIntoView({ behavior: 'smooth' });
 }
 
+function setDownloadActive(active) {
+  gDownloadActive = active;
+  const button = document.getElementById('dlBtn');
+  const cancel = document.getElementById('cancelDlBtn');
+  if (button) {
+    button.disabled = active;
+    if (active) button.textContent = '⬇️ جاري التنزيل...';
+    else if (gData?.is_playlist) updateDownloadPlaylistSummary();
+    else button.textContent = '⚡ تنزيل الآن';
+  }
+  cancel?.classList.toggle('active', active);
+}
+
 /* ── Start Download Action ── */
-document.getElementById('dlBtn').addEventListener('click', () => {
+document.getElementById('dlBtn').addEventListener('click', async () => {
   if (!gOpt || !gData) { toast('⚠️ اختر جودة أولاً'); return; }
+  if (gDownloadActive) return;
 
   const card = document.getElementById('progCard');
   card.style.display = 'flex';
+  document.getElementById('progFill').style.background = '';
+  document.getElementById('progFill').style.width = '0%';
 
-  const downloadUrl = gOpt.direct_url || document.getElementById('urlInp').value;
-  const filename = (gData.title || 'SDN_Video').replace(/[/\\?%*:|"<>]/g, '_') + (gOpt.type === 'audio' ? '.mp3' : '.mp4');
+  const playlistItems = Array.from(document.querySelectorAll('.download-playlist-check:checked'))
+    .map(item => Number(item.dataset.index))
+    .filter(Number.isFinite);
+  if (gData.is_playlist && playlistItems.length === 0) {
+    toast('⚠️ اختر عنصرًا واحدًا على الأقل من القائمة');
+    return;
+  }
+
+  const sourceUrl = gData.cleaned_url || gData.source_url || document.getElementById('urlInp').value;
+  const requestOption = {
+    ...gOpt,
+    is_playlist: Boolean(gData.is_playlist),
+    playlist_items: playlistItems,
+    playlist_count: playlistItems.length || gData.entry_count || 1,
+    media_title: gData.title || '',
+    media_uploader: gData.uploader || '',
+  };
+  const filename = (gData.title || 'SDN_Video').replace(/[/\\?%*:|"<>]/g, '_') +
+    (gOpt.type === 'audio' ? `.${gOpt.ext || 'mp3'}` : '.mp4');
+  setDownloadActive(true);
 
   if (window.pywebview?.api?.start_download) {
-    window.pywebview.api.start_download(downloadUrl, gOpt, 'none');
-    // Progress updates come via updateProgress() callback from Python
+    try {
+      const result = await window.pywebview.api.start_download(sourceUrl, requestOption, 'none');
+      if (result && result.started === false) {
+        setDownloadActive(false);
+        updateProgress({ status: 'error', error: result.error || 'تعذر بدء التنزيل' });
+      }
+    } catch (_) {
+      setDownloadActive(false);
+      updateProgress({ status: 'error', error: 'تعذر بدء محرك التنزيل' });
+    }
+  } else if (window.androidInterface?.downloadMedia) {
+    try {
+      const started = window.androidInterface.downloadMedia(sourceUrl, JSON.stringify(requestOption));
+      if (!started) throw new Error('not started');
+      toast(gData.is_playlist ? '📚 بدأ تنزيل القائمة في الخلفية' : '⚡ بدأ التنزيل في الخلفية');
+    } catch (_) {
+      setDownloadActive(false);
+      updateProgress({ status: 'error', error: 'تعذر بدء التنزيل على Android' });
+    }
   } else if (window.androidInterface?.downloadFile) {
+    const downloadUrl = gOpt.direct_url || sourceUrl;
     const mimeType = gOpt.type === 'audio' ? 'audio/mpeg' : 'video/mp4';
     const subFolder = localStorage.getItem('customSavePath') || 'Downloads';
     const success = window.androidInterface.downloadFile(downloadUrl, filename, mimeType, subFolder);
     if (success) {
       toast('⚡ بدأ التنزيل في شريط إشعارات الهاتف');
-      addRecentItem(gData.title, gOpt.label, gOpt.type === 'audio' ? 'tt' : 'yt');
+      addRecentItem(gData.title, gOpt.label, gOpt.type === 'audio' ? 'audio' : 'yt');
       document.getElementById('progFill').style.width = '100%';
       document.getElementById('progPct').innerText = '100%';
       document.getElementById('progStatus').innerText = '🚀 تم إرسال التحميل للهاتف!';
+      setDownloadActive(false);
     } else {
+      setDownloadActive(false);
       toast('❌ فشل بدء التنزيل في الهاتف');
     }
   } else {
+    const downloadUrl = gOpt.direct_url || sourceUrl;
     const a = document.createElement('a');
     a.href = downloadUrl;
     a.download = filename;
@@ -2475,48 +2870,86 @@ document.getElementById('dlBtn').addEventListener('click', () => {
         clearInterval(interval);
         document.getElementById('progStatus').innerText = '🎉 اكتمل التحميل!';
         addRecentItem(gData.title, gOpt.label, 'generic');
+        setDownloadActive(false);
       }
     }, 250);
   }
 });
 
+document.getElementById('cancelDlBtn')?.addEventListener('click', () => {
+  if (!gDownloadActive) return;
+  toast('⏹️ جاري إلغاء التنزيل...');
+  if (window.pywebview?.api?.cancel_download) {
+    window.pywebview.api.cancel_download();
+  } else if (window.androidInterface?.cancelDownload) {
+    window.androidInterface.cancelDownload();
+  }
+});
+
+function createRecentCard(title, quality, type, filepath) {
+  const item = document.createElement('div');
+  item.className = 'recent-card-item';
+
+  const left = document.createElement('div');
+  left.className = 'recent-card-left';
+  const iconWrap = document.createElement('div');
+  iconWrap.className = `platform-icon ${type === 'audio' ? 'tt' : 'generic'}`;
+  const icon = document.createElement('i');
+  icon.className = `fas ${type === 'audio' ? 'fa-music' : 'fa-video'}`;
+  iconWrap.appendChild(icon);
+
+  const details = document.createElement('div');
+  details.className = 'item-details';
+  const titleEl = document.createElement('span');
+  titleEl.className = 'item-title';
+  titleEl.textContent = title || 'بدون عنوان';
+  const meta = document.createElement('span');
+  meta.className = 'item-meta';
+  meta.textContent = quality || '';
+  details.append(titleEl, meta);
+  left.append(iconWrap, details);
+  item.appendChild(left);
+
+  if (filepath) {
+    const openButton = document.createElement('button');
+    openButton.className = 'open-folder-btn';
+    openButton.title = 'فتح في المجلد';
+    openButton.innerHTML = '<i class="fas fa-folder-open"></i> فتح في المجلد';
+    openButton.addEventListener('click', event => {
+      event.stopPropagation();
+      openDownloadFolder(filepath);
+    });
+    item.appendChild(openButton);
+  }
+  const done = document.createElement('i');
+  done.className = 'fas fa-check-circle item-status-icon';
+  item.appendChild(done);
+  return item;
+}
+
 /* ── Recent Items Add & Lark Player Integration ── */
-function addRecentItem(title, quality, type, filepath) {
+function addRecentItem(title, quality, type, filepath, playableUrl = '') {
   document.getElementById('emptyRecent')?.remove();
   document.getElementById('emptyHistory')?.remove();
 
   const list = document.getElementById('recentList');
   const hist = document.getElementById('fullHistoryList');
+  const isAudio = type === 'audio' || String(quality || '').toLowerCase().includes('mp3');
+  if (list) list.insertBefore(createRecentCard(title, quality, isAudio ? 'audio' : type, filepath), list.firstChild);
+  if (hist) hist.insertBefore(createRecentCard(title, quality, isAudio ? 'audio' : type, filepath), hist.firstChild);
 
-  const fp = filepath || '';
-  const openFolderBtn = fp ? `<button class="open-folder-btn" onclick="event.stopPropagation(); openDownloadFolder('${fp.replace(/'/g, "\\'")}')" title="فتح في المجلد"><i class="fas fa-folder-open"></i> فتح في المجلد</button>` : '';
-
-  const item = document.createElement('div');
-  item.className = 'recent-card-item';
-  item.innerHTML = `
-    <div class="recent-card-left">
-      <div class="platform-icon ${type}"><i class="fas ${type === 'audio' || quality.toLowerCase().includes('mp3') ? 'fa-music' : 'fa-video'}"></i></div>
-      <div class="item-details">
-        <span class="item-title">${title}</span>
-        <span class="item-meta">${quality}</span>
-      </div>
-    </div>
-    ${openFolderBtn}
-    <i class="fas fa-check-circle item-status-icon"></i>
-  `;
-  if (list) list.insertBefore(item, list.firstChild);
-  if (hist) hist.insertBefore(item.cloneNode(true), hist.firstChild);
-
-  if (gData && gOpt && (gOpt.type === 'audio' || quality.toLowerCase().includes('mp3'))) {
+  if (gData && gOpt && isAudio && filepath) {
     saveHistoryAudioTrack({
       title: title,
       uploader: gData.uploader || 'SDN Audio',
       thumbnail: gData.thumbnail || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300',
-      url: gOpt.direct_url || document.getElementById('urlInp')?.value || ''
+      url: playableUrl || getPlayableTrackUrl({ filepath }),
+      playable_url: playableUrl || getPlayableTrackUrl({ filepath }),
+      filepath: filepath
     });
   }
 
-  // ── Download Counter Badge (v2.4.0) ──
+  // ── Download Counter Badge ──
   incrementDlCounter();
 }
 
@@ -2525,9 +2958,11 @@ function openDownloadFolder(filepath) {
   if (window.pywebview?.api?.locate_file) {
     window.pywebview.api.locate_file(filepath || '');
   } else if (window.pywebview?.api?.open_folder) {
-    window.pywebview.api.open_folder(filepath ? '' : null);
+    window.pywebview.api.open_folder(filepath ? filepath.replace(/[\\/][^\\/]+$/, '') : null);
+  } else if (window.androidInterface?.openDownloads) {
+    window.androidInterface.openDownloads();
   } else {
-    toast('📁 مجلد التنزيلات: ' + (filepath || 'C:\\Downloads'));
+    toast('📁 افتح مجلد التنزيلات لعرض الملف');
   }
 }
 window.openDownloadFolder = openDownloadFolder;
@@ -2556,8 +2991,23 @@ function incrementDlCounter() {
   num.style.animation = 'dlBadgeBump 0.35s ease';
 }
 
-const CURRENT_VERSION = '0.7.0';
+const CURRENT_VERSION = '1.0.0';
 let gLatestReleaseUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
+
+function compareVersions(left, right) {
+  const normalize = value => String(value || '')
+    .replace(/^v/i, '')
+    .split(/[.+-]/)
+    .slice(0, 4)
+    .map(part => Number.parseInt(part, 10) || 0);
+  const a = normalize(left);
+  const b = normalize(right);
+  for (let i = 0; i < 4; i++) {
+    if ((a[i] || 0) > (b[i] || 0)) return 1;
+    if ((a[i] || 0) < (b[i] || 0)) return -1;
+  }
+  return 0;
+}
 
 /* ── Auto Update Checker & Header Button (With Tags API Fallback) ── */
 async function checkForAppUpdates() {
@@ -2575,12 +3025,14 @@ async function checkForAppUpdates() {
       const release = await resp.json();
       latestTag = (release.tag_name || '').replace(/^v/, '');
       if (release.assets && Array.isArray(release.assets)) {
-        const exeAsset = release.assets.find(a => a.name && a.name.endsWith('.exe'));
-        if (exeAsset && exeAsset.browser_download_url) {
-          directDownloadUrl = exeAsset.browser_download_url;
+        const wantedAsset = window.androidInterface
+          ? 'SDN_Downloader_Ultra.apk'
+          : 'SDN_Downloader_Setup.exe';
+        const releaseAsset = release.assets.find(a => a.name === wantedAsset);
+        if (releaseAsset && releaseAsset.browser_download_url) {
+          directDownloadUrl = releaseAsset.browser_download_url;
         }
       }
-      if (release.html_url) directDownloadUrl = release.html_url;
     }
   } catch(e) {}
 
@@ -2600,8 +3052,7 @@ async function checkForAppUpdates() {
 
   gLatestReleaseUrl = directDownloadUrl;
 
-  // Compare version strings: show button ONLY if latestTag > CURRENT_VERSION
-  if (latestTag && latestTag !== CURRENT_VERSION) {
+  if (latestTag && compareVersions(latestTag, CURRENT_VERSION) > 0) {
     if (btn) {
       btn.classList.add('has-update');
       btn.style.display = 'flex';
@@ -2623,7 +3074,7 @@ async function checkForAppUpdates() {
 }
 
 function showUpdateBadge(upInfo) {
-  if (!upInfo || !upInfo.has_update || upInfo.latest_version === CURRENT_VERSION) return;
+  if (!upInfo || !upInfo.has_update || compareVersions(upInfo.latest_version, CURRENT_VERSION) <= 0) return;
   const btn = document.getElementById('headerUpdateBtn');
   const txt = document.getElementById('updateHeaderTxt');
   const icon = document.getElementById('updateHeaderIcon');
@@ -2716,7 +3167,13 @@ function onHeaderUpdateClick() {
   const btn = document.getElementById('headerUpdateBtn');
   if (btn && btn.classList.contains('has-update')) {
     document.getElementById('updateModal')?.classList.add('active');
-    if (window.pywebview?.api?.apply_app_update) {
+    if (window.androidInterface?.downloadUpdate) {
+      const started = window.androidInterface.downloadUpdate(gLatestReleaseUrl);
+      closeUpdateModal();
+      toast(started
+        ? '📱 بدأ تنزيل تحديث Android. افتح إشعار التنزيل لتثبيته عند الاكتمال.'
+        : '❌ تعذر بدء تنزيل تحديث Android');
+    } else if (window.pywebview?.api?.apply_app_update) {
       window.pywebview.api.apply_app_update(gLatestReleaseUrl);
     } else {
       toast('🚀 جاري بدء التنزيل التلقائي داخل التطبيق...');
@@ -2771,30 +3228,20 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!hist) return;
       hist.innerHTML = '';
       items.forEach(item => {
-        const fp = item.filepath || '';
-        const openFolderBtn = fp ? `<button class="open-folder-btn" onclick="event.stopPropagation(); openDownloadFolder('${fp.replace(/'/g, "\\'")}')" title="فتح في المجلد"><i class="fas fa-folder-open"></i> فتح في المجلد</button>` : '';
-        const el = document.createElement('div');
-        el.className = 'recent-card-item';
-        el.innerHTML = `
-          <div class="recent-card-left">
-            <div class="platform-icon generic"><i class="fas ${item.type === 'audio' ? 'fa-music' : 'fa-video'}"></i></div>
-            <div class="item-details">
-              <span class="item-title">${item.title || 'بدون عنوان'}</span>
-              <span class="item-meta">${item.quality || ''}</span>
-            </div>
-          </div>
-          ${openFolderBtn}
-          <i class="fas fa-check-circle item-status-icon"></i>
-        `;
-        hist.appendChild(el);
+        hist.appendChild(
+          createRecentCard(
+            item.title || 'بدون عنوان',
+            item.quality || '',
+            item.type === 'audio' ? 'audio' : 'video',
+            item.filepath || ''
+          )
+        );
       });
     }).catch(() => {});
   }
 
   checkForAppUpdates();
 });
-setTimeout(initLarkPlayer, 500);
-setTimeout(checkForAppUpdates, 1500);
 
 </script>
 </body>
