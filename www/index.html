@@ -511,6 +511,123 @@ body.light-theme .input-field-wrap input { background: #fff; }
 .download-playlist-entry img { width: 42px; height: 30px; object-fit: cover; border-radius: 6px; }
 .download-playlist-entry span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .download-playlist-entry small { color: var(--text-sub); }
+
+.trim-section-card {
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 12px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.trim-section-card:hover {
+  border-color: rgba(56, 189, 248, 0.3);
+}
+.trim-toggle-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+.trim-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.trim-toggle-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+.trim-toggle-hint {
+  font-size: 0.75rem;
+  color: var(--text-sub);
+}
+.trim-inputs-body {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+}
+.trim-fields-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 480px) {
+  .trim-fields-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.trim-box {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.trim-box-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+.time-inputs-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+}
+.time-input-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+.time-input-unit input {
+  width: 100%;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-align: center;
+  outline: none;
+  font-family: inherit;
+}
+.time-input-unit input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+.time-input-unit small {
+  font-size: 0.68rem;
+  color: var(--text-sub);
+  margin-top: 2px;
+}
+.time-colon {
+  font-size: 1.2rem;
+  font-weight: 900;
+  color: var(--primary);
+  margin-bottom: 12px;
+}
+.trim-summary-bar {
+  margin-top: 10px;
+  font-size: 0.78rem;
+  color: #34d399;
+  font-weight: 700;
+  text-align: center;
+  background: rgba(52, 211, 153, 0.1);
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(52, 211, 153, 0.2);
+}
+
 .download-actions-row { display: grid; grid-template-columns: 1fr auto; gap: 9px; }
 .btn-start-download {
   height: 48px; border-radius: 14px; background: linear-gradient(135deg, #34d399 0%, #38bdf8 100%);
@@ -1527,6 +1644,53 @@ input:checked + .slider:before { transform: translateX(20px); }
         <div class="format-tabs-bar" id="formatTabsBar">
           <button class="format-tab-btn active" id="tabVideoBtn" onclick="switchFormatTab('video')">🎬 قسم الفيديو</button>
           <button class="format-tab-btn" id="tabAudioBtn" onclick="switchFormatTab('audio')">🎵 قسم الصوت</button>
+        </div>
+
+        <!-- Trim / Clip Section -->
+        <div class="trim-section-card" id="trimSection">
+          <div class="trim-toggle-header" onclick="toggleTrimSection()">
+            <label class="trim-toggle-label" onclick="event.stopPropagation()">
+              <input type="checkbox" id="trimEnableCheck" onchange="onTrimToggleChange()">
+              <strong style="font-size:0.85rem; color:var(--text-main);">✂️ اقتطاع جزء من المقطع (اختياري)</strong>
+            </label>
+            <span class="trim-toggle-hint" id="trimHint">تحديد دقائق وثواني للتنزيل الجزئي</span>
+          </div>
+          <div class="trim-inputs-body" id="trimInputsBody" style="display:none;">
+            <div class="trim-fields-grid">
+              <div class="trim-box">
+                <span class="trim-box-label">⏱️ بداية المقطع (من):</span>
+                <div class="time-inputs-group">
+                  <div class="time-input-unit">
+                    <input type="number" id="trimStartMin" min="0" placeholder="00" oninput="updateTrimSummary()">
+                    <small>دقيقة</small>
+                  </div>
+                  <span class="time-colon">:</span>
+                  <div class="time-input-unit">
+                    <input type="number" id="trimStartSec" min="0" max="59" placeholder="00" oninput="updateTrimSummary()">
+                    <small>ثانية</small>
+                  </div>
+                </div>
+              </div>
+
+              <div class="trim-box">
+                <span class="trim-box-label">🏁 نهاية المقطع (إلى):</span>
+                <div class="time-inputs-group">
+                  <div class="time-input-unit">
+                    <input type="number" id="trimEndMin" min="0" placeholder="00" oninput="updateTrimSummary()">
+                    <small>دقيقة</small>
+                  </div>
+                  <span class="time-colon">:</span>
+                  <div class="time-input-unit">
+                    <input type="number" id="trimEndSec" min="0" max="59" placeholder="00" oninput="updateTrimSummary()">
+                    <small>ثانية</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="trim-summary-bar" id="trimSummaryBar">
+              ✨ سيتم تنزيل المقطع المقتطع فقط مباشرة من السيرفر.
+            </div>
+          </div>
         </div>
 
         <div class="quality-selector-grid" id="qGrid"></div>
@@ -3254,8 +3418,136 @@ function renderDownloadPlaylist(data) {
   updateDownloadPlaylistSummary();
 }
 
+function resetTrimFields() {
+  const check = document.getElementById('trimEnableCheck');
+  if (check) check.checked = false;
+  const startMin = document.getElementById('trimStartMin');
+  const startSec = document.getElementById('trimStartSec');
+  const endMin = document.getElementById('trimEndMin');
+  const endSec = document.getElementById('trimEndSec');
+  if (startMin) startMin.value = '';
+  if (startSec) startSec.value = '';
+  if (endMin) endMin.value = '';
+  if (endSec) endSec.value = '';
+  const body = document.getElementById('trimInputsBody');
+  if (body) body.style.display = 'none';
+  updateTrimSummary();
+}
+window.resetTrimFields = resetTrimFields;
+
+function onTrimToggleChange() {
+  const enabled = document.getElementById('trimEnableCheck')?.checked;
+  const body = document.getElementById('trimInputsBody');
+  if (body) body.style.display = enabled ? 'block' : 'none';
+  if (enabled) updateTrimSummary();
+}
+window.onTrimToggleChange = onTrimToggleChange;
+
+function toggleTrimSection() {
+  const check = document.getElementById('trimEnableCheck');
+  if (check) {
+    check.checked = !check.checked;
+    onTrimToggleChange();
+  }
+}
+window.toggleTrimSection = toggleTrimSection;
+
+function updateTrimSummary() {
+  const enabled = document.getElementById('trimEnableCheck')?.checked;
+  const summary = document.getElementById('trimSummaryBar');
+  if (!summary) return;
+  if (!enabled) {
+    summary.style.color = '#34d399';
+    summary.style.borderColor = 'rgba(52, 211, 153, 0.2)';
+    summary.style.background = 'rgba(52, 211, 153, 0.1)';
+    summary.innerHTML = '✨ سيتم تنزيل المقطع كاملاً.';
+    return;
+  }
+  const startMinVal = document.getElementById('trimStartMin')?.value;
+  const startSecVal = document.getElementById('trimStartSec')?.value;
+  const endMinVal = document.getElementById('trimEndMin')?.value;
+  const endSecVal = document.getElementById('trimEndSec')?.value;
+
+  const startMin = parseInt(startMinVal || '0', 10);
+  const startSec = parseInt(startSecVal || '0', 10);
+  const startTotalSec = (isNaN(startMin) ? 0 : startMin) * 60 + (isNaN(startSec) ? 0 : startSec);
+
+  let endTotalSec = null;
+  if (endMinVal !== '' || endSecVal !== '') {
+    const endMin = parseInt(endMinVal || '0', 10);
+    const endSec = parseInt(endSecVal || '0', 10);
+    endTotalSec = (isNaN(endMin) ? 0 : endMin) * 60 + (isNaN(endSec) ? 0 : endSec);
+  }
+
+  const formatSec = (s) => {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+  };
+
+  if (endTotalSec !== null && endTotalSec <= startTotalSec) {
+    summary.style.color = '#f87171';
+    summary.style.borderColor = 'rgba(248, 113, 113, 0.3)';
+    summary.style.background = 'rgba(248, 113, 113, 0.1)';
+    summary.innerHTML = '⚠️ وقت النهاية يجب أن يكون أكبر من وقت البداية.';
+    return;
+  }
+
+  summary.style.color = '#34d399';
+  summary.style.borderColor = 'rgba(52, 211, 153, 0.2)';
+  summary.style.background = 'rgba(52, 211, 153, 0.1)';
+
+  let text = `⏱️ بداية: ${formatSec(startTotalSec)}`;
+  if (endTotalSec !== null) {
+    const diff = endTotalSec - startTotalSec;
+    text += ` ⬅️ نهاية: ${formatSec(endTotalSec)} (المدة المستقطعة: ${formatSec(diff)})`;
+  } else {
+    text += ` ⬅️ إلى نهاية المقطع الأصلي`;
+  }
+  summary.innerHTML = text;
+}
+window.updateTrimSummary = updateTrimSummary;
+
+function getTrimOptions() {
+  const enabled = document.getElementById('trimEnableCheck')?.checked;
+  if (!enabled) return { trim_start: null, trim_end: null };
+
+  const startMinVal = document.getElementById('trimStartMin')?.value;
+  const startSecVal = document.getElementById('trimStartSec')?.value;
+  const endMinVal = document.getElementById('trimEndMin')?.value;
+  const endSecVal = document.getElementById('trimEndSec')?.value;
+
+  const startMin = parseInt(startMinVal || '0', 10);
+  const startSec = parseInt(startSecVal || '0', 10);
+  const startTotalSec = (isNaN(startMin) ? 0 : startMin) * 60 + (isNaN(startSec) ? 0 : startSec);
+
+  let endTotalSec = null;
+  if (endMinVal !== '' || endSecVal !== '') {
+    const endMin = parseInt(endMinVal || '0', 10);
+    const endSec = parseInt(endSecVal || '0', 10);
+    endTotalSec = (isNaN(endMin) ? 0 : endMin) * 60 + (isNaN(endSec) ? 0 : endSec);
+  }
+
+  if (endTotalSec !== null && endTotalSec <= startTotalSec) {
+    toast('⚠️ وقت النهاية يجب أن يكون أكبر من وقت البداية');
+    return null;
+  }
+
+  const formatStr = (s) => {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+  };
+
+  return {
+    trim_start: startTotalSec > 0 ? formatStr(startTotalSec) : (endTotalSec !== null ? "00:00" : null),
+    trim_end: endTotalSec !== null ? formatStr(endTotalSec) : null
+  };
+}
+
 function renderMediaCard(d) {
   gData = d;
+  resetTrimFields();
   document.getElementById('mThumb').src = d.thumbnail || '';
   document.getElementById('mTitle').innerText = d.title || 'عنوان الفيديو';
   document.getElementById('mUp').innerText = d.uploader || '';
@@ -3300,6 +3592,9 @@ document.getElementById('dlBtn').addEventListener('click', async () => {
   if (!gOpt || !gData) { toast('⚠️ اختر جودة أولاً'); return; }
   if (gDownloadActive) return;
 
+  const trimOpts = getTrimOptions();
+  if (trimOpts === null) return;
+
   const card = document.getElementById('progCard');
   card.style.display = 'flex';
   document.getElementById('progFill').style.background = '';
@@ -3323,6 +3618,7 @@ document.getElementById('dlBtn').addEventListener('click', async () => {
   const sourceUrl = gData.cleaned_url || gData.source_url || document.getElementById('urlInp').value;
   const requestOption = {
     ...gOpt,
+    ...trimOpts,
     is_playlist: Boolean(gData.is_playlist),
     playlist_items: downloadFullPlaylist ? [] : selectedPlaylistItems,
     playlist_mode: downloadFullPlaylist ? 'all' : 'selected',

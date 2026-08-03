@@ -664,6 +664,18 @@ class MediaDownloader:
             postprocessors.append({"key": "FFmpegMetadata", "add_metadata": True})
         ydl_options["postprocessors"] = postprocessors
 
+        start_sec = parse_time_to_seconds(option.get("trim_start"))
+        end_sec = parse_time_to_seconds(option.get("trim_end"))
+        if start_sec is not None or end_sec is not None:
+            s_val = start_sec if start_sec is not None else 0
+            e_val = end_sec if end_sec is not None else float("inf")
+            try:
+                from yt_dlp.utils import download_range_func
+                ydl_options["download_ranges"] = download_range_func(None, [(s_val, e_val)])
+                ydl_options["force_keyframes_at_cuts"] = True
+            except Exception:
+                pass
+
         try:
             with yt_dlp.YoutubeDL(ydl_options) as ydl:
                 info = ydl.extract_info(url, download=True)
@@ -698,7 +710,7 @@ class MediaDownloader:
 
         trim_start = option.get("trim_start")
         trim_end = option.get("trim_end")
-        if final_files and (trim_start or trim_end):
+        if final_files and (trim_start is not None or trim_end is not None):
             if status_callback:
                 status_callback("جاري تطبيق وقت البداية والنهاية المحدد...")
             for file_path in list(final_files):
@@ -728,25 +740,90 @@ class MediaDownloader:
             "quality_tag": quality_tag,
         }
 
-    def _trim_file(self, file_path: str, trim_start: str | None, trim_end: str | None) -> None:
+    def _trim_file(self, file_path: str, trim_start: Any, trim_end: Any) -> None:
+        start_sec = parse_time_to_seconds(trim_start)
+        end_sec = parse_time_to_seconds(trim_end)
+        if start_sec is None and end_sec is None:
+            return
+
         base, ext = os.path.splitext(file_path)
         trimmed_path = f"{base}.trimmed{ext}"
         command = [self.ffmpeg_path, "-y"]
-        if trim_start:
-            command.extend(["-ss", str(trim_start)])
+        if start_sec is not None and start_sec > 0:
+            command.extend(["-ss", str(start_sec)])
         command.extend(["-i", file_path])
-        if trim_end:
-            command.extend(["-to", str(trim_end)])
+        if end_sec is not None and start_sec is not None:
+            duration = end_sec - start_sec
+            if duration > 0:
+                command.extend(["-t", str(duration)])
+        elif end_sec is not None:
+            command.extend(["-to", str(end_sec)])
+
         command.extend(["-map", "0", "-c", "copy", trimmed_path])
         try:
             completed = subprocess.run(command, capture_output=True, timeout=600)
             if completed.returncode == 0 and os.path.isfile(trimmed_path) and os.path.getsize(trimmed_path) > 0:
                 os.replace(trimmed_path, file_path)
+                return
             elif os.path.exists(trimmed_path):
                 os.remove(trimmed_path)
         except Exception:
-            try:
-                if os.path.exists(trimmed_path):
+            if os.path.exists(trimmed_path):
+                try:
                     os.remove(trimmed_path)
-            except Exception:
-                pass
+                except Exception:
+                    pass
+
+        # Fallback to re-encoding cut if stream copy fails
+        command_reencode = [self.ffmpeg_path, "-y"]
+        if start_sec is not None and start_sec > 0:
+            command_reencode.extend(["-ss", str(start_sec)])
+        command_reencode.extend(["-i", file_path])
+        if end_sec is not None and start_sec is not None:
+            duration = end_sec - start_sec
+            if duration > 0:
+                command_reencode.extend(["-t", str(duration)])
+        elif end_sec is not None:
+            command_reencode.extend(["-to", str(end_sec)])
+
+        command_reencode.extend(["-map", "0", trimmed_path])
+        try:
+            res = subprocess.run(command_reencode, capture_output=True, timeout=600)
+            if res.returncode == 0 and os.path.isfile(trimmed_path) and os.path.getsize(trimmed_path) > 0:
+                os.replace(trimmed_path, file_path)
+            elif os.path.exists(trimmed_path):
+                os.remove(trimmed_path)
+        except Exception:
+            if os.path.exists(trimmed_path):
+                try:
+                    os.remove(trimmed_path)
+                except Exception:
+                    pass
+
+
+def parse_time_to_seconds(val: Any) -> float | None:
+    if val is None or val == "":
+        return None
+    if isinstance(val, (int, float)):
+        return float(val) if val >= 0 else None
+    val_str = str(val).strip()
+    if not val_str:
+        return None
+    if val_str.replace(".", "", 1).isdigit():
+        try:
+            res = float(val_str)
+            return res if res >= 0 else None
+        except ValueError:
+            return None
+    parts = val_str.split(":")
+    try:
+        if len(parts) == 2:
+            mins, secs = float(parts[0]), float(parts[1])
+            return mins * 60 + secs
+        elif len(parts) == 3:
+            hrs, mins, secs = float(parts[0]), float(parts[1]), float(parts[2])
+            return hrs * 3600 + mins * 60 + secs
+    except ValueError:
+        pass
+    return None
+

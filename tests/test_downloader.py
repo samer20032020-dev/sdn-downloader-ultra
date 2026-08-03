@@ -166,6 +166,31 @@ class DownloaderTests(unittest.TestCase):
         self.assertIn("خاص", downloader.clean_error_message("ERROR: Private video"))
         self.assertIn("الشبكة", downloader.clean_error_message("connection timed out"))
 
+    def test_parse_time_to_seconds(self):
+        self.assertEqual(downloader.parse_time_to_seconds("01:30"), 90.0)
+        self.assertEqual(downloader.parse_time_to_seconds("03:15"), 195.0)
+        self.assertEqual(downloader.parse_time_to_seconds("01:02:03"), 3723.0)
+        self.assertEqual(downloader.parse_time_to_seconds("90"), 90.0)
+        self.assertEqual(downloader.parse_time_to_seconds(120), 120.0)
+        self.assertIsNone(downloader.parse_time_to_seconds(""))
+        self.assertIsNone(downloader.parse_time_to_seconds(None))
+
+    @patch("downloader.yt_dlp.YoutubeDL", FakeYoutubeDL)
+    def test_trim_option_sets_download_ranges(self):
+        option = {
+            "type": "video",
+            "ext": "mp4",
+            "quality_tag": "720p",
+            "format_id": "best",
+            "trim_start": "01:30",
+            "trim_end": "03:15",
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            downloader.MediaDownloader().download("https://example.com/video", option, directory)
+        settings = FakeYoutubeDL.instances[-1].options
+        self.assertIn("download_ranges", settings)
+
 
 if __name__ == "__main__":
     unittest.main()
+
