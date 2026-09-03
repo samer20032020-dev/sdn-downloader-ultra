@@ -1,0 +1,17 @@
+{
+  "name": "SDN Downloader Ultra ⚡",
+  "short_name": "SDN Ultra",
+  "description": "تطبيق ومُنزّل الفيديوهات والصوتيات الفائق بدقة 4K لهواتف الأندرويد والكمبيوتر.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#070914",
+  "theme_color": "#38bdf8",
+  "icons": [
+    {
+      "src": "assets/app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

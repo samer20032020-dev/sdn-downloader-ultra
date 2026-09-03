@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تثبيت SDN Downloader Ultra</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;900&family=Tajawal:wght@500;700;800;900&display=swap');
+
+:root {
+  --bg:       #060812;
+  --s1:       rgba(15, 20, 42, 0.55);
+  --s2:       rgba(22, 29, 54, 0.6);
+  --acc:      #00f2fe;
+  --acc2:     #a78bfa;
+  --pink:     #ec4899;
+  --grd:      linear-gradient(135deg, #00f2fe 0%, #a78bfa 50%, #ec4899 100%);
+  --grd-dl:   linear-gradient(135deg, #10b981 0%, #00f2fe 100%);
+  --border:   rgba(255, 255, 255, 0.14);
+  --border-a: rgba(0, 242, 254, 0.35);
+  --txt:      #f1f5f9;
+  --sub:      #cbd5e1;
+  --muted:    #64748b;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--txt);
+  font-family: 'Tajawal', sans-serif;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Background Starfield Canvas & Glow Orbs */
+.star-canvas {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+}
+
+.bg-glow {
+  position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
+}
+
+.glow-orb {
+  position: absolute; border-radius: 50%; filter: blur(75px); opacity: 0.6;
+  animation: floatOrb 12s ease-in-out infinite alternate;
+}
+.orb-1 { width: 320px; height: 320px; background: radial-gradient(circle, #2563eb 0%, transparent 70%); top: -80px; right: -60px; }
+.orb-2 { width: 350px; height: 350px; background: radial-gradient(circle, #ec4899 0%, transparent 70%); bottom: -100px; left: -80px; animation-delay: -5s; }
+
+@keyframes floatOrb {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(30px, 30px) scale(1.1); }
+}
+
+/* Frameless Window Bar */
+.titlebar {
+  position: relative; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(13, 17, 36, 0.65);
+  backdrop-filter: blur(25px) saturate(200%);
+  -webkit-backdrop-filter: blur(25px) saturate(200%);
+  border-bottom: 1px solid var(--border);
+  -webkit-app-region: drag;
+}
+
+.brand {
+  display: flex; align-items: center; gap: 8px;
+  font-family: 'Outfit', sans-serif; font-weight: 900; font-size: 13px;
+  letter-spacing: 1px;
+  background: var(--grd);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 10px rgba(0, 242, 254, 0.3));
+}
+.brand-icon {
+  width: 22px; height: 22px; border-radius: 6px;
+  background: var(--grd); display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: #fff; -webkit-text-fill-color: initial;
+  box-shadow: 0 0 12px rgba(0, 242, 254, 0.4);
+}
+
+.window-controls { display: flex; gap: 6px; -webkit-app-region: no-drag; }
+.win-btn {
+  width: 26px; height: 26px; border-radius: 6px;
+  border: 1px solid var(--border); background: rgba(255,255,255,0.05);
+  color: var(--sub); display: flex; align-items: center; justify-content: center;
+  font-size: 12px; cursor: pointer; transition: all .2s ease;
+}
+.win-btn:hover { background: rgba(244,63,94,.25); color: #fff; border-color: rgba(244,63,94,.5); }
+
+/* Main Installer Body */
+.container {
+  position: relative; z-index: 5;
+  padding: 22px 28px;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  height: calc(100% - 47px); justify-content: space-between;
+}
+
+/* Cosmic Animated Logo Ring */
+.logo-cnt {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  width: 80px; height: 80px; margin: 0 auto 6px auto;
+}
+
+.ring-outer {
+  position: absolute; inset: -4px; border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: #00f2fe; border-bottom-color: #ec4899;
+  animation: spinClockwise 5s linear infinite;
+  box-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
+}
+
+@keyframes spinClockwise {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.hero-logo {
+  width: 72px; height: 72px; border-radius: 20px;
+  background: var(--grd);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 38px; color: #fff;
+  box-shadow: 0 0 35px rgba(0, 242, 254, 0.45);
+}
+
+.hero-title {
+  font-family: 'Outfit', 'Tajawal', sans-serif;
+  font-size: 20px; font-weight: 900; margin-top: 8px; color: #fff;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 15px rgba(0, 242, 254, 0.3);
+}
+.hero-sub {
+  font-size: 12px; color: var(--sub); font-weight: 700; margin-top: 3px;
+}
+
+/* Glassmorphic Options Card */
+.options-box {
+  width: 100%;
+  background: rgba(15, 20, 42, 0.55);
+  backdrop-filter: blur(25px) saturate(200%);
+  -webkit-backdrop-filter: blur(25px) saturate(200%);
+  border: 1.5px solid rgba(0, 242, 254, 0.25);
+  border-top: 1.5px solid rgba(255, 255, 255, 0.35);
+  border-radius: 16px; padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 10px; text-align: right;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+.path-row {
+  display: flex; align-items: center; gap: 8px;
+}
+.path-inp {
+  flex: 1; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #00f2fe; border-radius: 9px; padding: 7px 11px;
+  font-size: 11px; font-family: 'Outfit', sans-serif; direction: ltr;
+  outline: none; font-weight: 600;
+  transition: all 0.2s ease;
+}
+.path-inp:focus {
+  border-color: #00f2fe; box-shadow: 0 0 12px rgba(0, 242, 254, 0.3);
+}
+
+.btn-browse {
+  background: rgba(0, 242, 254, 0.12); border: 1px solid rgba(0, 242, 254, 0.3);
+  color: #38bdf8; border-radius: 9px; padding: 7px 13px;
+  font-size: 11.5px; font-weight: 800; cursor: pointer;
+  font-family: 'Tajawal', sans-serif; transition: all .2s ease;
+}
+.btn-browse:hover {
+  background: rgba(0, 242, 254, 0.25); color: #fff; border-color: rgba(0, 242, 254, 0.6);
+  transform: translateY(-1px);
+}
+
+.chk-lbl {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11.5px; font-weight: 800; color: var(--sub); cursor: pointer;
+}
+.chk-lbl input { accent-color: #00f2fe; width: 15px; height: 15px; cursor: pointer; }
+
+/* Buttons & Progress */
+.btn-install {
+  width: 100%; background: var(--grd); color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 14px; padding: 12px;
+  font-size: 15px; font-weight: 900; cursor: pointer;
+  font-family: 'Tajawal', sans-serif;
+  box-shadow: 0 8px 30px rgba(0, 242, 254, 0.4), inset 0 1px 0 rgba(255,255,255,0.4);
+  transition: all .25s ease; display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-install:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 12px 38px rgba(0, 242, 254, 0.6), inset 0 1px 0 rgba(255,255,255,0.6);
+}
+
+/* Progress Container */
+.prog-container {
+  width: 100%; display: none; flex-direction: column; gap: 8px;
+  background: rgba(15, 20, 42, 0.55); border: 1.5px solid rgba(0, 242, 254, 0.3);
+  border-radius: 16px; padding: 12px 14px;
+}
+.prog-top { display: flex; justify-content: space-between; font-size: 12px; font-weight: 800; }
+.prog-st { color: #fff; text-shadow: 0 0 8px rgba(0,242,254,0.4); }
+.prog-pct { color: #00f2fe; font-family: 'Outfit', sans-serif; text-shadow: 0 0 10px rgba(0,242,254,0.6); }
+
+.prog-bar {
+  width: 100%; height: 8px; background: rgba(255,255,255,0.08);
+  border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);
+}
+.prog-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, #ff0844 0%, #a78bfa 50%, #00f2fe 100%);
+  background-size: 200% 100%;
+  animation: waveGradient 2s linear infinite;
+  border-radius: 10px; transition: width .3s ease;
+  box-shadow: 0 0 15px rgba(0, 242, 254, 0.6);
+}
+
+@keyframes waveGradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.btn-launch {
+  display: none; width: 100%; background: var(--grd-dl); color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 14px; padding: 12px;
+  font-size: 15px; font-weight: 900; cursor: pointer;
+  font-family: 'Tajawal', sans-serif;
+  box-shadow: 0 8px 30px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255,255,255,0.4);
+  transition: all .25s ease;
+}
+.btn-launch:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 12px 38px rgba(16, 185, 129, 0.6);
+}
+</style>
+</head>
+<body>
+
+<canvas id="starCanvas" class="star-canvas"></canvas>
+
+<div class="bg-glow">
+  <div class="glow-orb orb-1"></div>
+  <div class="glow-orb orb-2"></div>
+</div>
+
+<div class="titlebar">
+  <div class="brand">
+    <div class="brand-icon">⚡</div>
+    <span>SDN ULTRA INSTALLER</span>
+  </div>
+  <div class="window-controls">
+    <button class="win-btn" id="closeBtn" title="إغلاق">✕</button>
+  </div>
+</div>
+
+<div class="container">
+  <div>
+    <div class="logo-cnt">
+      <div class="ring-outer"></div>
+      <div class="hero-logo">⚡</div>
+    </div>
+    <div class="hero-title">SDN Downloader ⚡ Ultra</div>
+    <div class="hero-sub">المثبت الذكي فائق السرعة لقوائم التشغيل والفيديوهات</div>
+  </div>
+
+  <div class="options-box" id="optsBox">
+    <div class="path-row">
+      <input type="text" id="installPath" class="path-inp" readonly>
+      <button class="btn-browse" id="browseBtn">تغيير 📁</button>
+    </div>
+    <label class="chk-lbl">
+      <input type="checkbox" id="chkDesktop" checked>
+      <span>إنشاء اختصار على سطح المكتب (Desktop Shortcut)</span>
+    </label>
+  </div>
+
+  <div class="prog-container" id="progBox">
+    <div class="prog-top">
+      <span id="progSt" class="prog-st">جاري التثبيت...</span>
+      <span id="progPct" class="prog-pct">0%</span>
+    </div>
+    <div class="prog-bar">
+      <div id="progFill" class="prog-fill"></div>
+    </div>
+  </div>
+
+  <button class="btn-install" id="installBtn">
+    <span>⚡ تثبيت بنقرة واحدة الآن</span>
+  </button>
+
+  <button class="btn-launch" id="launchBtn">
+    <span>🚀 تشغيل SDN Downloader الآن</span>
+  </button>
+</div>
+
+<script>
+'use strict';
+
+/* Background Starfield Particles */
+(function initStars() {
+  const canvas = document.getElementById('starCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let w, h, particles = [];
+  function resize() {
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const colors = ['#00f2fe', '#ec4899', '#a78bfa', '#ffffff'];
+  for (let i = 0; i < 45; i++) {
+    particles.push({
+      x: Math.random() * w, y: Math.random() * h,
+      r: Math.random() * 1.5 + 0.3,
+      vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3,
+      alpha: Math.random() * 0.7 + 0.3,
+      color: colors[Math.floor(Math.random() * colors.length)]
+    });
+  }
+
+  function render() {
+    ctx.clearRect(0, 0, w, h);
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0) p.x = w; if (p.x > w) p.x = 0;
+      if (p.y < 0) p.y = h; if (p.y > h) p.y = 0;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = p.alpha;
+      ctx.shadowBlur = 6; ctx.shadowColor = p.color;
+      ctx.fill();
+    });
+    requestAnimationFrame(render);
+  }
+  render();
+})();
+
+document.getElementById('closeBtn').addEventListener('click', () => {
+  window.pywebview?.api?.close_window?.();
+});
+
+document.getElementById('browseBtn').addEventListener('click', () => {
+  window.pywebview?.api?.choose_install_dir?.().then(path => {
+    if (path) document.getElementById('installPath').value = path;
+  });
+});
+
+document.getElementById('installBtn').addEventListener('click', () => {
+  const targetDir = document.getElementById('installPath').value.trim();
+  const createDesktop = document.getElementById('chkDesktop').checked;
+
+  document.getElementById('optsBox').style.display = 'none';
+  document.getElementById('installBtn').style.display = 'none';
+  document.getElementById('progBox').style.display = 'flex';
+
+  window.pywebview?.api?.start_install?.(targetDir, createDesktop);
+});
+
+document.getElementById('launchBtn').addEventListener('click', () => {
+  window.pywebview?.api?.launch_app?.();
+});
+
+window.updateInstallProgress = function(percent, statusText, isDone) {
+  document.getElementById('progFill').style.width = percent + '%';
+  document.getElementById('progPct').textContent = percent + '%';
+  document.getElementById('progSt').textContent = statusText;
+
+  if (isDone) {
+    document.getElementById('progBox').style.display = 'none';
+    document.getElementById('launchBtn').style.display = 'block';
+  }
+};
+
+window.addEventListener('pywebviewready', () => {
+  window.pywebview?.api?.get_default_dir?.().then(path => {
+    if (path) document.getElementById('installPath').value = path;
+  });
+});
+</script>
+</body>
+</html>

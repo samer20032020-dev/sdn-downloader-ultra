@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محاكي مشاركة Android - SDN Downloader Ultra ⚡</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #090a12;
+            --phone-bg: #111425;
+            --primary: #38bdf8;
+            --green: #34d399;
+            --pink: #f472b6;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --border: rgba(255, 255, 255, 0.08);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Tajawal', sans-serif; }
+        body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+
+        .phone-stage {
+            width: 380px;
+            height: 750px;
+            background: var(--phone-bg);
+            border-radius: 45px;
+            border: 12px solid #1e243b;
+            box-shadow: 0 30px 90px rgba(0,0,0,0.8), 0 0 40px rgba(56, 189, 248, 0.2);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Phone Notch / Dynamic Island */
+        .phone-header {
+            height: 35px;
+            background: #0d0f1c;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+
+        .notch {
+            width: 100px;
+            height: 18px;
+            background: #000;
+            border-radius: 0 0 12px 12px;
+            margin: 0 auto;
+        }
+
+        .phone-body {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .app-feed-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 14px;
+            margin-bottom: 16px;
+        }
+
+        .app-feed-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .platform-tag {
+            font-size: 0.85rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .share-btn {
+            background: rgba(56, 189, 248, 0.15);
+            color: var(--primary);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .share-btn:hover { background: var(--primary); color: #000; }
+
+        .feed-thumb {
+            width: 100%;
+            height: 180px;
+            border-radius: 14px;
+            object-fit: cover;
+            margin-bottom: 10px;
+        }
+
+        /* Android System Share Modal Overlay */
+        .android-share-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(10px);
+            display: none;
+            flex-direction: column;
+            justify-content: flex-end;
+            z-index: 50;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        .share-sheet {
+            background: #181c30;
+            border-top: 1px solid var(--border);
+            border-radius: 28px 28px 0 0;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .share-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .share-app-icon {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+
+        .icon-circle {
+            width: 54px;
+            height: 54px;
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+        }
+
+        /* SDN App Receiver Bottom Sheet */
+        .sdn-app-sheet {
+            position: absolute;
+            inset: 0;
+            background: #090c1b;
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+            padding: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .dl-opt-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            padding: 14px;
+            border-radius: 14px;
+            margin-bottom: 10px;
+            color: white;
+            font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .dl-opt-btn:hover { border-color: var(--green); color: var(--green); }
+    </style>
+</head>
+<body>
+
+    <h2 style="margin-bottom: 10px; font-weight: 800;">📲 محاكاة التنزيل عبر زر المشاركة في Android</h2>
+    <p style="color: var(--muted); margin-bottom: 20px; text-align: center;">اضغط على زر <b>"مشاركة 🔗"</b> داخل أي تطبيق بالأسفل لتجربة فتح SDN Downloader Ultra تلقائياً</p>
+
+    <!-- Smartphone Frame Container -->
+    <div class="phone-stage">
+        <div class="phone-header">
+            <span>9:41</span>
+            <div class="notch"></div>
+            <span>5G 🔋</span>
+        </div>
+
+        <div class="phone-body">
+
+            <!-- Feed Item 1: YouTube -->
+            <div class="app-feed-card">
+                <div class="app-feed-header">
+                    <span class="platform-tag" style="color: #ff0000;"><i class="fab fa-youtube"></i> YouTube</span>
+                    <button class="share-btn" onclick="openShareIntent('https://youtube.com/watch?v=dQw4w9WgXcQ', 'تنزيل فيديو يوتيوب 4K')">
+                        <i class="fas fa-share-alt"></i> مشاركة 🔗
+                    </button>
+                </div>
+                <img src="https://picsum.photos/seed/ytvideo/400/220" class="feed-thumb" alt="youtube">
+                <h4 style="font-size: 0.95rem;">فيديو يوتيوب دقة 4K Ultra HD</h4>
+            </div>
+
+            <!-- Feed Item 2: TikTok -->
+            <div class="app-feed-card">
+                <div class="app-feed-header">
+                    <span class="platform-tag" style="color: #00f2fe;"><i class="fab fa-tiktok"></i> TikTok</span>
+                    <button class="share-btn" onclick="openShareIntent('https://tiktok.com/@user/video/12345', 'تيك توك بدون علامة مائية')">
+                        <i class="fas fa-share-alt"></i> مشاركة 🔗
+                    </button>
+                </div>
+                <img src="https://picsum.photos/seed/tiktokv/400/220" class="feed-thumb" alt="tiktok">
+                <h4 style="font-size: 0.95rem;">مقطع تيك توك بدون علامة مائية</h4>
+            </div>
+
+            <!-- Feed Item 3: Instagram -->
+            <div class="app-feed-card">
+                <div class="app-feed-header">
+                    <span class="platform-tag" style="color: #e1306c;"><i class="fab fa-instagram"></i> Instagram</span>
+                    <button class="share-btn" onclick="openShareIntent('https://instagram.com/p/C12345/', 'انستغرام ريلز HD')">
+                        <i class="fas fa-share-alt"></i> مشاركة 🔗
+                    </button>
+                </div>
+                <img src="https://picsum.photos/seed/instav/400/220" class="feed-thumb" alt="instagram">
+                <h4 style="font-size: 0.95rem;">انستغرام ريلز عالي الجودة</h4>
+            </div>
+        </div>
+
+        <!-- System Share Sheet Overlay -->
+        <div class="android-share-overlay" id="shareOverlay">
+            <div class="share-sheet">
+                <div style="font-weight: 800; margin-bottom: 5px;">قائمة مشاركة النظام (Android Share)</div>
+                <p style="font-size: 0.8rem; color: var(--muted); margin-bottom: 15px;">اختر التطبيق لمشاركة الرابط:</p>
+
+                <div class="share-grid">
+                    <div class="share-app-icon" onclick="launchSdnApp()">
+                        <div class="icon-circle" style="background: linear-gradient(135deg, #38bdf8, #4f46e5); color: white; box-shadow: 0 0 15px var(--primary);">⚡</div>
+                        <span style="font-weight: 800; color: var(--primary);">SDN Ultra</span>
+                    </div>
+
+                    <div class="share-app-icon">
+                        <div class="icon-circle" style="background: #25d366; color: white;"><i class="fab fa-whatsapp"></i></div>
+                        <span>WhatsApp</span>
+                    </div>
+
+                    <div class="share-app-icon">
+                        <div class="icon-circle" style="background: #0088cc; color: white;"><i class="fab fa-telegram-plane"></i></div>
+                        <span>Telegram</span>
+                    </div>
+
+                    <div class="share-app-icon">
+                        <div class="icon-circle" style="background: #333; color: white;"><i class="fas fa-copy"></i></div>
+                        <span>نسخ الرابط</span>
+                    </div>
+                </div>
+                <button style="margin-top: 20px; background: none; border: none; color: var(--muted); font-weight: 700; width: 100%; padding: 10px;" onclick="closeShareIntent()">إلغاء</button>
+            </div>
+        </div>
+
+        <!-- SDN Downloader Receiver Sheet -->
+        <div class="sdn-app-sheet" id="sdnSheet">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.1rem;">
+                    <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #38bdf8, #4f46e5); border-radius: 8px; display: flex; align-items: center; justify-content: center;">⚡</div>
+                    <span>SDN Downloader Ultra</span>
+                </div>
+                <button style="background: none; border: none; color: white; font-size: 1.2rem; cursor: pointer;" onclick="closeSdnSheet()">✖</button>
+            </div>
+
+            <div style="background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.3); padding: 10px; border-radius: 12px; font-size: 0.85rem; color: var(--primary); margin-bottom: 15px;">
+                🔗 تم استلام الرابط المشارك بنجاح!
+            </div>
+
+            <div id="sdnMediaTitle" style="font-size: 0.95rem; font-weight: 700; margin-bottom: 15px;">عنوان الفيديو...</div>
+
+            <div class="dl-opt-btn" onclick="startMobileDl('4K (2160p)')">
+                <span>🎥 فيديو 4K (2160p)</span>
+                <span style="font-size: 0.8rem; color: var(--muted);">أعلى جودة</span>
+            </div>
+
+            <div class="dl-opt-btn" onclick="startMobileDl('1080p Full HD')">
+                <span>🎥 فيديو 1080p HD</span>
+                <span style="font-size: 0.8rem; color: var(--muted);">جودة عالية</span>
+            </div>
+
+            <div class="dl-opt-btn" style="border-color: rgba(244, 114, 182, 0.4);" onclick="startMobileDl('MP3 320kbps')">
+                <span style="color: var(--pink);">🎵 صوت MP3 (320kbps)</span>
+                <span style="font-size: 0.8rem; color: var(--pink);">صوت فقط</span>
+            </div>
+
+            <div id="sdnStatusMsg" style="margin-top: 15px; text-align: center; font-weight: bold; color: var(--green); display: none;"></div>
+        </div>
+
+    </div>
+
+    <script>
+        let currentSharedUrl = '';
+        let currentSharedTitle = '';
+
+        function openShareIntent(url, title) {
+            currentSharedUrl = url;
+            currentSharedTitle = title;
+            document.getElementById('shareOverlay').style.display = 'flex';
+        }
+
+        function closeShareIntent() {
+            document.getElementById('shareOverlay').style.display = 'none';
+        }
+
+        function launchSdnApp() {
+            closeShareIntent();
+            document.getElementById('sdnMediaTitle').innerText = currentSharedTitle;
+            document.getElementById('sdnSheet').style.display = 'flex';
+            document.getElementById('sdnStatusMsg').style.display = 'none';
+        }
+
+        function closeSdnSheet() {
+            document.getElementById('sdnSheet').style.display = 'none';
+        }
+
+        function startMobileDl(fmt) {
+            const msg = document.getElementById('sdnStatusMsg');
+            msg.style.display = 'block';
+            msg.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري تنزيل صيغة (' + fmt + ') إلى الهاتف...';
+            setTimeout(() => {
+                msg.innerHTML = '🎉 تم حفظ الملف بنجاح (' + fmt + ') في مجلد التحميلات!';
+            }, 1400);
+        }
+    </script>
+</body>
+</html>
