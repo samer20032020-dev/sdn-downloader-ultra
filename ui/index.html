@@ -1693,21 +1693,12 @@ input:checked + .slider:before { transform: translateX(20px); }
           </div>
         </div>
 
-        <!-- Extra Options: Subtitles & Speed Limiter -->
+        <!-- Extra Options: Subtitles -->
         <div class="extra-options-row" style="display:flex; flex-wrap:wrap; gap:12px; margin:10px 0 14px 0; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:10px 14px; align-items:center; justify-content:space-between; backdrop-filter:blur(8px);">
           <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.84rem; font-weight:700; color:var(--text-main); user-select:none;">
             <input type="checkbox" id="subtitlesCheck" style="accent-color:var(--primary); width:17px; height:17px; cursor:pointer;">
             <span>💬 تنزيل الترجمة المصاحبة (.srt إن توفرت)</span>
           </label>
-          <div style="display:flex; align-items:center; gap:8px; font-size:0.82rem; font-weight:700; color:var(--text-sub);">
-            <span>🚀 سرعة التنزيل:</span>
-            <select id="speedLimitSelect" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:var(--text-main); border-radius:8px; padding:4px 10px; font-size:0.8rem; font-weight:700; outline:none; cursor:pointer; font-family:inherit;">
-              <option value="0">⚡ أقصى سرعة (بدون حد)</option>
-              <option value="1048576">🐢 1 ميغابايت/ثانية</option>
-              <option value="2097152">🚗 2 ميغابايت/ثانية</option>
-              <option value="5242880">🚄 5 ميغابايت/ثانية</option>
-            </select>
-          </div>
         </div>
 
         <div class="quality-selector-grid" id="qGrid"></div>
@@ -4099,9 +4090,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initLarkPlayer();
   initDlCounter();
 
-  // Show update button on desktop
-  const updateBtn = document.getElementById('headerUpdateBtn');
-  if (updateBtn) updateBtn.style.display = 'flex';
+  // Keep update button hidden unless an update is genuinely detected
 
   // Fetch save directory
   if (window.pywebview?.api?.get_save_dir) {
