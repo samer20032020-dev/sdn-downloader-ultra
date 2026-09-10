@@ -633,6 +633,16 @@ class MediaDownloader:
         if selected_indices:
             ydl_options["playlist_items"] = ",".join(str(index) for index in selected_indices)
 
+        if option.get("download_subtitles"):
+            ydl_options["writesubtitles"] = True
+            ydl_options["writeautomaticsub"] = True
+            ydl_options["subtitleslangs"] = ["ar", "en"]
+            ydl_options["subtitlesformat"] = "srt/best"
+
+        rate_limit = option.get("ratelimit")
+        if rate_limit and isinstance(rate_limit, (int, float)) and rate_limit > 0:
+            ydl_options["ratelimit"] = int(rate_limit)
+
         _apply_cookies(ydl_options, browser_cookies)
 
         postprocessors: list[dict[str, Any]] = []

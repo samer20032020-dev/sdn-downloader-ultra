@@ -1693,6 +1693,23 @@ input:checked + .slider:before { transform: translateX(20px); }
           </div>
         </div>
 
+        <!-- Extra Options: Subtitles & Speed Limiter -->
+        <div class="extra-options-row" style="display:flex; flex-wrap:wrap; gap:12px; margin:10px 0 14px 0; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:10px 14px; align-items:center; justify-content:space-between; backdrop-filter:blur(8px);">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.84rem; font-weight:700; color:var(--text-main); user-select:none;">
+            <input type="checkbox" id="subtitlesCheck" style="accent-color:var(--primary); width:17px; height:17px; cursor:pointer;">
+            <span>💬 تنزيل الترجمة المصاحبة (.srt إن توفرت)</span>
+          </label>
+          <div style="display:flex; align-items:center; gap:8px; font-size:0.82rem; font-weight:700; color:var(--text-sub);">
+            <span>🚀 سرعة التنزيل:</span>
+            <select id="speedLimitSelect" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:var(--text-main); border-radius:8px; padding:4px 10px; font-size:0.8rem; font-weight:700; outline:none; cursor:pointer; font-family:inherit;">
+              <option value="0">⚡ أقصى سرعة (بدون حد)</option>
+              <option value="1048576">🐢 1 ميغابايت/ثانية</option>
+              <option value="2097152">🚗 2 ميغابايت/ثانية</option>
+              <option value="5242880">🚄 5 ميغابايت/ثانية</option>
+            </select>
+          </div>
+        </div>
+
         <div class="quality-selector-grid" id="qGrid"></div>
         <div class="download-actions-row">
           <button class="btn-start-download" id="dlBtn">⚡ تنزيل الآن</button>
@@ -3257,8 +3274,19 @@ function updateProgress(p) {
       gain.gain.setValueAtTime(0.3, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
       osc.start();
-      osc.stop(ctx.currentTime + 0.5);
     } catch(e) {}
+
+    // Desktop Notification if window is in background
+    try {
+      if (document.hidden || (document.hasFocus && !document.hasFocus())) {
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('SDN Downloader Ultra', {
+            body: p.count > 1 ? `🎉 اكتمل تنزيل ${p.count} ملفات بنجاح!` : `🎉 اكتمل تنزيل: ${summaryTitle}`,
+            icon: 'app_icon.ico'
+          });
+        }
+      }
+    } catch(_) {}
 
     toast(
       p.count > 1
@@ -3619,6 +3647,8 @@ document.getElementById('dlBtn').addEventListener('click', async () => {
   const requestOption = {
     ...gOpt,
     ...trimOpts,
+    download_subtitles: Boolean(document.getElementById('subtitlesCheck')?.checked),
+    ratelimit: Number(document.getElementById('speedLimitSelect')?.value || 0),
     is_playlist: Boolean(gData.is_playlist),
     playlist_items: downloadFullPlaylist ? [] : selectedPlaylistItems,
     playlist_mode: downloadFullPlaylist ? 'all' : 'selected',
@@ -4085,8 +4115,104 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   checkForAppUpdates();
+
+  /* ── Drag & Drop URL Handler ── */
+  const dropOverlay = document.getElementById('dragDropOverlay');
+  let dragCounter = 0;
+
+  window.addEventListener('dragenter', (e) => {
+    e.preventDefault();
+    dragCounter++;
+    if (dropOverlay) dropOverlay.style.display = 'flex';
+  });
+
+  window.addEventListener('dragover', (e) => {
+    e.preventDefault();
+  });
+
+  window.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    dragCounter--;
+    if (dragCounter <= 0) {
+      dragCounter = 0;
+      if (dropOverlay) dropOverlay.style.display = 'none';
+    }
+  });
+
+  window.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dragCounter = 0;
+    if (dropOverlay) dropOverlay.style.display = 'none';
+    let text = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain') || '';
+    text = text.trim();
+    if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
+      const inp = document.getElementById('urlInp');
+      if (inp) {
+        inp.value = text;
+        toast('📥 تم إفلات الرابط، جاري الفحص...');
+        doFetch();
+      }
+    }
+  });
+
+  /* ── Smart Keyboard Shortcuts ── */
+  window.addEventListener('keydown', (e) => {
+    const activeEl = document.activeElement;
+    const tag = activeEl ? activeEl.tagName.toLowerCase() : '';
+    const isTyping = tag === 'input' || tag === 'textarea' || activeEl?.isContentEditable;
+
+    // Esc: Close any active modal
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-overlay.active, .folder-modal-overlay.active').forEach(m => m.classList.remove('active'));
+      const cancelBtn = document.getElementById('cancelDlBtn');
+      if (cancelBtn && cancelBtn.offsetParent !== null) cancelBtn.click();
+      return;
+    }
+
+    // Space: Toggle Audio Player if not typing in an input
+    if (e.code === 'Space' && !isTyping) {
+      e.preventDefault();
+      if (typeof togglePlayPause === 'function') togglePlayPause();
+      return;
+    }
+
+    // Enter or Ctrl+Enter: Start download if ready
+    if (e.key === 'Enter') {
+      const dlBtn = document.getElementById('dlBtn');
+      if (dlBtn && dlBtn.offsetParent !== null && !gDownloadActive) {
+        e.preventDefault();
+        dlBtn.click();
+        return;
+      }
+    }
+
+    // Ctrl + V: Paste and fetch if not typing inside an input
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v' && !isTyping) {
+      e.preventDefault();
+      document.getElementById('pasteBtn')?.click();
+    }
+  });
+
+  // Request Notification permission on first user interaction
+  try {
+    if ('Notification' in window && Notification.permission === 'default') {
+      window.addEventListener('click', () => {
+        if (Notification.permission === 'default') Notification.requestPermission();
+      }, { once: true });
+    }
+  } catch(_) {}
 });
 
 </script>
+
+<!-- Drag and Drop Fullscreen Overlay -->
+<div id="dragDropOverlay" style="position:fixed; inset:0; z-index:99999; background:rgba(7,10,20,0.88); backdrop-filter:blur(14px); display:none; flex-direction:column; align-items:center; justify-content:center; gap:16px; pointer-events:none; border:3px dashed #38bdf8; margin:14px; border-radius:24px; transition:all 0.25s;">
+  <div style="width:84px; height:84px; border-radius:50%; background:rgba(56,189,248,0.18); display:flex; align-items:center; justify-content:center; font-size:2.5rem; color:#38bdf8; box-shadow:0 0 35px rgba(56,189,248,0.5);">
+    📥
+  </div>
+  <h2 style="color:#f8fafc; font-size:1.45rem; font-weight:900; margin:0; text-shadow:0 2px 10px rgba(0,0,0,0.6);">أفلت الرابط هنا للتحميل الفوري!</h2>
+  <p style="color:#94a3b8; font-size:0.95rem; margin:0; font-weight:600;">سيتم فحص الرابط وإعداده للتنزيل تلقائياً ⚡</p>
+</div>
+
 </body>
 </html>
