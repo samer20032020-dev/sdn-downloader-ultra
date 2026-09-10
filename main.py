@@ -534,6 +534,10 @@ class DownloaderBridgeAPI:
                     _log.info(f"Update available: v{up_info.get('latest_version')} (current: v{CURRENT_APP_VERSION})")
                 else:
                     _log.debug("App is up to date")
+                    if self._window:
+                        self._window.evaluate_js(
+                            "if (typeof showUpdateBadge === 'function') showUpdateBadge({has_update: false});"
+                        )
             except Exception as e:
                 _log.warning(f"App update check failed: {e}")
 

@@ -1535,7 +1535,7 @@ input:checked + .slider:before { transform: translateX(20px); }
       <!-- Update Header Button -->
       <button id="headerUpdateBtn" onclick="onHeaderUpdateClick()" class="update-header-btn" title="فحص التحديثات" style="display:none;">
         <i class="fas fa-cog" id="updateHeaderIcon"></i>
-        <span id="updateHeaderTxt">v1.0.4</span>
+        <span id="updateHeaderTxt">v1.0.5</span>
       </button>
     </div>
   </header>
@@ -1870,7 +1870,7 @@ input:checked + .slider:before { transform: translateX(20px); }
         <div class="settings-item">
           <div class="settings-label">
             <span class="settings-title">إصدار التطبيق الحالي</span>
-            <span class="settings-desc">SDN v1.0.4</span>
+            <span class="settings-desc" id="settingsVersionTxt">SDN v1.0.5</span>
           </div>
           <button class="header-btn" id="checkUpdatesManualBtn" style="width:auto; padding:0 10px; font-size:0.78rem; color:var(--primary);">فحص التحديثات</button>
         </div>
@@ -3838,7 +3838,7 @@ function incrementDlCounter() {
   num.style.animation = 'dlBadgeBump 0.35s ease';
 }
 
-const CURRENT_VERSION = '1.0.4';
+let CURRENT_VERSION = '1.0.5';
 let gLatestReleaseUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
 
 function compareVersions(left, right) {
@@ -3857,7 +3857,18 @@ function compareVersions(left, right) {
 }
 
 /* ── Auto Update Checker & Header Button (With Tags API Fallback) ── */
-async function checkForAppUpdates() {
+async function checkForAppUpdates(isManual = false) {
+  if (window.pywebview?.api?.get_app_info) {
+    try {
+      const appInfo = await window.pywebview.api.get_app_info();
+      if (appInfo && appInfo.version) {
+        CURRENT_VERSION = String(appInfo.version).replace(/^v/i, '');
+        const stTxt = document.getElementById('settingsVersionTxt');
+        if (stTxt) stTxt.innerText = `SDN v${CURRENT_VERSION}`;
+      }
+    } catch(_) {}
+  }
+
   const btn = document.getElementById('headerUpdateBtn');
   const txt = document.getElementById('updateHeaderTxt');
   const icon = document.getElementById('updateHeaderIcon');
@@ -3915,16 +3926,25 @@ async function checkForAppUpdates() {
     }
     if (txt) txt.innerText = `v${CURRENT_VERSION}`;
     if (icon) icon.className = 'fas fa-check-circle';
-    toast(`✨ أنت تستخدم أحدث إصدار من البرنامج (v${CURRENT_VERSION})`);
+    if (isManual) {
+      toast(`✨ أنت تستخدم أحدث إصدار من البرنامج (v${CURRENT_VERSION})`);
+    }
     return false;
   }
 }
 
 function showUpdateBadge(upInfo) {
-  if (!upInfo || !upInfo.has_update || compareVersions(upInfo.latest_version, CURRENT_VERSION) <= 0) return;
   const btn = document.getElementById('headerUpdateBtn');
   const txt = document.getElementById('updateHeaderTxt');
   const icon = document.getElementById('updateHeaderIcon');
+
+  if (!upInfo || !upInfo.has_update || compareVersions(upInfo.latest_version, CURRENT_VERSION) <= 0) {
+    if (btn) {
+      btn.classList.remove('has-update');
+      btn.style.display = 'none';
+    }
+    return;
+  }
 
   if (btn) {
     btn.classList.add('has-update');
@@ -4054,7 +4074,7 @@ function onHeaderUpdateClick() {
     }
   } else {
     toast('🔍 جاري فحص التحديثات المتاحة...');
-    checkForAppUpdates();
+    checkForAppUpdates(true);
   }
 }
 
@@ -4066,10 +4086,7 @@ document.getElementById('checkUpdatesManualBtn')?.addEventListener('click', asyn
   if (btn) btn.disabled = true;
 
   toast('🔍 جاري فحص التحديثات...');
-  const hasUpdate = await checkForAppUpdates();
-  if (!hasUpdate) {
-    toast(`✨ أنت تستخدم أحدث إصدار من البرنامج (v${CURRENT_VERSION})`);
-  }
+  await checkForAppUpdates(true);
 
   setTimeout(() => {
     isCheckingUpdate = false;
