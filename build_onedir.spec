@@ -10,9 +10,14 @@ if os.path.exists('extension'):
 binaries = []
 if os.path.exists('ffmpeg.exe'):
     binaries.append(('ffmpeg.exe', '.'))
-hiddenimports = ['requests', 'urllib.parse', 'http.server', 'wsgiref.simple_server', 'clr', 'pythonnet', 'clr_loader', 'yt_dlp_ejs']
+hiddenimports = [
+    'requests', 'urllib.parse', 'http.server', 'wsgiref.simple_server',
+    'app_logger', 'concurrent.futures', 'certifi', 'urllib3',
+    'version',
+    'yt_dlp.utils', 'yt_dlp.extractor', 'yt_dlp.postprocessor',
+]
 
-for pkg in ('pywebview', 'yt_dlp', 'clr_loader', 'pythonnet', 'yt_dlp_ejs'):
+for pkg in ('pywebview', 'yt_dlp'):
     try:
         tmp_ret = collect_all(pkg)
         datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]

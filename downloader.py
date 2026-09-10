@@ -247,21 +247,6 @@ def auto_update_ytdlp(force: bool = False) -> dict[str, Any]:
         return {"updated": False, "reason": clean_error_message(exc)}
 
 
-def parse_time_to_seconds(time_text: str | None) -> int | None:
-    if not time_text:
-        return None
-    try:
-        parts = [int(part) for part in time_text.strip().split(":")]
-        if len(parts) == 3:
-            return parts[0] * 3600 + parts[1] * 60 + parts[2]
-        if len(parts) == 2:
-            return parts[0] * 60 + parts[1]
-        if len(parts) == 1:
-            return parts[0]
-    except Exception:
-        pass
-    return None
-
 
 def format_duration(seconds: int | float | None) -> str:
     if seconds is None:

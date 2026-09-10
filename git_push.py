@@ -48,7 +48,6 @@ ASSETS = [
     ("SDN_Downloader_Setup.exe",      "application/octet-stream"),
     ("SDN_Downloader_Standalone.exe", "application/octet-stream"),
     ("SDN_Downloader_Ultra.apk",      "application/vnd.android.package-archive"),
-    ("SDN_Website_Package.zip",       "application/zip"),
 ]
 
 # ============================================================

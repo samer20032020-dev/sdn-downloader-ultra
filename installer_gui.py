@@ -106,13 +106,13 @@ class InstallerAPI:
 
     def _run_installation(self, create_desktop):
         try:
-            self._update_progress(10, 'جاري إنشاء مجلدات النظام...')
+            self._update_progress(10, '\u062c\u0627\u0631\u064a \u0625\u0646\u0634\u0627\u0621 \u0645\u062c\u0644\u062f\u0627\u062a \u0627\u0644\u0646\u0638\u0627\u0645...')
             os.makedirs(self.install_dir, exist_ok=True)
             time.sleep(0.3)
 
-            self._update_progress(30, 'جاري نسخ ملفات البرنامج فائقة السرعة...')
+            self._update_progress(30, '\u062c\u0627\u0631\u064a \u0646\u0633\u062e \u0645\u0644\u0641\u0627\u062a \u0627\u0644\u0628\u0631\u0646\u0627\u0645\u062c \u0641\u0627\u0626\u0642\u0629 \u0627\u0644\u0633\u0631\u0639\u0629...')
             bundle_dir = get_bundle_dir()
-            
+
             src_exe = os.path.join(bundle_dir, 'SDN_Downloader_Standalone.exe')
             if not os.path.exists(src_exe):
                 src_exe = os.path.join(bundle_dir, 'dist', 'SDN_Downloader_Standalone.exe')
@@ -153,7 +153,7 @@ class InstallerAPI:
             uninstaller_cmd = self._create_uninstaller_script(dest_exe)
 
             time.sleep(0.4)
-            self._update_progress(65, 'جاري إنشاء الاختصارات...')
+            self._update_progress(65, '\u062c\u0627\u0631\u064a \u0625\u0646\u0634\u0627\u0621 \u0627\u0644\u0627\u062e\u062a\u0635\u0627\u0631\u0627\u062a...')
             app_name = "SDN Downloader Ultra"
 
             # Create Desktop Shortcut
@@ -168,23 +168,23 @@ class InstallerAPI:
             self._create_shortcut(dest_exe, start_shortcut, icon_path_for_lnk)
 
             if uninstaller_cmd and os.path.exists(uninstaller_cmd):
-                uninst_shortcut = os.path.join(start_menu, f"إلغاء تثبيت {app_name}.lnk")
+                uninst_shortcut = os.path.join(start_menu, f"\u0625\u0644\u063a\u0627\u0621 \u062a\u062b\u0628\u064a\u062a {app_name}.lnk")
                 self._create_shortcut("wscript.exe", uninst_shortcut, icon_path_for_lnk, args=f'//nologo "{uninstaller_cmd}"')
 
             time.sleep(0.3)
-            self._update_progress(85, 'جاري تسجيل البرنامج في Windows...')
+            self._update_progress(85, '\u062c\u0627\u0631\u064a \u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u0628\u0631\u0646\u0627\u0645\u062c \u0641\u064a Windows...')
             self._register_uninstall(dest_exe, uninstaller_cmd)
 
             time.sleep(0.3)
-            self._update_progress(100, '🎉 اكتمل التثبيت بنجاح!', is_done=True)
+            self._update_progress(100, '\ud83c\udf89 \u0627\u0643\u062a\u0645\u0644 \u0627\u0644\u062a\u062b\u0628\u064a\u062a \u0628\u0646\u062c\u0627\u062d!', is_done=True)
 
         except Exception as e:
-            self._update_progress(0, f'❌ حدث خطأ أثناء التثبيت: {str(e)}', is_done=False)
+            self._update_progress(0, f'\u274c \u062d\u062f\u062b \u062e\u0637\u0623 \u0623\u062b\u0646\u0627\u0621 \u0627\u0644\u062a\u062b\u0628\u064a\u062a: {str(e)}', is_done=False)
 
     def _create_uninstaller_script(self, target_exe):
         install_folder = os.path.dirname(target_exe)
         uninstaller_path = os.path.join(install_folder, 'uninstall.vbs')
-        
+
         script_content = (
             'On Error Resume Next\n'
             'Set WshShell = CreateObject("WScript.Shell")\n'
@@ -200,7 +200,7 @@ class InstallerAPI:
             'fso.DeleteFile userProfile & "\\Desktop\\SDN Downloader Ultra.lnk", True\n'
             'fso.DeleteFile userProfile & "\\OneDrive\\Desktop\\SDN Downloader Ultra.lnk", True\n'
             'fso.DeleteFile appData & "\\Microsoft\\Windows\\Start Menu\\Programs\\SDN Downloader Ultra.lnk", True\n'
-            'fso.DeleteFile appData & "\\Microsoft\\Windows\\Start Menu\\Programs\\إلغاء تثبيت SDN Downloader Ultra.lnk", True\n'
+            'fso.DeleteFile appData & "\\Microsoft\\Windows\\Start Menu\\Programs\\\u0625\u0644\u063a\u0627\u0621 \u062a\u062b\u0628\u064a\u062a SDN Downloader Ultra.lnk", True\n'
             '\n'
             'WshShell.RegDelete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\SDN_Downloader_Ultra\\"\n'
             '\n'
@@ -253,8 +253,8 @@ class InstallerAPI:
     def _register_uninstall(self, target_exe, uninstaller_cmd=None):
         try:
             install_folder = os.path.dirname(target_exe)
-            uninst_string = f'wscript.exe //nologo "{uninstaller_cmd}"' if uninstaller_cmd else f'cmd /c "rmdir /s /q \"{install_folder}\""'
-            
+            uninst_string = f'wscript.exe //nologo "{uninstaller_cmd}"' if uninstaller_cmd else f'cmd /c "rmdir /s /q \\"{install_folder}\\""'
+
             key_path = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\SDN_Downloader_Ultra"
             with winreg.CreateKey(winreg.HKEY_CURRENT_USER, key_path) as key:
                 winreg.SetValueEx(key, "DisplayName", 0, winreg.REG_SZ, "SDN Downloader Ultra")
@@ -295,7 +295,7 @@ def main():
     html_file = os.path.join(bundle_dir, 'ui', 'installer.html')
 
     window = webview.create_window(
-        title='تثبيت SDN Downloader Ultra',
+        title='\u062a\u062b\u0628\u064a\u062a SDN Downloader Ultra',
         url=html_file,
         width=560,
         height=450,
