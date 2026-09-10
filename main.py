@@ -33,6 +33,7 @@ TRUSTED_UPDATE_HOSTS = {
     "www.github.com",
     "objects.githubusercontent.com",
     "release-assets.githubusercontent.com",
+    "github-releases.githubusercontent.com",
 }
 
 
@@ -239,15 +240,18 @@ def get_clipboard_text():
         user32.OpenClipboard.argtypes = [ctypes.c_void_p]
         user32.CloseClipboard.argtypes = []
 
-        if user32.OpenClipboard(None):
-            try:
-                handle = user32.GetClipboardData(13) # CF_UNICODETEXT
-                if handle:
-                    val = ctypes.c_wchar_p(handle).value
-                    if val and isinstance(val, str):
-                        return val.strip()
-            finally:
-                user32.CloseClipboard()
+        for _ in range(3):
+            if user32.OpenClipboard(None):
+                try:
+                    handle = user32.GetClipboardData(13) # CF_UNICODETEXT
+                    if handle:
+                        val = ctypes.c_wchar_p(handle).value
+                        if val and isinstance(val, str):
+                            return val.strip()
+                finally:
+                    user32.CloseClipboard()
+                break
+            time.sleep(0.02)
     except Exception as e:
         _log.debug(f"Clipboard read failed: {e}")
     return ""
@@ -1246,7 +1250,11 @@ class DownloaderBridgeAPI:
                 digest = hashlib.sha256()
                 with urllib.request.urlopen(req, timeout=180) as resp, open(update_path, 'wb') as out_f:
                     final_host = (urllib.parse.urlsplit(resp.geturl()).hostname or '').lower()
-                    if final_host not in TRUSTED_UPDATE_HOSTS and not final_host.endswith('.githubusercontent.com'):
+                    if (
+                        final_host not in TRUSTED_UPDATE_HOSTS
+                        and not final_host.endswith('.githubusercontent.com')
+                        and not (final_host.endswith('.amazonaws.com') and 'github' in final_host)
+                    ):
                         raise RuntimeError('تم رفض مصدر تحديث غير موثوق.')
 
                     total_size = int(resp.headers.get('content-length', 0) or 0)

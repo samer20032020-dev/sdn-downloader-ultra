@@ -28,6 +28,7 @@ MEDIA_EXTENSIONS = {
     ".mp4", ".mkv", ".webm", ".mov", ".avi",
     ".mp3", ".m4a", ".aac", ".flac", ".ogg", ".opus", ".wav", ".wma",
 }
+_NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
 
 class DownloadCancelled(Exception):
@@ -232,6 +233,7 @@ def auto_update_ytdlp(force: bool = False) -> dict[str, Any]:
             capture_output=True,
             text=True,
             timeout=180,
+            creationflags=_NO_WINDOW,
         )
         try:
             with open(state_path, "w", encoding="utf-8") as handle:
@@ -746,7 +748,7 @@ class MediaDownloader:
 
         command.extend(["-map", "0", "-c", "copy", trimmed_path])
         try:
-            completed = subprocess.run(command, capture_output=True, timeout=600)
+            completed = subprocess.run(command, capture_output=True, timeout=600, creationflags=_NO_WINDOW)
             if completed.returncode == 0 and os.path.isfile(trimmed_path) and os.path.getsize(trimmed_path) > 0:
                 os.replace(trimmed_path, file_path)
                 return
@@ -773,7 +775,7 @@ class MediaDownloader:
 
         command_reencode.extend(["-map", "0", trimmed_path])
         try:
-            res = subprocess.run(command_reencode, capture_output=True, timeout=600)
+            res = subprocess.run(command_reencode, capture_output=True, timeout=600, creationflags=_NO_WINDOW)
             if res.returncode == 0 and os.path.isfile(trimmed_path) and os.path.getsize(trimmed_path) > 0:
                 os.replace(trimmed_path, file_path)
             elif os.path.exists(trimmed_path):

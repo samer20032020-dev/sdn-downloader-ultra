@@ -276,12 +276,24 @@ class InstallerAPI:
             self.close_window()
 
 def main():
-    if '--silent' in sys.argv or '-s' in sys.argv or '/SILENT' in sys.argv:
+    args_lower = [arg.lower() for arg in sys.argv]
+    is_silent = any(flag in args_lower for flag in ('--silent', '-s', '/silent', '/verysilent'))
+    
+    if is_silent:
         try:
             api = InstallerAPI()
-            subprocess.run(['taskkill', '/f', '/im', 'SDN_Downloader.exe'], capture_output=True)
-            time.sleep(1.5)
+            CREATE_NO_WINDOW = 0x08000000
+            subprocess.run(['taskkill', '/f', '/im', 'SDN_Downloader.exe'], capture_output=True, creationflags=CREATE_NO_WINDOW)
+            subprocess.run(['taskkill', '/f', '/im', 'SDN_Downloader_Standalone.exe'], capture_output=True, creationflags=CREATE_NO_WINDOW)
+            time.sleep(1.2)
+            
             target_dir = get_default_install_dir()
+            for arg in sys.argv:
+                if arg.upper().startswith('/DIR='):
+                    target_dir = arg.split('=', 1)[1].strip('\"\'')
+                elif arg.lower().startswith('--dir='):
+                    target_dir = arg.split('=', 1)[1].strip('\"\'')
+            
             api.install_dir = target_dir
             api._run_installation(create_desktop=True)
             time.sleep(0.5)
