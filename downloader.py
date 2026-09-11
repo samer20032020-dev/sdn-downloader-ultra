@@ -183,6 +183,8 @@ def clean_error_message(err: Exception | str) -> str:
         return "🔐 يتطلب هذا المحتوى تسجيل الدخول. استخدم Cookies من المتصفح."
     if "unsupported url" in lowered:
         return "❌ الرابط غير مدعوم حاليًا أو ليس رابط وسائط صالحًا."
+    if "403" in text or "forbidden" in lowered:
+        return "🔒 خوادم المنصة رفضت الطلب مؤقتًا (HTTP 403: Forbidden). جرب جودة أخرى أو أعد المحاولة بعد قليل."
     if "429" in text or "too many requests" in lowered:
         return "⏳ المنصة حدّت عدد الطلبات مؤقتًا. انتظر قليلًا أو استخدم Cookies/Proxy."
     if "geo" in lowered or "not available in your country" in lowered:
@@ -204,14 +206,16 @@ def _common_ydl_options(proxy: str | None = None) -> dict[str, Any]:
         "quiet": True,
         "no_warnings": True,
         "noprogress": True,
-        "socket_timeout": 20,
-        "retries": 10,
-        "fragment_retries": 10,
-        "extractor_retries": 3,
-        "file_access_retries": 3,
-        "concurrent_fragment_downloads": 4,
+        "socket_timeout": 30,
+        "retries": 15,
+        "fragment_retries": 15,
+        "extractor_retries": 5,
+        "file_access_retries": 5,
+        "concurrent_fragment_downloads": 1,
         "continuedl": True,
         "windowsfilenames": True,
+        "http_chunk_size": 10485760,
+        "buffersize": 1024 * 16,
     }
     if proxy and proxy.strip():
         options["proxy"] = proxy.strip()

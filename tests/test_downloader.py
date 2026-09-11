@@ -181,6 +181,7 @@ class DownloaderTests(unittest.TestCase):
     def test_error_messages_are_user_friendly(self):
         self.assertIn("خاص", downloader.clean_error_message("ERROR: Private video"))
         self.assertIn("الشبكة", downloader.clean_error_message("connection timed out"))
+        self.assertIn("403", downloader.clean_error_message("unable to download video data: HTTP Error 403: Forbidden"))
 
     def test_parse_time_to_seconds(self):
         self.assertEqual(downloader.parse_time_to_seconds("01:30"), 90.0)

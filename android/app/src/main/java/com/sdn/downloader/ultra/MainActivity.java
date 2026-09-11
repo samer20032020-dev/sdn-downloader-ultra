@@ -387,9 +387,10 @@ public class MainActivity extends BridgeActivity {
             YoutubeDLRequest request = new YoutubeDLRequest(cleanMediaUrl(url));
             request.addOption("--no-mtime");
             request.addOption("--continue");
-            request.addOption("--retries", 10);
-            request.addOption("--fragment-retries", 10);
-            request.addOption("--concurrent-fragments", 4);
+            request.addOption("--retries", 15);
+            request.addOption("--fragment-retries", 15);
+            request.addOption("--concurrent-fragments", 1);
+            request.addOption("--http-chunk-size", "10M");
             request.addOption("--no-overwrites");
             request.addOption("--windows-filenames");
 
@@ -691,6 +692,9 @@ public class MainActivity extends BridgeActivity {
         String lower = message.toLowerCase(Locale.ROOT);
         if (lower.contains("unviewable") || lower.contains("this playlist type is unviewable")) {
             return "قائمة التشغيل هذه من نوع ميكس (Mix) أو خاصة وغير متاحة كقائمة.";
+        }
+        if (lower.contains("403") || lower.contains("forbidden")) {
+            return "خوادم المنصة رفضت الطلب مؤقتًا (HTTP 403: Forbidden). جرب جودة أخرى.";
         }
         if (lower.contains("private video") || lower.contains("login required")) {
             return "هذا المحتوى خاص أو يتطلب تسجيل الدخول.";
