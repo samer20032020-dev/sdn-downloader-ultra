@@ -272,26 +272,91 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    private String cleanMediaUrl(String rawUrl) {
+        if (rawUrl == null || rawUrl.trim().isEmpty()) return "";
+        String url = rawUrl.trim();
+        try {
+            Uri uri = Uri.parse(url);
+            String host = uri.getHost() != null ? uri.getHost().toLowerCase(Locale.ROOT) : "";
+            boolean isYouTube = "youtu.be".equals(host) || "www.youtu.be".equals(host)
+                || host.endsWith("youtube.com");
+            if (!isYouTube) return url;
+
+            String playlistId = uri.getQueryParameter("list");
+            String videoId = uri.getQueryParameter("v");
+            if (videoId == null || videoId.isEmpty()) {
+                if ("youtu.be".equals(host) || "www.youtu.be".equals(host)) {
+                    String path = uri.getPath();
+                    if (path != null) {
+                        path = path.replaceAll("^/+", "");
+                        int slash = path.indexOf('/');
+                        videoId = slash > 0 ? path.substring(0, slash) : path;
+                    }
+                } else if (uri.getPath() != null && uri.getPath().startsWith("/shorts/")) {
+                    String[] parts = uri.getPath().split("/shorts/")[1].split("/");
+                    videoId = parts.length > 0 ? parts[0] : "";
+                } else if (uri.getPath() != null && uri.getPath().startsWith("/embed/")) {
+                    String[] parts = uri.getPath().split("/embed/")[1].split("/");
+                    videoId = parts.length > 0 ? parts[0] : "";
+                }
+            }
+
+            if (playlistId != null && !playlistId.isEmpty()) {
+                String upper = playlistId.toUpperCase(Locale.ROOT);
+                boolean isUnviewable = upper.startsWith("RD") || upper.startsWith("UL")
+                    || upper.startsWith("PU") || "WL".equals(upper) || "LL".equals(upper) || "LM".equals(upper);
+                if (isUnviewable) {
+                    if (videoId == null || videoId.isEmpty()) {
+                        Matcher m = Pattern.compile("^RD(?:MM|AMVM)?([a-zA-Z0-9_-]{11})$", Pattern.CASE_INSENSITIVE).matcher(playlistId);
+                        if (m.find()) videoId = m.group(1);
+                    }
+                    if (videoId != null && !videoId.isEmpty()) {
+                        return "https://www.youtube.com/watch?v=" + videoId;
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return url;
+    }
+
     private void fetchMediaInfoInternal(String url) {
         JSONObject response = new JSONObject();
+        String targetUrl = cleanMediaUrl(url);
         try {
             if (!initializeMediaEngine()) throw new Exception("تعذر تهيئة محرك الوسائط.");
-            YoutubeDLRequest request = new YoutubeDLRequest(url);
+            YoutubeDLRequest request = new YoutubeDLRequest(targetUrl);
             request.addOption("--dump-single-json");
             request.addOption("--flat-playlist");
             request.addOption("--skip-download");
             request.addOption("--no-warnings");
 
-            String output = YoutubeDL.getInstance().execute(request).getOut();
+            String output;
+            try {
+                output = YoutubeDL.getInstance().execute(request).getOut();
+            } catch (Exception execException) {
+                String fallbackVideo = cleanMediaUrl(url);
+                if (fallbackVideo != null && !fallbackVideo.equals(targetUrl)) {
+                    YoutubeDLRequest fallbackRequest = new YoutubeDLRequest(fallbackVideo);
+                    fallbackRequest.addOption("--dump-single-json");
+                    fallbackRequest.addOption("--flat-playlist");
+                    fallbackRequest.addOption("--skip-download");
+                    fallbackRequest.addOption("--no-warnings");
+                    output = YoutubeDL.getInstance().execute(fallbackRequest).getOut();
+                    targetUrl = fallbackVideo;
+                } else {
+                    throw execException;
+                }
+            }
             String jsonText = extractJsonObject(output);
             if (jsonText.isEmpty()) throw new Exception("لم تُرجع المنصة معلومات قابلة للقراءة.");
             response.put("data", new JSONObject(jsonText));
-            response.put("source_url", url);
+            response.put("source_url", targetUrl);
         } catch (Exception exception) {
             Log.e(TAG, "Android media info failed", exception);
             try {
                 response.put("error", cleanAndroidError(exception));
-                response.put("source_url", url);
+                response.put("source_url", targetUrl);
             } catch (Exception ignored) {
             }
         }
@@ -319,7 +384,7 @@ public class MainActivity extends BridgeActivity {
                 throw new Exception("تعذر إنشاء مجلد التنزيل.");
             }
 
-            YoutubeDLRequest request = new YoutubeDLRequest(url);
+            YoutubeDLRequest request = new YoutubeDLRequest(cleanMediaUrl(url));
             request.addOption("--no-mtime");
             request.addOption("--continue");
             request.addOption("--retries", 10);
@@ -624,6 +689,9 @@ public class MainActivity extends BridgeActivity {
         String message = exception.getLocalizedMessage();
         if (message == null || message.trim().isEmpty()) message = exception.toString();
         String lower = message.toLowerCase(Locale.ROOT);
+        if (lower.contains("unviewable") || lower.contains("this playlist type is unviewable")) {
+            return "قائمة التشغيل هذه من نوع ميكس (Mix) أو خاصة وغير متاحة كقائمة.";
+        }
         if (lower.contains("private video") || lower.contains("login required")) {
             return "هذا المحتوى خاص أو يتطلب تسجيل الدخول.";
         }

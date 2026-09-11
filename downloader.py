@@ -57,8 +57,52 @@ def get_ffmpeg_path() -> str:
     return shutil.which("ffmpeg") or "ffmpeg"
 
 
+def is_unviewable_playlist_id(playlist_id: str) -> bool:
+    if not playlist_id:
+        return False
+    upper = str(playlist_id).strip().upper()
+    return upper.startswith(("RD", "UL", "PU")) or upper in {"WL", "LL", "LM"}
+
+
+def extract_video_id_from_mix(playlist_id: str) -> str | None:
+    if not playlist_id:
+        return None
+    match = re.search(r"^RD(?:MM|AMVM)?([a-zA-Z0-9_-]{11})$", str(playlist_id).strip(), re.IGNORECASE)
+    if match:
+        return match.group(1)
+    return None
+
+
+def _find_youtube_video_fallback(url: str) -> str | None:
+    try:
+        parsed = urllib.parse.urlsplit(url or "")
+        host = (parsed.hostname or "").lower()
+        if not (host in {"youtu.be", "www.youtu.be"} or host.endswith("youtube.com")):
+            return None
+        query = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
+        v = (query.get("v") or [""])[0].strip()
+        if v:
+            return f"https://www.youtube.com/watch?v={v}"
+        if host in {"youtu.be", "www.youtu.be"}:
+            path_part = parsed.path.strip("/").split("/", 1)[0]
+            if path_part:
+                return f"https://www.youtube.com/watch?v={path_part}"
+        if parsed.path.startswith("/shorts/"):
+            parts = parsed.path.split("/shorts/", 1)[1].split("/", 1)
+            if parts and parts[0]:
+                return f"https://www.youtube.com/watch?v={parts[0]}"
+        playlist_id = (query.get("list") or [""])[0].strip()
+        if playlist_id:
+            mix_vid = extract_video_id_from_mix(playlist_id)
+            if mix_vid:
+                return f"https://www.youtube.com/watch?v={mix_vid}"
+    except Exception:
+        pass
+    return None
+
+
 def clean_url(url: str) -> str:
-    """Normalize common YouTube links without discarding playlist parameters."""
+    """Normalize common YouTube links without breaking mixes or unviewable playlists."""
     value = (url or "").strip()
     if not value:
         return ""
@@ -66,15 +110,33 @@ def clean_url(url: str) -> str:
     try:
         parsed = urllib.parse.urlsplit(value)
         host = (parsed.hostname or "").lower()
+        if not (host in {"youtu.be", "www.youtu.be"} or host.endswith("youtube.com")):
+            return value
+
         query = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
         playlist_id = (query.get("list") or [""])[0].strip()
 
-        if playlist_id and (
-            host in {"youtu.be", "www.youtu.be"}
-            or host.endswith("youtube.com")
-        ):
-            # A watch/share link copied while browsing a playlist should expose
-            # the complete list in the UI. Individual items remain selectable.
+        video_id = (query.get("v") or [""])[0].strip()
+        if not video_id:
+            if host in {"youtu.be", "www.youtu.be"}:
+                video_id = parsed.path.strip("/").split("/", 1)[0]
+            elif parsed.path.startswith("/shorts/"):
+                video_id = parsed.path.split("/shorts/", 1)[1].split("/", 1)[0]
+            elif parsed.path.startswith("/embed/"):
+                video_id = parsed.path.split("/embed/", 1)[1].split("/", 1)[0]
+
+        if not video_id and playlist_id and is_unviewable_playlist_id(playlist_id):
+            video_id = extract_video_id_from_mix(playlist_id) or ""
+
+        if playlist_id:
+            if is_unviewable_playlist_id(playlist_id):
+                if video_id:
+                    clean_query: dict[str, Any] = {"v": video_id}
+                    if "t" in query:
+                        clean_query["t"] = query["t"][0]
+                    return f"https://www.youtube.com/watch?{urllib.parse.urlencode(clean_query)}"
+                return value
+
             return urllib.parse.urlunsplit(
                 (
                     "https",
@@ -85,21 +147,12 @@ def clean_url(url: str) -> str:
                 )
             )
 
-        if host in {"youtu.be", "www.youtu.be"}:
-            video_id = parsed.path.strip("/").split("/", 1)[0]
-            if video_id:
-                query["v"] = [video_id]
-                return urllib.parse.urlunsplit(
-                    ("https", "www.youtube.com", "/watch", urllib.parse.urlencode(query, doseq=True), "")
-                )
+        if video_id:
+            clean_query = {"v": video_id}
+            if "t" in query:
+                clean_query["t"] = query["t"][0]
+            return f"https://www.youtube.com/watch?{urllib.parse.urlencode(clean_query)}"
 
-        if host.endswith("youtube.com") and parsed.path.startswith("/shorts/"):
-            video_id = parsed.path.split("/shorts/", 1)[1].split("/", 1)[0]
-            if video_id:
-                query["v"] = [video_id]
-                return urllib.parse.urlunsplit(
-                    ("https", "www.youtube.com", "/watch", urllib.parse.urlencode(query, doseq=True), "")
-                )
     except Exception:
         return value
 
@@ -120,6 +173,8 @@ def clean_error_message(err: Exception | str) -> str:
 
     if isinstance(err, DownloadCancelled) or "download cancelled by user" in lowered:
         return "تم إلغاء التنزيل."
+    if "unviewable" in lowered or "this playlist type is unviewable" in lowered:
+        return "❌ قائمة التشغيل هذه من نوع ميكس (Mix) أو خاصة وغير متاحة كقائمة كاملة."
     if "video unavailable" in lowered or "is unavailable" in lowered:
         return "❌ هذا المقطع غير متوفر أو حُذف من المنصة."
     if "private video" in lowered or "sign in if you've been granted access" in lowered:
@@ -192,6 +247,21 @@ def validate_link(url: str, proxy: str | None = None) -> dict[str, Any]:
             "cleaned_url": normalized,
         }
     except Exception as exc:
+        if "unviewable" in str(exc).lower():
+            fallback = _find_youtube_video_fallback(url) or _find_youtube_video_fallback(normalized)
+            if fallback and fallback != normalized:
+                try:
+                    with yt_dlp.YoutubeDL(options) as ydl:
+                        fallback_info = ydl.extract_info(fallback, download=False)
+                    if fallback_info:
+                        return {
+                            "valid": True,
+                            "title": fallback_info.get("title") or "مقطع وسائط",
+                            "platform": fallback_info.get("extractor_key") or fallback_info.get("extractor") or "منصة وسائط",
+                            "cleaned_url": fallback,
+                        }
+                except Exception:
+                    pass
         return {"valid": False, "reason": clean_error_message(exc)}
 
 
@@ -402,8 +472,24 @@ class MediaDownloader:
         )
         _apply_cookies(ydl_options, browser_cookies)
 
-        with yt_dlp.YoutubeDL(ydl_options) as ydl:
-            info = ydl.extract_info(normalized, download=False)
+        info = None
+        try:
+            with yt_dlp.YoutubeDL(ydl_options) as ydl:
+                info = ydl.extract_info(normalized, download=False)
+        except Exception as exc:
+            if "unviewable" in str(exc).lower():
+                fallback_url = _find_youtube_video_fallback(url) or _find_youtube_video_fallback(normalized)
+                if fallback_url and fallback_url != normalized:
+                    try:
+                        with yt_dlp.YoutubeDL(ydl_options) as ydl:
+                            info = ydl.extract_info(fallback_url, download=False)
+                        normalized = fallback_url
+                    except Exception:
+                        raise RuntimeError(clean_error_message(exc)) from exc
+                else:
+                    raise RuntimeError(clean_error_message(exc)) from exc
+            else:
+                raise
 
         if not info:
             raise RuntimeError("تعذر جلب معلومات الرابط. تحقق من الرابط ثم أعد المحاولة.")

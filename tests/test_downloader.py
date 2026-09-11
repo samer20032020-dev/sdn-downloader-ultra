@@ -80,6 +80,22 @@ class DownloaderTests(unittest.TestCase):
         self.assertEqual(parsed.path, "/playlist")
         self.assertEqual(downloader.urllib.parse.parse_qs(parsed.query), {"list": ["PL42"]})
 
+    def test_clean_url_extracts_video_from_mix_playlist(self):
+        cleaned = downloader.clean_url("https://www.youtube.com/watch?v=97AHPDXsSEY&list=RD97AHPDXsSEY&start_radio=1")
+        self.assertEqual(cleaned, "https://www.youtube.com/watch?v=97AHPDXsSEY")
+
+    def test_clean_url_extracts_video_from_direct_mix_playlist_url(self):
+        cleaned = downloader.clean_url("https://www.youtube.com/playlist?list=RD97AHPDXsSEY")
+        self.assertEqual(cleaned, "https://www.youtube.com/watch?v=97AHPDXsSEY")
+
+    def test_clean_url_extracts_video_from_watch_later_or_liked(self):
+        cleaned = downloader.clean_url("https://www.youtube.com/watch?v=97AHPDXsSEY&list=WL")
+        self.assertEqual(cleaned, "https://www.youtube.com/watch?v=97AHPDXsSEY")
+
+    def test_clean_error_message_translates_unviewable_playlist(self):
+        msg = downloader.clean_error_message("ERROR: [youtube:tab] RD97AHPDXsSEY: YouTube said: This playlist type is unviewable.")
+        self.assertIn("ميكس", msg)
+
     def test_clean_url_keeps_a_single_shared_video(self):
         cleaned = downloader.clean_url("https://youtu.be/abc123?t=5")
         self.assertIn("v=abc123", cleaned)

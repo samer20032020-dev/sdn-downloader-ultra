@@ -2092,15 +2092,51 @@ function getPlayableTrackUrl(track) {
   return /^[A-Za-z]:\//.test(normalized) ? encodeURI('file:///' + normalized) : encodeURI(normalized);
 }
 
+function isUnviewablePlaylistId(playlistId) {
+  if (!playlistId) return false;
+  const upper = String(playlistId).trim().toUpperCase();
+  return upper.startsWith('RD') || upper.startsWith('UL') || upper.startsWith('PU') || upper === 'WL' || upper === 'LL' || upper === 'LM';
+}
+
+function extractVideoIdFromMix(playlistId) {
+  if (!playlistId) return null;
+  const match = String(playlistId).trim().match(/^RD(?:MM|AMVM)?([a-zA-Z0-9_-]{11})$/i);
+  return match ? match[1] : null;
+}
+
 function normalizeMediaSourceUrl(value) {
   const source = String(value || '').trim();
   try {
     const parsed = new URL(source);
     const host = parsed.hostname.toLowerCase();
+    const isYouTube = host === 'youtu.be' || host === 'www.youtu.be' || host === 'youtube.com' || host.endsWith('.youtube.com');
+    if (!isYouTube) return source;
+
     const playlistId = parsed.searchParams.get('list');
-    const isYouTube = host === 'youtu.be' || host === 'youtube.com' || host.endsWith('.youtube.com');
-    if (isYouTube && playlistId) {
+    let videoId = parsed.searchParams.get('v') || '';
+    if (!videoId) {
+      if (host === 'youtu.be' || host === 'www.youtu.be') {
+        videoId = parsed.pathname.replace(/^\/+/, '').split('/')[0] || '';
+      } else if (parsed.pathname.startsWith('/shorts/')) {
+        videoId = parsed.pathname.split('/shorts/')[1].split('/')[0] || '';
+      } else if (parsed.pathname.startsWith('/embed/')) {
+        videoId = parsed.pathname.split('/embed/')[1].split('/')[0] || '';
+      }
+    }
+
+    if (playlistId) {
+      if (isUnviewablePlaylistId(playlistId)) {
+        const finalVideoId = videoId || extractVideoIdFromMix(playlistId);
+        if (finalVideoId) {
+          return `https://www.youtube.com/watch?v=${encodeURIComponent(finalVideoId)}`;
+        }
+        return source;
+      }
       return `https://www.youtube.com/playlist?list=${encodeURIComponent(playlistId)}`;
+    }
+
+    if (videoId) {
+      return `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
     }
   } catch (_) {}
   return source;
