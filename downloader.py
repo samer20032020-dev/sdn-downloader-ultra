@@ -667,7 +667,7 @@ class MediaDownloader:
             if status == "finished":
                 capture_path(data.get("filename") or info_dict.get("filepath") or info_dict.get("_filename"))
                 if status_callback:
-                    status_callback("جاري معالجة ودمج الملف عبر FFmpeg...")
+                    status_callback("اكتمل تنزيل المسار، جاري تحضير المعالجة...")
                 return
 
             if status != "downloading" or not progress_callback:
@@ -700,9 +700,25 @@ class MediaDownloader:
         def postprocessor_hook(data: dict[str, Any]) -> None:
             if self._cancel_event.is_set():
                 raise DownloadCancelled("Download cancelled by user")
-            if data.get("status") == "finished":
+            pp_status = data.get("status")
+            pp_name = str(data.get("postprocessor") or "")
+            if pp_status == "started" and status_callback:
+                pp_lower = pp_name.lower()
+                if "merg" in pp_lower:
+                    status_callback("⚙️ جاري دمج مسارات الفيديو والصوت عبر FFmpeg...")
+                elif "audio" in pp_lower:
+                    status_callback("⚙️ جاري استخراج وتحويل مسار الصوت عبر FFmpeg...")
+                elif "meta" in pp_lower:
+                    status_callback("⚙️ جاري إضافة الغلاف والبيانات الوصفية...")
+                elif "fixup" in pp_lower or "remux" in pp_lower:
+                    status_callback("⚙️ جاري ضبط حاوية الوسائط (Remux)...")
+                else:
+                    status_callback("⚙️ جاري معالجة ودمج الملف عبر FFmpeg...")
+            elif pp_status == "finished":
                 info_dict = data.get("info_dict") or {}
                 capture_path(info_dict.get("filepath") or info_dict.get("_filename"))
+                if status_callback:
+                    status_callback("⚙️ اكتملت المعالجة، جاري حفظ وتجهيز الملف...")
 
         ydl_options = _common_ydl_options(option.get("proxy"))
         ydl_options.update(
@@ -711,6 +727,7 @@ class MediaDownloader:
                 "outtmpl": template,
                 "progress_hooks": [ydl_progress_hook],
                 "postprocessor_hooks": [postprocessor_hook],
+                "postprocessor_args": {"ffmpeg": ["-nostdin"]},
                 "quiet": True,
                 "no_warnings": True,
                 "ffmpeg_location": self.ffmpeg_path,

@@ -667,6 +667,15 @@ body.light-theme .input-field-wrap input { background: #fff; }
 }
 .progress-bar-track { height: 8px; background: rgba(0,0,0,0.15); border-radius: 10px; overflow: hidden; }
 .progress-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #38bdf8, #34d399); transition: width 0.2s; }
+.progress-bar-fill.processing {
+  background: linear-gradient(90deg, #38bdf8, #6366f1, #34d399) !important;
+  background-size: 200% 100% !important;
+  animation: progressPulse 1.4s ease-in-out infinite alternate !important;
+}
+@keyframes progressPulse {
+  0% { filter: brightness(1); opacity: 0.85; }
+  100% { filter: brightness(1.35); opacity: 1; }
+}
 
 /* Fixed Bottom Navigation Bar (3 Tabs Only) */
 .bottom-nav {
@@ -3241,7 +3250,11 @@ function updateProgress(p) {
   if (p.status === 'downloading') {
     card.style.display = 'flex';
     const pctVal = Math.round(p.percent || 0);
-    if (fill) fill.style.width = pctVal + '%';
+    if (fill) {
+      fill.classList.remove('processing');
+      fill.style.background = '';
+      fill.style.width = pctVal + '%';
+    }
     if (pct)  pct.innerText  = pctVal + '%';
     if (stat) {
       const playlistText = p.playlist_count
@@ -3256,18 +3269,27 @@ function updateProgress(p) {
 
   } else if (p.status === 'processing') {
     card.style.display = 'flex';
-    if (fill) fill.style.width = '95%';
-    if (pct)  pct.innerText  = '95%';
-    if (stat) stat.innerText = '⚙️ ' + (p.msg || 'جاري المعالجة...');
-    if (speed) speed.innerText = '';
-    if (eta)   eta.innerText = '';
+    if (fill) {
+      fill.classList.add('processing');
+      fill.style.background = '';
+      fill.style.width = '95%';
+    }
+    if (pct)  pct.innerHTML  = '<i class="fa-solid fa-gear fa-spin" style="margin-left:4px;"></i> 95%';
+    if (stat) stat.innerText = p.msg || '⚙️ جاري معالجة ودمج الملف عبر FFmpeg...';
+    if (speed) speed.innerText = '⚡ معالجة نشطة';
+    if (sizes) sizes.innerText = '⚙️ دمج وتجهيز الحاوية...';
+    if (eta)   eta.innerText = 'يرجى الانتظار، جاري حفظ الملف النهائي...';
 
   } else if (p.status === 'complete') {
     setDownloadActive(false);
     card.style.display = 'flex';
-    if (fill) fill.style.width = '100%';
+    if (fill) {
+      fill.classList.remove('processing');
+      fill.style.background = '';
+      fill.style.width = '100%';
+    }
     if (pct)  pct.innerText  = '100%';
-    if (stat) stat.innerText = '🎉 اكتمل التحميل!';
+    if (stat) stat.innerText = '🎉 اكتمل التحميل بنجاح!';
     if (speed) speed.innerText = '';
     if (eta)   eta.innerText = '';
     if (sizes) sizes.innerText = '';
@@ -3329,20 +3351,22 @@ function updateProgress(p) {
   } else if (p.status === 'cancelled') {
     setDownloadActive(false);
     card.style.display = 'flex';
-    if (fill) { fill.style.width = '0%'; fill.style.background = ''; }
+    if (fill) { fill.classList.remove('processing'); fill.style.width = '0%'; fill.style.background = ''; }
     if (pct) pct.innerText = '⏹️';
     if (stat) stat.innerText = p.error || 'تم إلغاء التنزيل';
     if (speed) speed.innerText = '';
     if (eta) eta.innerText = '';
+    if (sizes) sizes.innerText = '';
     toast('⏹️ تم إلغاء التنزيل');
   } else if (p.status === 'error') {
     setDownloadActive(false);
     card.style.display = 'flex';
-    if (fill) { fill.style.width = '100%'; fill.style.background = 'var(--red)'; }
-    if (pct)  pct.innerText = '❌';
+    if (fill) { fill.classList.remove('processing'); fill.style.width = '100%'; fill.style.background = 'var(--red)'; }
+    if (pct)  pct.innerText  = '❌';
     if (stat) stat.innerText = p.error || 'حدث خطأ أثناء التحميل';
     if (speed) speed.innerText = '';
     if (eta)   eta.innerText = '';
+    if (sizes) sizes.innerText = '';
     toast('❌ ' + (p.error || 'فشل التحميل'));
 
     // Reset fill color after 5s

@@ -1019,12 +1019,18 @@ class DownloaderBridgeAPI:
         
         def progress_callback(p_data):
             if self._window:
-                self._window.evaluate_js(f'updateProgress({json.dumps(p_data)})')
+                try:
+                    self._window.evaluate_js(f'updateProgress({json.dumps(p_data)})')
+                except Exception as ex:
+                    _log.debug(f"Progress evaluate_js error: {ex}")
 
         def status_callback(msg):
             if self._window:
-                payload = {'status': 'processing', 'msg': msg}
-                self._window.evaluate_js(f'updateProgress({json.dumps(payload)})')
+                try:
+                    payload = {'status': 'processing', 'msg': msg}
+                    self._window.evaluate_js(f'updateProgress({json.dumps(payload)})')
+                except Exception as ex:
+                    _log.debug(f"Status evaluate_js error: {ex}")
 
         try:
             if not self.downloader:
@@ -1069,17 +1075,20 @@ class DownloaderBridgeAPI:
                 })
             
             if self._window:
-                payload = {
-                    'status': 'complete',
-                    'filepath': result.get('filepath') or '',
-                    'files': downloaded_files,
-                    'count': result.get('count', len(downloaded_files)),
-                    'directory': result.get('directory') or self.save_dir,
-                    'media_type': result.get('media_type') or media_type,
-                    'is_playlist': bool(result.get('is_playlist')),
-                    'elapsed': round(elapsed, 1),
-                }
-                self._window.evaluate_js(f'updateProgress({json.dumps(payload)})')
+                try:
+                    payload = {
+                        'status': 'complete',
+                        'filepath': result.get('filepath') or '',
+                        'files': downloaded_files,
+                        'count': result.get('count', len(downloaded_files)),
+                        'directory': result.get('directory') or self.save_dir,
+                        'media_type': result.get('media_type') or media_type,
+                        'is_playlist': bool(result.get('is_playlist')),
+                        'elapsed': round(elapsed, 1),
+                    }
+                    self._window.evaluate_js(f'updateProgress({json.dumps(payload)})')
+                except Exception as ex:
+                    _log.warning(f"Complete evaluate_js error: {ex}")
         except Exception as e:
             elapsed = time.time() - start_t
             try:
@@ -1089,11 +1098,14 @@ class DownloaderBridgeAPI:
                 error_message = str(e)
             _log.error(f"Download failed after {elapsed:.1f}s: {error_message}")
             if self._window:
-                payload = {
-                    'status': 'cancelled' if 'إلغاء' in error_message else 'error',
-                    'error': error_message,
-                }
-                self._window.evaluate_js(f'updateProgress({json.dumps(payload)})')
+                try:
+                    payload = {
+                        'status': 'cancelled' if 'إلغاء' in error_message else 'error',
+                        'error': error_message,
+                    }
+                    self._window.evaluate_js(f'updateProgress({json.dumps(payload)})')
+                except Exception as ex:
+                    _log.warning(f"Error evaluate_js error: {ex}")
         finally:
             self._download_thread = None
 
