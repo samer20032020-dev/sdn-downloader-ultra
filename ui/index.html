@@ -3676,8 +3676,22 @@ document.getElementById('dlBtn').addEventListener('click', async () => {
 
   const card = document.getElementById('progCard');
   card.style.display = 'flex';
-  document.getElementById('progFill').style.background = '';
-  document.getElementById('progFill').style.width = '0%';
+  const fill = document.getElementById('progFill');
+  if (fill) {
+    fill.classList.remove('processing');
+    fill.style.background = '';
+    fill.style.width = '0%';
+  }
+  const pct = document.getElementById('progPct');
+  const stat = document.getElementById('progStatus');
+  const speed = document.getElementById('progSpeed');
+  const sizes = document.getElementById('progSizes');
+  const eta = document.getElementById('progEta');
+  if (pct) pct.innerText = '0%';
+  if (stat) stat.innerText = '⬇️ جاري التجهيز والبدء...';
+  if (speed) speed.innerText = '';
+  if (sizes) sizes.innerText = '';
+  if (eta) eta.innerText = '';
 
   const playlistCheckboxes = Array.from(document.querySelectorAll('.download-playlist-check'));
   const selectedPlaylistItems = playlistCheckboxes

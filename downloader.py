@@ -743,8 +743,10 @@ class MediaDownloader:
         if option.get("download_subtitles"):
             ydl_options["writesubtitles"] = True
             ydl_options["writeautomaticsub"] = True
-            ydl_options["subtitleslangs"] = ["ar", "en"]
+            ydl_options["subtitleslangs"] = ["ar", "en", "ar.*", "en.*"]
             ydl_options["subtitlesformat"] = "srt/best"
+            # Subtitle download errors or 429 rate limits must never abort the video download
+            ydl_options["ignoreerrors"] = True
 
         rate_limit = option.get("ratelimit")
         if rate_limit and isinstance(rate_limit, (int, float)) and rate_limit > 0:
@@ -768,8 +770,29 @@ class MediaDownloader:
             postprocessors.append({"key": "FFmpegMetadata", "add_metadata": True})
         ydl_options["postprocessors"] = postprocessors
 
+        class _YDLDownloadLogger:
+            def __init__(self):
+                self.errors: list[str] = []
+                self.warnings: list[str] = []
+
+            def debug(self, msg):
+                pass
+
+            def info(self, msg):
+                pass
+
+            def warning(self, msg):
+                self.warnings.append(str(msg))
+
+            def error(self, msg):
+                self.errors.append(str(msg))
+
+        ydl_logger = _YDLDownloadLogger()
+        ydl_options["logger"] = ydl_logger
+
         start_sec = parse_time_to_seconds(option.get("trim_start"))
         end_sec = parse_time_to_seconds(option.get("trim_end"))
+        applied_range_download = False
         if start_sec is not None or end_sec is not None:
             s_val = start_sec if start_sec is not None else 0
             e_val = end_sec if end_sec is not None else float("inf")
@@ -777,8 +800,9 @@ class MediaDownloader:
                 from yt_dlp.utils import download_range_func
                 ydl_options["download_ranges"] = download_range_func(None, [(s_val, e_val)])
                 ydl_options["force_keyframes_at_cuts"] = True
+                applied_range_download = True
             except Exception:
-                pass
+                applied_range_download = False
 
         try:
             with yt_dlp.YoutubeDL(ydl_options) as ydl:
@@ -791,6 +815,14 @@ class MediaDownloader:
             raise RuntimeError(clean_error_message(exc)) from exc
 
         if not info and not captured_files:
+            fatal_errors = [
+                e for e in ydl_logger.errors
+                if "subtitle" not in e.lower()
+                and "timedtext" not in e.lower()
+                and "thumbnail" not in e.lower()
+            ]
+            if fatal_errors:
+                raise RuntimeError(clean_error_message(fatal_errors[-1]))
             raise RuntimeError("فشل التنزيل ولم تُنتج المنصة أي ملف.")
 
         # Post-processing hooks can omit the final path on some extractors. The
@@ -814,7 +846,8 @@ class MediaDownloader:
 
         trim_start = option.get("trim_start")
         trim_end = option.get("trim_end")
-        if final_files and (trim_start is not None or trim_end is not None):
+        # Only perform post-download trimming if server-side range downloading was not already applied
+        if not applied_range_download and final_files and (trim_start is not None or trim_end is not None):
             if status_callback:
                 status_callback("جاري تطبيق وقت البداية والنهاية المحدد...")
             for file_path in list(final_files):
