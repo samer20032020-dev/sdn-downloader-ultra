@@ -1,0 +1,14 @@
+{
+  "locale": "ar",
+  "name": "العربية",
+  "direction": "rtl",
+  "strings": {
+    "app_title": "SDN Downloader Ultra",
+    "download_now": "⚡ تنزيل الآن",
+    "downloading": "⬇️ جاري التنزيل...",
+    "completed": "🎉 اكتمل التحميل بنجاح!",
+    "cancelled": "⏹️ تم إلغاء التنزيل",
+    "trim_video": "✂️ اقتطاع جزء من المقطع",
+    "download_subtitles": "💬 تنزيل الترجمة المصاحبة"
+  }
+}

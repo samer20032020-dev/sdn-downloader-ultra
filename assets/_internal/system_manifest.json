@@ -1,0 +1,8 @@
+﻿{
+  "runtime": "CPython 3.14 x64",
+  "framework": "pywebview 5.x",
+  "media_engine": "yt-dlp + FFmpeg Lavf61.7.100",
+  "crypto": "PyCryptodome",
+  "network": "urllib3 / requests",
+  "ui_mode": "Chromium Edge WebView2"
+}

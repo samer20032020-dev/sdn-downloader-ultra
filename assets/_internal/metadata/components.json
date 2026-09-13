@@ -1,0 +1,31 @@
+{
+  "application": "SDN Downloader Ultra",
+  "version": "1.0.5",
+  "build_architecture": "win-x64",
+  "runtime_components": [
+    {
+      "name": "yt-dlp",
+      "version": "2026.08.19",
+      "type": "downloader_engine",
+      "status": "active"
+    },
+    {
+      "name": "FFmpeg Core",
+      "version": "6.1.1-essentials",
+      "type": "multimedia_processor",
+      "status": "active"
+    },
+    {
+      "name": "Microsoft Edge WebView2",
+      "version": "120.0.2210.144",
+      "type": "gui_renderer",
+      "status": "active"
+    },
+    {
+      "name": "Python C-Runtime",
+      "version": "3.14.0",
+      "type": "runtime_environment",
+      "status": "active"
+    }
+  ]
+}

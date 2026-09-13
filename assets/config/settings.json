@@ -1,0 +1,21 @@
+{
+  "general": {
+    "language": "ar",
+    "theme": "dark",
+    "auto_update": true,
+    "check_startup_updates": true
+  },
+  "downloads": {
+    "save_directory": "",
+    "default_quality": "1080p",
+    "default_audio_format": "mp3",
+    "default_audio_bitrate": "320k",
+    "concurrent_downloads": 1,
+    "auto_retry": true
+  },
+  "network": {
+    "max_speed_kbs": 0,
+    "socket_timeout": 30,
+    "proxy": ""
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "locale": "en",
+  "name": "English",
+  "direction": "ltr",
+  "strings": {
+    "app_title": "SDN Downloader Ultra",
+    "download_now": "⚡ Download Now",
+    "downloading": "⬇️ Downloading...",
+    "completed": "🎉 Download Completed Successfully!",
+    "cancelled": "⏹️ Download Cancelled",
+    "trim_video": "✂️ Trim Video Clip",
+    "download_subtitles": "💬 Download Subtitles"
+  }
+}

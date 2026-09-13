@@ -128,24 +128,66 @@ class InstallerAPI:
             if os.path.exists(src_exe):
                 shutil.copy2(src_exe, dest_exe)
 
-            # 2. Complete runtime dependencies (_internal directory)
+            # 2. Runtime DLLs (python314.dll, vcruntime140.dll, msvcp140.dll, WebView2Loader.dll)
+            for dll_name in ('python314.dll', 'vcruntime140.dll', 'msvcp140.dll', 'WebView2Loader.dll'):
+                src_dll = os.path.join(bundle_dir, 'dlls', dll_name)
+                if not os.path.exists(src_dll):
+                    src_dll = os.path.join(bundle_dir, 'assets', 'dlls', dll_name)
+                if not os.path.exists(src_dll):
+                    src_dll = os.path.join(os.path.dirname(bundle_dir), 'assets', 'dlls', dll_name)
+                if os.path.exists(src_dll):
+                    try:
+                        shutil.copy2(src_dll, os.path.join(self.install_dir, dll_name))
+                    except Exception:
+                        pass
+
+            # 3. Standard configuration and engine files (settings.json, app.config, engine.ini)
+            for cfg_name in ('settings.json', 'app.config', 'engine.ini'):
+                src_cfg = os.path.join(bundle_dir, 'config', cfg_name)
+                if not os.path.exists(src_cfg):
+                    src_cfg = os.path.join(bundle_dir, 'assets', 'config', cfg_name)
+                if not os.path.exists(src_cfg):
+                    src_cfg = os.path.join(os.path.dirname(bundle_dir), 'assets', 'config', cfg_name)
+                if os.path.exists(src_cfg):
+                    try:
+                        shutil.copy2(src_cfg, os.path.join(self.install_dir, cfg_name))
+                    except Exception:
+                        pass
+
+            # 4. Localization files (locales directory)
+            src_locales = os.path.join(bundle_dir, 'locales')
+            if not os.path.exists(src_locales):
+                src_locales = os.path.join(os.path.dirname(bundle_dir), 'locales')
+            if os.path.exists(src_locales):
+                dest_locales = os.path.join(self.install_dir, 'locales')
+                try:
+                    shutil.copytree(src_locales, dest_locales, dirs_exist_ok=True)
+                except Exception:
+                    pass
+
+            # 5. Core support and library directory (_internal directory)
             src_internal = os.path.join(bundle_dir, '_internal')
             if not os.path.exists(src_internal):
-                src_internal = os.path.join(bundle_dir, 'dist', 'SDN_Downloader_App', '_internal')
+                src_internal = os.path.join(bundle_dir, 'assets', '_internal')
             if not os.path.exists(src_internal):
-                src_internal = os.path.join(os.path.dirname(bundle_dir), 'dist', 'SDN_Downloader_App', '_internal')
+                src_internal = os.path.join(os.path.dirname(bundle_dir), 'assets', '_internal')
+            if not os.path.exists(src_internal):
+                src_internal = os.path.join(bundle_dir, 'dist', 'SDN_Downloader_App', '_internal')
             if os.path.exists(src_internal):
                 dest_internal = os.path.join(self.install_dir, '_internal')
-                shutil.copytree(src_internal, dest_internal, dirs_exist_ok=True)
+                try:
+                    shutil.copytree(src_internal, dest_internal, dirs_exist_ok=True)
+                except Exception:
+                    pass
 
-            # 3. FFmpeg engine (ffmpeg.exe)
+            # 6. FFmpeg engine (ffmpeg.exe)
             src_ffmpeg = os.path.join(bundle_dir, 'ffmpeg.exe')
             if not os.path.exists(src_ffmpeg):
                 src_ffmpeg = os.path.join(os.path.dirname(bundle_dir), 'ffmpeg.exe')
             if os.path.exists(src_ffmpeg):
                 shutil.copy2(src_ffmpeg, os.path.join(self.install_dir, 'ffmpeg.exe'))
 
-            # 4. User interface assets (ui directory)
+            # 7. User interface assets (ui directory)
             src_ui = os.path.join(bundle_dir, 'ui')
             if not os.path.exists(src_ui):
                 src_ui = os.path.join(os.path.dirname(bundle_dir), 'ui')
@@ -153,19 +195,22 @@ class InstallerAPI:
                 dest_ui = os.path.join(self.install_dir, 'ui')
                 shutil.copytree(src_ui, dest_ui, dirs_exist_ok=True)
 
-            # 5. Documentation and License (docs directory)
+            # 8. Documentation and License (docs directory)
             docs_dir = os.path.join(self.install_dir, 'docs')
             os.makedirs(docs_dir, exist_ok=True)
+            src_docs = os.path.join(bundle_dir, 'docs')
+            if not os.path.exists(src_docs):
+                src_docs = os.path.join(os.path.dirname(bundle_dir), 'docs')
+            if os.path.exists(src_docs) and os.path.isdir(src_docs):
+                shutil.copytree(src_docs, docs_dir, dirs_exist_ok=True)
             for doc_name, doc_target in [('README.md', 'README.txt'), ('LICENSE', 'LICENSE.txt'), ('THIRD_PARTY_NOTICES.md', 'THIRD_PARTY_NOTICES.txt')]:
-                src_doc = os.path.join(bundle_dir, 'docs', doc_name)
-                if not os.path.exists(src_doc):
-                    src_doc = os.path.join(bundle_dir, doc_name)
+                src_doc = os.path.join(bundle_dir, doc_name)
                 if not os.path.exists(src_doc):
                     src_doc = os.path.join(os.path.dirname(bundle_dir), doc_name)
                 if os.path.exists(src_doc):
                     shutil.copy2(src_doc, os.path.join(docs_dir, doc_target))
 
-            # 6. Version and installation metadata (version.json)
+            # 9. Version and installation metadata (version.json)
             version_info = {
                 "name": "SDN Downloader Ultra",
                 "version": APP_VERSION,
@@ -180,7 +225,7 @@ class InstallerAPI:
             except Exception:
                 pass
 
-            # 7. Dedicated Uninstaller (Uninstall.exe)
+            # 10. Dedicated Uninstaller (Uninstall.exe)
             src_uninst = os.path.join(bundle_dir, 'Uninstall.exe')
             if not os.path.exists(src_uninst):
                 src_uninst = os.path.join(bundle_dir, 'dist', 'Uninstall.exe')
@@ -203,7 +248,7 @@ class InstallerAPI:
 
             self.exe_path = dest_exe
 
-            # 8. Copy icon file to install directory
+            # 11. Copy icon file to install directory
             dest_icon = os.path.join(self.install_dir, 'app_icon.ico')
             src_icon = os.path.join(bundle_dir, 'app_icon.ico')
             if not os.path.exists(src_icon):

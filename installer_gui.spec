@@ -5,6 +5,14 @@ from PyInstaller.utils.hooks import collect_all
 datas = [
     ('ui', 'ui'),
 ]
+if os.path.exists('locales'):
+    datas.append(('locales', 'locales'))
+if os.path.exists('assets/dlls'):
+    datas.append(('assets/dlls', 'dlls'))
+if os.path.exists('assets/config'):
+    datas.append(('assets/config', 'config'))
+if os.path.exists('assets/_internal'):
+    datas.append(('assets/_internal', '_internal'))
 if os.path.exists('app_icon.ico'):
     datas.append(('app_icon.ico', '.'))
 if os.path.exists('dist/SDN_Downloader_Standalone.exe'):
@@ -13,6 +21,8 @@ if os.path.exists('dist/Uninstall.exe'):
     datas.append(('dist/Uninstall.exe', '.'))
 if os.path.exists('ffmpeg.exe'):
     datas.append(('ffmpeg.exe', '.'))
+if os.path.exists('docs'):
+    datas.append(('docs', 'docs'))
 if os.path.exists('README.md'):
     datas.append(('README.md', 'docs'))
 if os.path.exists('LICENSE'):
