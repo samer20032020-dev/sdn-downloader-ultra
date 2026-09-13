@@ -114,33 +114,96 @@ class InstallerAPI:
             os.makedirs(self.install_dir, exist_ok=True)
             time.sleep(0.3)
 
-            self._update_progress(30, '\u062c\u0627\u0631\u064a \u0646\u0633\u062e \u0645\u0644\u0641\u0627\u062a \u0627\u0644\u0628\u0631\u0646\u0627\u0645\u062c \u0641\u0627\u0626\u0642\u0629 \u0627\u0644\u0633\u0631\u0639\u0629...')
+            self._update_progress(30, 'جاري نسخ ملفات البرنامج ومكونات النظام...')
             bundle_dir = get_bundle_dir()
 
+            # 1. Main Application Executable (SDN_Downloader.exe)
             src_exe = os.path.join(bundle_dir, 'SDN_Downloader_Standalone.exe')
             if not os.path.exists(src_exe):
                 src_exe = os.path.join(bundle_dir, 'dist', 'SDN_Downloader_Standalone.exe')
             if not os.path.exists(src_exe):
                 src_exe = os.path.join(os.path.dirname(bundle_dir), 'dist', 'SDN_Downloader_Standalone.exe')
 
-            if os.path.exists(src_exe):
-                shutil.copy2(src_exe, os.path.join(self.install_dir, 'SDN_Downloader.exe'))
-            else:
-                src_app_dir = os.path.join(bundle_dir, 'SDN_Downloader_App')
-                if not os.path.exists(src_app_dir):
-                    parent_dist = os.path.join(bundle_dir, 'dist', 'SDN_Downloader_App')
-                    if os.path.exists(parent_dist):
-                        src_app_dir = parent_dist
-                    else:
-                        src_app_dir = os.path.join(os.path.dirname(bundle_dir), 'dist', 'SDN_Downloader_App')
-
-                if os.path.exists(src_app_dir):
-                    shutil.copytree(src_app_dir, self.install_dir, dirs_exist_ok=True)
-
             dest_exe = os.path.join(self.install_dir, 'SDN_Downloader.exe')
+            if os.path.exists(src_exe):
+                shutil.copy2(src_exe, dest_exe)
+
+            # 2. Complete runtime dependencies (_internal directory)
+            src_internal = os.path.join(bundle_dir, '_internal')
+            if not os.path.exists(src_internal):
+                src_internal = os.path.join(bundle_dir, 'dist', 'SDN_Downloader_App', '_internal')
+            if not os.path.exists(src_internal):
+                src_internal = os.path.join(os.path.dirname(bundle_dir), 'dist', 'SDN_Downloader_App', '_internal')
+            if os.path.exists(src_internal):
+                dest_internal = os.path.join(self.install_dir, '_internal')
+                shutil.copytree(src_internal, dest_internal, dirs_exist_ok=True)
+
+            # 3. FFmpeg engine (ffmpeg.exe)
+            src_ffmpeg = os.path.join(bundle_dir, 'ffmpeg.exe')
+            if not os.path.exists(src_ffmpeg):
+                src_ffmpeg = os.path.join(os.path.dirname(bundle_dir), 'ffmpeg.exe')
+            if os.path.exists(src_ffmpeg):
+                shutil.copy2(src_ffmpeg, os.path.join(self.install_dir, 'ffmpeg.exe'))
+
+            # 4. User interface assets (ui directory)
+            src_ui = os.path.join(bundle_dir, 'ui')
+            if not os.path.exists(src_ui):
+                src_ui = os.path.join(os.path.dirname(bundle_dir), 'ui')
+            if os.path.exists(src_ui):
+                dest_ui = os.path.join(self.install_dir, 'ui')
+                shutil.copytree(src_ui, dest_ui, dirs_exist_ok=True)
+
+            # 5. Documentation and License (docs directory)
+            docs_dir = os.path.join(self.install_dir, 'docs')
+            os.makedirs(docs_dir, exist_ok=True)
+            for doc_name, doc_target in [('README.md', 'README.txt'), ('LICENSE', 'LICENSE.txt'), ('THIRD_PARTY_NOTICES.md', 'THIRD_PARTY_NOTICES.txt')]:
+                src_doc = os.path.join(bundle_dir, 'docs', doc_name)
+                if not os.path.exists(src_doc):
+                    src_doc = os.path.join(bundle_dir, doc_name)
+                if not os.path.exists(src_doc):
+                    src_doc = os.path.join(os.path.dirname(bundle_dir), doc_name)
+                if os.path.exists(src_doc):
+                    shutil.copy2(src_doc, os.path.join(docs_dir, doc_target))
+
+            # 6. Version and installation metadata (version.json)
+            version_info = {
+                "name": "SDN Downloader Ultra",
+                "version": APP_VERSION,
+                "publisher": "SDN Software",
+                "engine": "yt-dlp + FFmpeg",
+                "platform": "Windows x64",
+                "installed_at": time.strftime("%Y-%m-%d %H:%M:%S")
+            }
+            try:
+                with open(os.path.join(self.install_dir, "version.json"), "w", encoding="utf-8") as vf:
+                    json.dump(version_info, vf, ensure_ascii=False, indent=2)
+            except Exception:
+                pass
+
+            # 7. Dedicated Uninstaller (Uninstall.exe)
+            src_uninst = os.path.join(bundle_dir, 'Uninstall.exe')
+            if not os.path.exists(src_uninst):
+                src_uninst = os.path.join(bundle_dir, 'dist', 'Uninstall.exe')
+            if not os.path.exists(src_uninst):
+                src_uninst = os.path.join(os.path.dirname(bundle_dir), 'dist', 'Uninstall.exe')
+
+            dest_uninst = os.path.join(self.install_dir, 'Uninstall.exe')
+            has_uninst_exe = False
+            if os.path.exists(src_uninst):
+                shutil.copy2(src_uninst, dest_uninst)
+                has_uninst_exe = True
+
+            # Clean up old uninstall.vbs if present
+            old_vbs = os.path.join(self.install_dir, 'uninstall.vbs')
+            if os.path.exists(old_vbs):
+                try:
+                    os.remove(old_vbs)
+                except Exception:
+                    pass
+
             self.exe_path = dest_exe
 
-            # Copy icon file to install directory if available
+            # 8. Copy icon file to install directory
             dest_icon = os.path.join(self.install_dir, 'app_icon.ico')
             src_icon = os.path.join(bundle_dir, 'app_icon.ico')
             if not os.path.exists(src_icon):
@@ -153,11 +216,8 @@ class InstallerAPI:
 
             icon_path_for_lnk = dest_icon if os.path.exists(dest_icon) else dest_exe
 
-            # Create uninstaller script inside install directory
-            uninstaller_cmd = self._create_uninstaller_script(dest_exe)
-
             time.sleep(0.4)
-            self._update_progress(65, '\u062c\u0627\u0631\u064a \u0625\u0646\u0634\u0627\u0621 \u0627\u0644\u0627\u062e\u062a\u0635\u0627\u0631\u0627\u062a...')
+            self._update_progress(65, 'جاري إنشاء الاختصارات...')
             app_name = "SDN Downloader Ultra"
 
             # Create Desktop Shortcut
@@ -171,19 +231,24 @@ class InstallerAPI:
             start_shortcut = os.path.join(start_menu, f"{app_name}.lnk")
             self._create_shortcut(dest_exe, start_shortcut, icon_path_for_lnk)
 
-            if uninstaller_cmd and os.path.exists(uninstaller_cmd):
-                uninst_shortcut = os.path.join(start_menu, f"\u0625\u0644\u063a\u0627\u0621 \u062a\u062b\u0628\u064a\u062a {app_name}.lnk")
-                self._create_shortcut("wscript.exe", uninst_shortcut, icon_path_for_lnk, args=f'//nologo "{uninstaller_cmd}"')
+            if has_uninst_exe and os.path.exists(dest_uninst):
+                uninst_shortcut = os.path.join(start_menu, f"إلغاء تثبيت {app_name}.lnk")
+                self._create_shortcut(dest_uninst, uninst_shortcut, dest_uninst)
+            else:
+                uninstaller_cmd = self._create_uninstaller_script(dest_exe)
+                if uninstaller_cmd and os.path.exists(uninstaller_cmd):
+                    uninst_shortcut = os.path.join(start_menu, f"إلغاء تثبيت {app_name}.lnk")
+                    self._create_shortcut("wscript.exe", uninst_shortcut, icon_path_for_lnk, args=f'//nologo "{uninstaller_cmd}"')
 
             time.sleep(0.3)
-            self._update_progress(85, '\u062c\u0627\u0631\u064a \u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u0628\u0631\u0646\u0627\u0645\u062c \u0641\u064a Windows...')
-            self._register_uninstall(dest_exe, uninstaller_cmd)
+            self._update_progress(85, 'جاري تسجيل البرنامج في Windows...')
+            self._register_uninstall(dest_exe, dest_uninst if has_uninst_exe else None)
 
             time.sleep(0.3)
-            self._update_progress(100, '\ud83c\udf89 \u0627\u0643\u062a\u0645\u0644 \u0627\u0644\u062a\u062b\u0628\u064a\u062a \u0628\u0646\u062c\u0627\u062d!', is_done=True)
+            self._update_progress(100, '🎉 اكتمل التثبيت بنجاح!', is_done=True)
 
         except Exception as e:
-            self._update_progress(0, f'\u274c \u062d\u062f\u062b \u062e\u0637\u0623 \u0623\u062b\u0646\u0627\u0621 \u0627\u0644\u062a\u062b\u0628\u064a\u062a: {str(e)}', is_done=False)
+            self._update_progress(0, f'❌ حدث خطأ أثناء التثبيت: {str(e)}', is_done=False)
 
     def _create_uninstaller_script(self, target_exe):
         install_folder = os.path.dirname(target_exe)
@@ -257,7 +322,15 @@ class InstallerAPI:
     def _register_uninstall(self, target_exe, uninstaller_cmd=None):
         try:
             install_folder = os.path.dirname(target_exe)
-            uninst_string = f'wscript.exe //nologo "{uninstaller_cmd}"' if uninstaller_cmd else f'cmd /c "rmdir /s /q \\"{install_folder}\\""'
+            if uninstaller_cmd and uninstaller_cmd.lower().endswith('.exe') and os.path.exists(uninstaller_cmd):
+                uninst_string = f'"{uninstaller_cmd}"'
+                uninst_icon = f'"{uninstaller_cmd},0"'
+            elif uninstaller_cmd and os.path.exists(uninstaller_cmd):
+                uninst_string = f'wscript.exe //nologo "{uninstaller_cmd}"'
+                uninst_icon = target_exe
+            else:
+                uninst_string = f'cmd /c "rmdir /s /q \\"{install_folder}\\""'
+                uninst_icon = target_exe
 
             key_path = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\SDN_Downloader_Ultra"
             with winreg.CreateKey(winreg.HKEY_CURRENT_USER, key_path) as key:
@@ -265,8 +338,9 @@ class InstallerAPI:
                 winreg.SetValueEx(key, "DisplayVersion", 0, winreg.REG_SZ, APP_VERSION)
                 winreg.SetValueEx(key, "Publisher", 0, winreg.REG_SZ, "SDN Software")
                 winreg.SetValueEx(key, "InstallLocation", 0, winreg.REG_SZ, install_folder)
-                winreg.SetValueEx(key, "DisplayIcon", 0, winreg.REG_SZ, target_exe)
+                winreg.SetValueEx(key, "DisplayIcon", 0, winreg.REG_SZ, uninst_icon)
                 winreg.SetValueEx(key, "UninstallString", 0, winreg.REG_SZ, uninst_string)
+                winreg.SetValueEx(key, "EstimatedSize", 0, winreg.REG_DWORD, 275000)
         except Exception:
             pass
 

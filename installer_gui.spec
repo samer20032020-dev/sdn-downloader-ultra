@@ -3,16 +3,23 @@ import os
 from PyInstaller.utils.hooks import collect_all
 
 datas = [
-    ('ui/installer.html', 'ui')
+    ('ui', 'ui'),
 ]
 if os.path.exists('app_icon.ico'):
     datas.append(('app_icon.ico', '.'))
 if os.path.exists('dist/SDN_Downloader_Standalone.exe'):
     datas.append(('dist/SDN_Downloader_Standalone.exe', '.'))
-elif os.path.exists('SDN_Downloader_Standalone.exe'):
-    datas.append(('SDN_Downloader_Standalone.exe', '.'))
-elif os.path.exists('dist/SDN_Downloader_App'):
-    datas.append(('dist/SDN_Downloader_App', 'SDN_Downloader_App'))
+if os.path.exists('dist/Uninstall.exe'):
+    datas.append(('dist/Uninstall.exe', '.'))
+if os.path.exists('ffmpeg.exe'):
+    datas.append(('ffmpeg.exe', '.'))
+if os.path.exists('README.md'):
+    datas.append(('README.md', 'docs'))
+if os.path.exists('LICENSE'):
+    datas.append(('LICENSE', 'docs'))
+if os.path.exists('THIRD_PARTY_NOTICES.md'):
+    datas.append(('THIRD_PARTY_NOTICES.md', 'docs'))
+
 binaries = []
 hiddenimports = ['webview', 'version']
 
