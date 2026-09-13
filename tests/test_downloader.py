@@ -193,7 +193,7 @@ class DownloaderTests(unittest.TestCase):
         self.assertIsNone(downloader.parse_time_to_seconds(None))
 
     @patch("downloader.yt_dlp.YoutubeDL", FakeYoutubeDL)
-    def test_trim_option_sets_download_ranges(self):
+    def test_trim_option_calls_trim_file(self):
         option = {
             "type": "video",
             "ext": "mp4",
@@ -203,9 +203,10 @@ class DownloaderTests(unittest.TestCase):
             "trim_end": "03:15",
         }
         with tempfile.TemporaryDirectory() as directory:
-            downloader.MediaDownloader().download("https://example.com/video", option, directory)
-        settings = FakeYoutubeDL.instances[-1].options
-        self.assertIn("download_ranges", settings)
+            dl = downloader.MediaDownloader()
+            with patch.object(dl, "_trim_file") as mock_trim:
+                dl.download("https://example.com/video", option, directory)
+                mock_trim.assert_called_once()
 
 
 if __name__ == "__main__":

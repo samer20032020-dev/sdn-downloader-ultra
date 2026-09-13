@@ -664,13 +664,18 @@ class MediaDownloader:
             else:
                 playlist_position = min(playlist_index, playlist_total)
 
+            raw_fn = str(data.get("filename") or info_dict.get("filepath") or info_dict.get("_filename") or "")
+            ext = Path(raw_fn).suffix.lower()
+            is_media = ext in MEDIA_EXTENSIONS
+
             if status == "finished":
-                capture_path(data.get("filename") or info_dict.get("filepath") or info_dict.get("_filename"))
-                if status_callback:
-                    status_callback("اكتمل تنزيل المسار، جاري تحضير المعالجة...")
+                if is_media:
+                    capture_path(raw_fn)
+                    if status_callback:
+                        status_callback("اكتمل تنزيل المسار، جاري تحضير المعالجة...")
                 return
 
-            if status != "downloading" or not progress_callback:
+            if status != "downloading" or not progress_callback or not is_media:
                 return
 
             downloaded = data.get("downloaded_bytes") or 0
@@ -790,20 +795,6 @@ class MediaDownloader:
         ydl_logger = _YDLDownloadLogger()
         ydl_options["logger"] = ydl_logger
 
-        start_sec = parse_time_to_seconds(option.get("trim_start"))
-        end_sec = parse_time_to_seconds(option.get("trim_end"))
-        applied_range_download = False
-        if start_sec is not None or end_sec is not None:
-            s_val = start_sec if start_sec is not None else 0
-            e_val = end_sec if end_sec is not None else float("inf")
-            try:
-                from yt_dlp.utils import download_range_func
-                ydl_options["download_ranges"] = download_range_func(None, [(s_val, e_val)])
-                ydl_options["force_keyframes_at_cuts"] = True
-                applied_range_download = True
-            except Exception:
-                applied_range_download = False
-
         try:
             with yt_dlp.YoutubeDL(ydl_options) as ydl:
                 info = ydl.extract_info(url, download=True)
@@ -813,6 +804,25 @@ class MediaDownloader:
             if self._cancel_event.is_set():
                 raise DownloadCancelled("Download cancelled by user") from exc
             raise RuntimeError(clean_error_message(exc)) from exc
+
+        # Resolve any Windows temporary merge files locked briefly by antivirus/indexing
+        for temp_file in glob.glob(os.path.join(save_dir, f"*{run_token}*.temp.*")):
+            target = temp_file.replace(".temp.", ".")
+            for _ in range(5):
+                try:
+                    time.sleep(0.3)
+                    if os.path.exists(temp_file):
+                        if os.path.exists(target):
+                            try:
+                                os.remove(target)
+                            except Exception:
+                                pass
+                        os.replace(temp_file, target)
+                    if os.path.exists(target) and os.path.getsize(target) > 0:
+                        capture_path(target)
+                        break
+                except Exception:
+                    pass
 
         if not info and not captured_files:
             fatal_errors = [
@@ -846,8 +856,7 @@ class MediaDownloader:
 
         trim_start = option.get("trim_start")
         trim_end = option.get("trim_end")
-        # Only perform post-download trimming if server-side range downloading was not already applied
-        if not applied_range_download and final_files and (trim_start is not None or trim_end is not None):
+        if final_files and (trim_start is not None or trim_end is not None):
             if status_callback:
                 status_callback("جاري تطبيق وقت البداية والنهاية المحدد...")
             for file_path in list(final_files):
@@ -877,6 +886,19 @@ class MediaDownloader:
             "quality_tag": quality_tag,
         }
 
+    def _trim_matching_subtitles(self, base_path: str, start_sec: float | None, end_sec: float | None) -> None:
+        folder = os.path.dirname(base_path)
+        prefix = os.path.basename(base_path)
+        if not folder or not os.path.isdir(folder):
+            return
+        try:
+            for item in os.listdir(folder):
+                if item.startswith(prefix) and item.lower().endswith(('.srt', '.vtt')):
+                    srt_path = os.path.join(folder, item)
+                    _trim_srt_file(srt_path, start_sec, end_sec)
+        except Exception as ex:
+            _log.debug(f"Subtitle trimming error: {ex}")
+
     def _trim_file(self, file_path: str, trim_start: Any, trim_end: Any) -> None:
         start_sec = parse_time_to_seconds(trim_start)
         end_sec = parse_time_to_seconds(trim_end)
@@ -898,9 +920,10 @@ class MediaDownloader:
 
         command.extend(["-map", "0", "-c", "copy", trimmed_path])
         try:
-            completed = subprocess.run(command, capture_output=True, timeout=600, creationflags=_NO_WINDOW)
+            completed = subprocess.run(command, capture_output=True, timeout=120, creationflags=_NO_WINDOW)
             if completed.returncode == 0 and os.path.isfile(trimmed_path) and os.path.getsize(trimmed_path) > 0:
                 os.replace(trimmed_path, file_path)
+                self._trim_matching_subtitles(base, start_sec, end_sec)
                 return
             elif os.path.exists(trimmed_path):
                 os.remove(trimmed_path)
@@ -911,7 +934,7 @@ class MediaDownloader:
                 except Exception:
                     pass
 
-        # Fallback to re-encoding cut if stream copy fails
+        # Fallback to fast ultrafast re-encoding cut if stream copy fails
         command_reencode = [self.ffmpeg_path, "-y"]
         if start_sec is not None and start_sec > 0:
             command_reencode.extend(["-ss", str(start_sec)])
@@ -923,11 +946,12 @@ class MediaDownloader:
         elif end_sec is not None:
             command_reencode.extend(["-to", str(end_sec)])
 
-        command_reencode.extend(["-map", "0", trimmed_path])
+        command_reencode.extend(["-map", "0", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "22", "-c:a", "copy", trimmed_path])
         try:
-            res = subprocess.run(command_reencode, capture_output=True, timeout=600, creationflags=_NO_WINDOW)
+            res = subprocess.run(command_reencode, capture_output=True, timeout=300, creationflags=_NO_WINDOW)
             if res.returncode == 0 and os.path.isfile(trimmed_path) and os.path.getsize(trimmed_path) > 0:
                 os.replace(trimmed_path, file_path)
+                self._trim_matching_subtitles(base, start_sec, end_sec)
             elif os.path.exists(trimmed_path):
                 os.remove(trimmed_path)
         except Exception:
@@ -936,6 +960,73 @@ class MediaDownloader:
                     os.remove(trimmed_path)
                 except Exception:
                     pass
+
+
+def _trim_srt_file(srt_path: str, start_sec: float | None, end_sec: float | None) -> None:
+    if not os.path.isfile(srt_path):
+        return
+    if start_sec is None and end_sec is None:
+        return
+    s_cut = start_sec if start_sec is not None else 0.0
+    e_cut = end_sec if end_sec is not None else float("inf")
+
+    def parse_srt_time(t_str: str) -> float:
+        t_str = t_str.strip().replace(",", ".")
+        parts = t_str.split(":")
+        if len(parts) == 3:
+            return float(parts[0]) * 3600 + float(parts[1]) * 60 + float(parts[2])
+        elif len(parts) == 2:
+            return float(parts[0]) * 60 + float(parts[1])
+        try:
+            return float(parts[0])
+        except Exception:
+            return 0.0
+
+    def format_srt_time(sec: float) -> str:
+        sec = max(0.0, sec)
+        h = int(sec // 3600)
+        m = int((sec % 3600) // 60)
+        s = int(sec % 60)
+        ms = int(round((sec - int(sec)) * 1000))
+        return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+
+    try:
+        with open(srt_path, "r", encoding="utf-8-sig", errors="replace") as f:
+            content = f.read()
+
+        import re
+        blocks = re.split(r'\n\s*\n', content.strip())
+        new_blocks = []
+        counter = 1
+        for block in blocks:
+            lines = [l.strip() for l in block.splitlines() if l.strip()]
+            if len(lines) < 2:
+                continue
+            time_idx = 1 if lines[0].isdigit() else 0
+            if time_idx >= len(lines) or "-->" not in lines[time_idx]:
+                continue
+            t_parts = lines[time_idx].split("-->")
+            if len(t_parts) != 2:
+                continue
+            t_start = parse_srt_time(t_parts[0])
+            t_end = parse_srt_time(t_parts[1])
+
+            if t_end < s_cut or t_start > e_cut:
+                continue
+
+            new_start = max(0.0, t_start - s_cut)
+            new_end = max(0.0, t_end - s_cut)
+            time_line = f"{format_srt_time(new_start)} --> {format_srt_time(new_end)}"
+            text_lines = lines[time_idx + 1:]
+            new_block = f"{counter}\n{time_line}\n" + "\n".join(text_lines)
+            new_blocks.append(new_block)
+            counter += 1
+
+        trimmed_srt = "\n\n".join(new_blocks) + "\n"
+        with open(srt_path, "w", encoding="utf-8") as f:
+            f.write(trimmed_srt)
+    except Exception as ex:
+        _log.debug(f"Subtitle trimming exception: {ex}")
 
 
 def parse_time_to_seconds(val: Any) -> float | None:

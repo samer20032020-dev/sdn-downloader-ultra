@@ -982,6 +982,7 @@ class DownloaderBridgeAPI:
                 return os.path.getmtime(track['filepath'])
             except OSError:
                 return 0.0
+
         tracks.sort(key=_track_mtime, reverse=True)
         _log.info(f"Scanned {len(tracks)} audio files in {scan_dir}")
         return {'tracks': tracks, 'folder': scan_dir}
