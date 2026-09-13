@@ -17,6 +17,7 @@ import time
 import winreg
 import base64
 import ctypes
+import json
 import webview
 from version import APP_VERSION
 
@@ -101,7 +102,10 @@ class InstallerAPI:
 
     def _update_progress(self, percent, text, is_done=False):
         if self._window:
-            js = f"updateInstallProgress({percent}, '{text}', {str(is_done).lower()});"
+            # json.dumps safely escapes quotes, backslashes and newlines in the
+            # message so error text can never break out into arbitrary JS.
+            safe_text = json.dumps(str(text))
+            js = f"updateInstallProgress({int(percent)}, {safe_text}, {str(is_done).lower()});"
             self._window.evaluate_js(js)
 
     def _run_installation(self, create_desktop):

@@ -189,12 +189,12 @@ def clean_error_message(err: Exception | str) -> str:
         return "⏳ المنصة حدّت عدد الطلبات مؤقتًا. انتظر قليلًا أو استخدم Cookies/Proxy."
     if "geo" in lowered or "not available in your country" in lowered:
         return "🌍 هذا المحتوى غير متاح في منطقتك الجغرافية."
+    if "ffmpeg" in lowered and ("not found" in lowered or "not installed" in lowered):
+        return "⚙️ ملف FFmpeg المطلوب لدمج الفيديو والصوت غير موجود."
     if "404" in text or "not found" in lowered:
         return "❌ الرابط غير موجود أو القائمة خاصة."
     if any(part in lowered for part in ("network", "connection", "timed out", "temporary failure")):
         return "🌐 تعذر الاتصال بالشبكة. تحقق من الإنترنت ثم أعد المحاولة."
-    if "ffmpeg" in lowered and ("not found" in lowered or "not installed" in lowered):
-        return "⚙️ ملف FFmpeg المطلوب لدمج الفيديو والصوت غير موجود."
 
     text = re.sub(r"\x1b\[[0-9;]*m", "", text)
     text = re.sub(r"(?i)ERROR:\s*(?:\[.*?\]\s*)?", "", text)

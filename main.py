@@ -173,13 +173,6 @@ except Exception as e:
     _log.debug(f"AppUserModelID not set: {e}")
 
 # ============================================================
-# THREAD POOL for parallel operations (Ultra Speed)
-# ============================================================
-from concurrent.futures import ThreadPoolExecutor, as_completed
-_THREAD_POOL = ThreadPoolExecutor(max_workers=min(8, (os.cpu_count() or 4) * 2), thread_name_prefix="SDN-Worker")
-_log.info(f"Thread pool initialized with {_THREAD_POOL._max_workers} workers")
-
-# ============================================================
 # إصلاح مشكلة البحث عن ملفات win-arm64 / WebView2
 # ============================================================
 try:
@@ -257,59 +250,100 @@ def get_clipboard_text():
     return ""
 
 
+# Only real browser extensions may talk to the loopback bridge. Regular web
+# pages (and scripts embedded in them) must never be able to inject URLs.
+EXTENSION_ORIGIN_PREFIXES = (
+    "chrome-extension://",
+    "moz-extension://",
+    "safari-web-extension://",
+    "ms-browser-extension://",
+    "edge-extension://",
+)
+
+
+def _is_allowed_extension_origin(origin: str) -> bool:
+    origin = (origin or "").strip().lower()
+    return any(origin.startswith(prefix) for prefix in EXTENSION_ORIGIN_PREFIXES)
+
+
 class ExtensionHTTPHandler(BaseHTTPRequestHandler):
-    """Ultra-lightweight HTTP handler for browser extension integration"""
+    """Lightweight, origin-restricted HTTP handler for browser extensions."""
+
     bridge_api = None
+    # Optional shared secret. When set, every POST must present it via the
+    # X-SDN-Token header (the packaged extension injects it automatically).
+    auth_token = None
 
     def log_message(self, format, *args):
         pass  # Suppress HTTP access log noise
 
+    def _cors_headers(self):
+        origin = self.headers.get("Origin", "")
+        if _is_allowed_extension_origin(origin):
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
+        self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-SDN-Token")
+
     def do_OPTIONS(self):
-        self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        origin = self.headers.get("Origin", "")
+        if not _is_allowed_extension_origin(origin):
+            self.send_response(403)
+            self.end_headers()
+            return
+        self.send_response(204)
+        self._cors_headers()
         self.end_headers()
 
+    def _authorized(self) -> bool:
+        expected = ExtensionHTTPHandler.auth_token
+        if not expected:
+            return True
+        provided = self.headers.get("X-SDN-Token", "")
+        return secrets.compare_digest(provided, expected)
+
+    def _reject(self, code, message):
+        self.send_response(code)
+        self._cors_headers()
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        try:
+            self.wfile.write(json.dumps({"status": "error", "msg": message}).encode("utf-8"))
+        except Exception:
+            pass
+
     def do_POST(self):
+        origin = self.headers.get("Origin", "")
+        if not _is_allowed_extension_origin(origin):
+            _log.debug("Rejected extension request from origin: %s", origin[:80])
+            return self._reject(403, "Origin not allowed")
+        if not self._authorized():
+            return self._reject(401, "Unauthorized")
+
         try:
             content_length = int(self.headers.get('Content-Length', 0))
         except (TypeError, ValueError):
             content_length = 0
         if content_length <= 0 or content_length > 65536:
-            self.send_response(413)
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
-            return
-        post_data = self.rfile.read(content_length)
+            return self._reject(413, "Invalid payload size")
 
+        post_data = self.rfile.read(content_length)
         try:
             payload = json.loads(post_data.decode('utf-8'))
             url = str(payload.get('url') or '').strip()
             parsed = urllib.parse.urlsplit(url)
             if parsed.scheme in ('http', 'https') and parsed.netloc and ExtensionHTTPHandler.bridge_api:
                 self.send_response(200)
-                self.send_header('Access-Control-Allow-Origin', '*')
+                self._cors_headers()
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
                 ExtensionHTTPHandler.bridge_api.handle_extension_url(url)
                 self.wfile.write(json.dumps({'status': 'ok'}).encode('utf-8'))
             else:
-                self.send_response(400)
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({'status': 'error', 'msg': 'No URL provided'}).encode('utf-8'))
+                self._reject(400, "No URL provided")
         except Exception as e:
             _log.debug(f"Extension handler error: {e}")
-            try:
-                self.send_response(400)
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({'status': 'error'}).encode('utf-8'))
-            except Exception:
-                pass
+            self._reject(400, "Bad request")
 
 
 class MediaHTTPHandler(BaseHTTPRequestHandler):
@@ -419,6 +453,9 @@ class MediaHTTPHandler(BaseHTTPRequestHandler):
 
 class DownloaderBridgeAPI:
     """ULTRA Bridge API - Interface between Python backend and WebView frontend"""
+
+    # Upper bound for cached media tokens to keep long sessions bounded.
+    _MEDIA_TOKEN_LIMIT = 4096
     
     def __init__(self):
         self._window = None
@@ -596,6 +633,7 @@ class DownloaderBridgeAPI:
                     token = secrets.token_urlsafe(32)
                     self._media_path_tokens[normalized] = token
                     self._media_tokens[token] = str(path)
+                    self._prune_media_tokens_locked()
             return f"http://127.0.0.1:{self._media_port}/media/{token}"
         except Exception as exc:
             _log.debug(f"Could not register media file {filepath}: {exc}")
@@ -603,6 +641,20 @@ class DownloaderBridgeAPI:
                 return Path(filepath).resolve().as_uri()
             except Exception:
                 return str(filepath).replace("\\", "/")
+
+    def _prune_media_tokens_locked(self):
+        """Drop the oldest media tokens once the cache exceeds its limit.
+
+        The caller must hold ``self._media_lock``. Insertion order is preserved
+        by Python dicts, so the first keys are the oldest entries.
+        """
+        overflow = len(self._media_tokens) - self._MEDIA_TOKEN_LIMIT
+        if overflow <= 0:
+            return
+        for token in list(self._media_tokens.keys())[:overflow]:
+            stored_path = self._media_tokens.pop(token, None)
+            if stored_path is not None:
+                self._media_path_tokens.pop(os.path.normcase(stored_path), None)
 
     def resolve_media_token(self, token):
         with self._media_lock:
@@ -922,7 +974,15 @@ class DownloaderBridgeAPI:
                 tracks.append(self._build_audio_track(entry, uploader))
         except Exception as e:
             _log.warning(f"Music scan error: {e}")
-        tracks.sort(key=lambda x: os.path.getmtime(x['filepath']), reverse=True)
+
+        # Sort by modification time without hitting the filesystem inside the
+        # comparison; files can be deleted while a large library is scanned.
+        def _track_mtime(track):
+            try:
+                return os.path.getmtime(track['filepath'])
+            except OSError:
+                return 0.0
+        tracks.sort(key=_track_mtime, reverse=True)
         _log.info(f"Scanned {len(tracks)} audio files in {scan_dir}")
         return {'tracks': tracks, 'folder': scan_dir}
 
