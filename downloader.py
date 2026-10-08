@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import glob
+import hashlib
 import json
 import os
 import re
@@ -18,7 +19,35 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
+
+def _user_ytdlp_path() -> str:
+    """Directory holding an optional user-updated copy of yt-dlp."""
+    base = os.environ.get("LOCALAPPDATA")
+    root = Path(base) if base else Path.home() / ".cache"
+    return str(root / "SDN" / "yt_dlp_update")
+
+
+def _activate_user_ytdlp() -> None:
+    override = _user_ytdlp_path()
+    if os.path.isfile(os.path.join(override, "yt_dlp", "__init__.py")):
+        sys.path.insert(0, override)
+
+
+_activate_user_ytdlp()
+
 import yt_dlp
+
+try:
+    from app_logger import setup_logger
+except ImportError:
+    import logging as _logging
+
+    def setup_logger(name="SDN"):
+        _logging.basicConfig(level=_logging.DEBUG)
+        return _logging.getLogger(name)
+
+_log = setup_logger("SDN.Downloader")
+
 
 
 ProgressCallback = Callable[[dict[str, Any]], None]
@@ -186,7 +215,7 @@ def clean_error_message(err: Exception | str) -> str:
     if "403" in text or "forbidden" in lowered:
         return "🔒 خوادم المنصة رفضت الطلب مؤقتًا (HTTP 403: Forbidden). جرب جودة أخرى أو أعد المحاولة بعد قليل."
     if "429" in text or "too many requests" in lowered:
-        return "⏳ المنصة حدّت عدد الطلبات مؤقتًا. انتظر قليلًا أو استخدم Cookies/Proxy."
+        return "⏳ المنصة حدّت عدد الطلبات مؤقتًا (HTTP 429: Too Many Requests). انتظر قليلًا أو استخدم Cookies/Proxy."
     if "geo" in lowered or "not available in your country" in lowered:
         return "🌍 هذا المحتوى غير متاح في منطقتك الجغرافية."
     if "ffmpeg" in lowered and ("not found" in lowered or "not installed" in lowered):
@@ -269,16 +298,118 @@ def validate_link(url: str, proxy: str | None = None) -> dict[str, Any]:
         return {"valid": False, "reason": clean_error_message(exc)}
 
 
-def auto_update_ytdlp(force: bool = False) -> dict[str, Any]:
-    """Update yt-dlp in development; packaged apps update it with the app release."""
-    if getattr(sys, "frozen", False):
-        return {
-            "updated": False,
-            "reason": "bundled",
-            "version": getattr(yt_dlp.version, "__version__", "unknown"),
-        }
+def _current_ytdlp_version() -> str:
+    return str(getattr(getattr(yt_dlp, "version", None), "__version__", "unknown"))
 
+
+def _version_tuple(value: str) -> tuple:
+    numbers = [int(part) for part in re.findall(r"\d+", str(value or ""))[:4]]
+    return tuple((numbers + [0, 0, 0, 0])[:4])
+
+
+def _write_ytdlp_state(state_path: str, checked_at: float, returncode: int, version: str | None = None) -> None:
+    try:
+        with open(state_path, "w", encoding="utf-8") as handle:
+            json.dump(
+                {"checked_at": checked_at, "returncode": returncode, "version": version or _current_ytdlp_version()},
+                handle,
+            )
+    except Exception:
+        pass
+
+
+def _extract_ytdlp_wheel(wheel_path: str, target_dir: str) -> None:
+    import zipfile
+
+    staging = target_dir + ".staging"
+    shutil.rmtree(staging, ignore_errors=True)
+    os.makedirs(staging, exist_ok=True)
+    try:
+        with zipfile.ZipFile(wheel_path) as archive:
+            members = [name for name in archive.namelist() if name.startswith("yt_dlp/")]
+            if "yt_dlp/__init__.py" not in members:
+                raise RuntimeError("حزمة yt-dlp المنزّلة غير صالحة")
+            archive.extractall(staging, members=members)
+        if os.path.isdir(target_dir):
+            shutil.rmtree(target_dir, ignore_errors=True)
+        os.replace(staging, target_dir)
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
+
+
+def _update_ytdlp_frozen(state_path: str, force: bool) -> dict[str, Any]:
+    """Download the latest yt-dlp wheel from PyPI and stage it for the next run."""
+    import tempfile
+    import urllib.request
+
+    now = time.time()
+    current_version = _current_ytdlp_version()
+
+    if not force:
+        try:
+            with open(state_path, "r", encoding="utf-8") as handle:
+                state = json.load(handle)
+            if now - float(state.get("checked_at", 0)) < 24 * 60 * 60:
+                return {"updated": False, "reason": "recently_checked", "version": current_version}
+        except Exception:
+            pass
+
+    try:
+        request = urllib.request.Request(
+            "https://pypi.org/pypi/yt-dlp/json",
+            headers={"User-Agent": "SDN-Downloader-Ultra"},
+        )
+        with urllib.request.urlopen(request, timeout=20) as response:
+            data = json.loads(response.read().decode("utf-8"))
+
+        latest_version = str((data.get("info") or {}).get("version") or "")
+        wheel_url = ""
+        wheel_sha256 = ""
+        for file_info in data.get("urls") or []:
+            if file_info.get("packagetype") == "bdist_wheel" and str(file_info.get("filename", "")).endswith(".whl"):
+                wheel_url = str(file_info.get("url") or "")
+                wheel_sha256 = str((file_info.get("digests") or {}).get("sha256") or "")
+                break
+
+        if not latest_version or not wheel_url:
+            return {"updated": False, "reason": "no_release_found", "version": current_version}
+
+        if _version_tuple(latest_version) <= _version_tuple(current_version):
+            _write_ytdlp_state(state_path, now, 0, current_version)
+            return {"updated": False, "reason": "up_to_date", "version": current_version}
+
+        with tempfile.TemporaryDirectory(prefix="sdn-ytdlp-") as temp_dir:
+            wheel_path = os.path.join(temp_dir, "yt_dlp_update.whl")
+            wheel_request = urllib.request.Request(wheel_url, headers={"User-Agent": "SDN-Downloader-Ultra"})
+            with urllib.request.urlopen(wheel_request, timeout=180) as response, open(wheel_path, "wb") as output:
+                shutil.copyfileobj(response, output)
+
+            if wheel_sha256:
+                digest = hashlib.sha256()
+                with open(wheel_path, "rb") as handle:
+                    for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                        digest.update(chunk)
+                if digest.hexdigest().lower() != wheel_sha256.lower():
+                    raise RuntimeError("فشل التحقق من بصمة حزمة yt-dlp")
+
+            _extract_ytdlp_wheel(wheel_path, _user_ytdlp_path())
+
+        _write_ytdlp_state(state_path, now, 0, latest_version)
+        _log.info(f"yt-dlp engine updated: {current_version} -> {latest_version} (restart required)")
+        return {"updated": True, "reason": "installed", "version": latest_version, "restart_required": True}
+    except Exception as exc:
+        _log.warning(f"yt-dlp engine update failed: {exc}")
+        _write_ytdlp_state(state_path, now, 1, current_version)
+        return {"updated": False, "reason": clean_error_message(exc), "version": current_version}
+
+
+def auto_update_ytdlp(force: bool = False) -> dict[str, Any]:
+    """Update yt-dlp: pip in development, verified PyPI wheel in packaged builds."""
     state_path = os.path.join(os.path.expanduser("~"), ".sdn_ytdlp_update.json")
+
+    if getattr(sys, "frozen", False):
+        return _update_ytdlp_frozen(state_path, force)
+
     now = time.time()
     if not force:
         try:
@@ -288,7 +419,7 @@ def auto_update_ytdlp(force: bool = False) -> dict[str, Any]:
                 return {
                     "updated": False,
                     "reason": "recently_checked",
-                    "version": getattr(yt_dlp.version, "__version__", "unknown"),
+                    "version": _current_ytdlp_version(),
                 }
         except Exception:
             pass
@@ -309,18 +440,14 @@ def auto_update_ytdlp(force: bool = False) -> dict[str, Any]:
             timeout=180,
             creationflags=_NO_WINDOW,
         )
-        try:
-            with open(state_path, "w", encoding="utf-8") as handle:
-                json.dump({"checked_at": now, "returncode": result.returncode}, handle)
-        except Exception:
-            pass
+        _write_ytdlp_state(state_path, now, result.returncode)
         return {
             "updated": result.returncode == 0,
             "reason": "checked",
-            "version": getattr(yt_dlp.version, "__version__", "unknown"),
+            "version": _current_ytdlp_version(),
         }
     except Exception as exc:
-        return {"updated": False, "reason": clean_error_message(exc)}
+        return {"updated": False, "reason": clean_error_message(exc), "version": _current_ytdlp_version()}
 
 
 
@@ -553,6 +680,8 @@ class MediaDownloader:
             "duration": format_duration(duration),
             "thumbnail": thumbnail,
             "extractor": info.get("extractor_key") or info.get("extractor") or "منصة وسائط",
+            "is_live": bool(info.get("is_live")),
+            "live_status": info.get("live_status") or "",
             "video_options": video_options,
             "audio_options": audio_options,
             "cleaned_url": normalized,
@@ -759,6 +888,19 @@ class MediaDownloader:
 
         _apply_cookies(ydl_options, browser_cookies)
 
+        if option.get("turbo"):
+            ydl_options["concurrent_fragment_downloads"] = 4
+
+        if not option.get("allow_live", True):
+            def _reject_live(info_dict: dict, *, incomplete: bool = False):
+                if info_dict.get("is_live"):
+                    return "🔴 هذا المحتوى بث مباشر والتنزيل المباشر موقوف من الإعدادات"
+                return None
+
+            ydl_options["match_filter"] = _reject_live
+        else:
+            ydl_options["live_from_start"] = True
+
         postprocessors: list[dict[str, Any]] = []
         if is_audio:
             codec = output_ext if output_ext in {"mp3", "m4a", "flac", "wav", "opus"} else "mp3"
@@ -907,10 +1049,9 @@ class MediaDownloader:
 
         base, ext = os.path.splitext(file_path)
         trimmed_path = f"{base}.trimmed{ext}"
-        command = [self.ffmpeg_path, "-y"]
+        command = [self.ffmpeg_path, "-y", "-i", file_path]
         if start_sec is not None and start_sec > 0:
             command.extend(["-ss", str(start_sec)])
-        command.extend(["-i", file_path])
         if end_sec is not None and start_sec is not None:
             duration = end_sec - start_sec
             if duration > 0:

@@ -1346,6 +1346,7 @@ input:checked + .slider:before { transform: translateX(20px); }
 <div class="folder-modal-overlay" id="folderModal">
   <div class="folder-modal-card">
     <div class="folder-modal-title">📁 اختيار مجلد الحفظ في الهاتف</div>
+    <div style="font-size:0.75rem; color:var(--muted); margin-bottom:10px; direction:ltr; text-align:center;" id="currentFolderTxt">Downloads</div>
     
     <button class="folder-opt-btn" onclick="selectPresetFolder('Downloads (التنزيلات)')">
       <span>📂 مجلد التنزيلات</span>
@@ -1475,22 +1476,22 @@ input:checked + .slider:before { transform: translateX(20px); }
     </div>
 
     <div class="drawer-nav-list">
-      <button class="drawer-nav-item active" data-target="viewHome" onclick="onDrawerNavClick('viewHome')">
+      <button class="nav-item drawer-nav-item active" data-target="viewHome" onclick="onDrawerNavClick('viewHome')">
         <i class="fas fa-home"></i>
         <span>الرئيسية</span>
       </button>
 
-      <button class="drawer-nav-item" data-target="viewMusicPlayer" onclick="onDrawerNavClick('viewMusicPlayer')">
+      <button class="nav-item drawer-nav-item" data-target="viewMusicPlayer" onclick="onDrawerNavClick('viewMusicPlayer')">
         <i class="fas fa-music"></i>
         <span>الموسيقى</span>
       </button>
 
-      <button class="drawer-nav-item" data-target="viewHistory" onclick="onDrawerNavClick('viewHistory')">
+      <button class="nav-item drawer-nav-item" data-target="viewHistory" onclick="onDrawerNavClick('viewHistory')">
         <i class="fas fa-history"></i>
         <span>السجل</span>
       </button>
 
-      <button class="drawer-nav-item" data-target="viewSettings" onclick="onDrawerNavClick('viewSettings')">
+      <button class="nav-item drawer-nav-item" data-target="viewSettings" onclick="onDrawerNavClick('viewSettings')">
         <i class="fas fa-cog"></i>
         <span>الإعدادات</span>
       </button>
@@ -1544,7 +1545,7 @@ input:checked + .slider:before { transform: translateX(20px); }
       <!-- Update Header Button -->
       <button id="headerUpdateBtn" onclick="onHeaderUpdateClick()" class="update-header-btn" title="فحص التحديثات" style="display:none;">
         <i class="fas fa-cog" id="updateHeaderIcon"></i>
-        <span id="updateHeaderTxt">v1.0.5</span>
+        <span id="updateHeaderTxt">v1.0.6</span>
       </button>
     </div>
   </header>
@@ -1553,6 +1554,7 @@ input:checked + .slider:before { transform: translateX(20px); }
   <main class="main-content" id="mainScroll">
 
     <!-- TAB 1: HOME (الرئيسية) -->
+    <div id="homePage" style="display:contents;">
     <div id="viewHome" style="display:flex; flex-direction:column; gap:24px; max-width:850px; margin:0 auto; width:100%;">
       
       <!-- Input Card Box -->
@@ -1598,7 +1600,7 @@ input:checked + .slider:before { transform: translateX(20px); }
           </div>
         </div>
 
-        <div style="background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.3); color:#38bdf8; padding:5px 14px; border-radius:20px; font-size:0.8rem; font-weight:800; margin-bottom:12px; display:inline-flex; align-items:center; gap:6px;">✨ الإصدار المتكامل v1.0.5 - Smart Media Engine ⚡</div>
+        <div style="background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.3); color:#38bdf8; padding:5px 14px; border-radius:20px; font-size:0.8rem; font-weight:800; margin-bottom:12px; display:inline-flex; align-items:center; gap:6px;">✨ الإصدار المتكامل v1.0.6 - Smart Media Engine ⚡</div>
         <h1 class="shimmer-title">مركز التحميل الذكي ⚡</h1>
         <p style="font-size:0.95rem; color:#94a3b8; font-weight:500; max-width:440px; line-height:1.6; z-index:2; margin-bottom:14px;">ضع رابطك أعلاه لتنزيل الفيديوهات والصوتيات بأعلى جودة فوراً 🚀</p>
 
@@ -1624,7 +1626,7 @@ input:checked + .slider:before { transform: translateX(20px); }
         </div>
 
         <button onclick="toast('✨ تم تفعيل وضع المحلل الهولوجرامي بنجاح!')" style="padding:6px 16px; border-radius:12px; background:linear-gradient(135deg, rgba(56,189,248,0.2) 0%, rgba(99,102,241,0.2) 100%); border:1px solid rgba(56,189,248,0.4); color:var(--primary); font-size:0.78rem; font-weight:800; cursor:pointer; font-family:inherit; transition:all 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-          🚀 محرك التنزيل الذكي v1.0.5
+          🚀 محرك التنزيل الذكي v1.0.6
         </button>
       </section>
 
@@ -1651,8 +1653,8 @@ input:checked + .slider:before { transform: translateX(20px); }
 
         <!-- Format Category Tab Bar -->
         <div class="format-tabs-bar" id="formatTabsBar">
-          <button class="format-tab-btn active" id="tabVideoBtn" onclick="switchFormatTab('video')">🎬 قسم الفيديو</button>
-          <button class="format-tab-btn" id="tabAudioBtn" onclick="switchFormatTab('audio')">🎵 قسم الصوت</button>
+          <button class="format-tab-btn active" id="videoTabBtn" data-alias="tabVideoBtn" onclick="switchFormatTab('video')">🎬 قسم الفيديو</button>
+          <button class="format-tab-btn" id="audioTabBtn" data-alias="tabAudioBtn" onclick="switchFormatTab('audio')">🎵 قسم الصوت</button>
         </div>
 
         <!-- Trim / Clip Section -->
@@ -1733,8 +1735,8 @@ input:checked + .slider:before { transform: translateX(20px); }
         <div id="progEta" style="font-size:0.75rem; color:var(--muted); text-align:center;"></div>
       </div>
       
-      <!-- Hidden Recent section to avoid breaking JS -->
-      <section class="recent-section" style="display:none;">
+      <!-- Recent downloads (session) -->
+      <section class="recent-section">
         <div class="section-hdr">
           <h3>التحميلات الأخيرة</h3>
           <span class="link-all" id="viewAllBtn">عرض الكل</span>
@@ -1746,7 +1748,9 @@ input:checked + .slider:before { transform: translateX(20px); }
       
     </div><!-- End View Home -->
 
+    </div>
     <!-- TAB 2: HISTORY (السجل) -->
+    <div id="historyPage" style="display:contents;">
     <div id="viewHistory" class="history-panel">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
         <h3 style="font-size:1.1rem; font-weight:800;">🕒 سجل التحميلات الكامل</h3>
@@ -1758,6 +1762,7 @@ input:checked + .slider:before { transform: translateX(20px); }
     </div>
 
     <!-- TAB 3: SETTINGS (الإعدادات الشاملة) -->
+    <div id="settingsPage" style="display:contents;">
     <div id="viewSettings" class="settings-panel">
       <h3 style="font-size:1.1rem; font-weight:800; margin-bottom:6px;">⚙️ الإعدادات المتقدمة</h3>
 
@@ -1782,10 +1787,27 @@ input:checked + .slider:before { transform: translateX(20px); }
             <span class="settings-desc">تحديد الجودة المفضل تحديدها تلقائياً</span>
           </div>
           <select class="select-dropdown" id="defaultQualitySelect">
+            <option value="best">أفضل جودة متاحة (Best)</option>
+            <option value="2160">4K Ultra HD (2160p)</option>
             <option value="1080">1080p (Full HD)</option>
             <option value="720" selected>720p (HD)</option>
             <option value="480">480p (SD)</option>
+            <option value="360">360p</option>
             <option value="mp3">صوت MP3 فقط</option>
+          </select>
+        </div>
+
+        <div class="settings-item">
+          <div class="settings-label">
+            <span class="settings-title">تحديد سرعة التحميل</span>
+            <span class="settings-desc">الحد الأقصى لسرعة التنزيل أو أقصى سرعة</span>
+          </div>
+          <select class="select-dropdown" id="speedLimitSelect">
+            <option value="0" selected>أقصى سرعة (بلا قيود)</option>
+            <option value="500">500 KB/s</option>
+            <option value="1000">1 MB/s</option>
+            <option value="2000">2 MB/s</option>
+            <option value="5000">5 MB/s</option>
           </select>
         </div>
       </div>
@@ -1814,28 +1836,68 @@ input:checked + .slider:before { transform: translateX(20px); }
         </div>
       </div>
 
+      <!-- Group: Access (Cookies & Proxy) -->
+      <div class="settings-group">
+        <div style="font-size:0.82rem; font-weight:800; color:var(--primary);">🔑 الوصول والمحتوى الخاص</div>
+
+        <div class="settings-item">
+          <div class="settings-label">
+            <span class="settings-title">مصدر الكوكيز (Cookies)</span>
+            <span class="settings-desc" id="cookieSourceDesc">للمحتوى الخاص أو الذي يتطلب تسجيل دخول</span>
+          </div>
+          <select class="select-dropdown" id="cookieSourceSelect">
+            <option value="none" selected>بدون كوكيز</option>
+            <option value="chrome">Google Chrome</option>
+            <option value="edge">Microsoft Edge</option>
+            <option value="brave">Brave</option>
+            <option value="firefox">Mozilla Firefox</option>
+            <option value="opera">Opera</option>
+            <option value="vivaldi">Vivaldi</option>
+            <option value="chromium">Chromium</option>
+            <option value="file">ملف كوكيز (cookies.txt)</option>
+          </select>
+        </div>
+
+        <div class="settings-item" id="cookieFileRow" style="display:none;">
+          <div class="settings-label">
+            <span class="settings-title">ملف الكوكيز المحدد</span>
+            <span class="settings-desc" id="cookieFileTxt">لم يتم اختيار ملف</span>
+          </div>
+          <button class="header-btn" id="pickCookieFileBtn" style="width:auto; padding:0 12px; font-size:0.8rem;">اختيار 📄</button>
+        </div>
+
+        <div class="settings-item">
+          <div class="settings-label">
+            <span class="settings-title">البروكسي (اختياري)</span>
+            <span class="settings-desc">مثال: http://127.0.0.1:8080 أو socks5://127.0.0.1:1080</span>
+          </div>
+          <input type="text" id="proxyInp" dir="ltr" placeholder="http://host:port"
+            style="width:170px; padding:8px 10px; border-radius:10px; border:1px solid var(--border); background:var(--input-bg); color:var(--text); font-size:0.78rem;">
+        </div>
+      </div>
+
       <!-- Group 3: Updates & Notifications -->
       <div class="settings-group">
         <div style="font-size:0.82rem; font-weight:800; color:var(--primary);">🚀 التحديثات والإشعارات</div>
         
         <div class="settings-item">
           <div class="settings-label">
-            <span class="settings-title">🎯 الوضع الذكي المباشر للروابط (Smart Live Link Detection)</span>
-            <span class="settings-desc">تحليل الرابط والقوائم وتحديد أفضل جودة متوافقة تلقائياً</span>
+            <span class="settings-title">🎯 السماح بتنزيل البث المباشر</span>
+            <span class="settings-desc">تسجيل البث المباشر من بدايته عند توفره بدل رفض الرابط</span>
           </div>
           <label class="toggle-switch">
-            <input type="checkbox" id="smartLiveDetectToggle" checked onchange="toast('🎯 تم تفعيل الوضع الذكي المباشر!')">
+            <input type="checkbox" id="smartLiveDetectToggle" checked>
             <span class="slider"></span>
           </label>
         </div>
 
         <div class="settings-item">
           <div class="settings-label">
-            <span class="settings-title">⚡ وضع السرعة الفائقة وتوليد الصوت (Turbo Speed)</span>
-            <span class="settings-desc">إشعار صوتي مميز وتخصيص استهلاك المعالج للتحميل السريع</span>
+            <span class="settings-title">⚡ وضع السرعة الفائقة (Turbo)</span>
+            <span class="settings-desc">تنزيل أجزاء الملف بالتوازي لتسريع التحميل (استهلاك شبكة أعلى)</span>
           </div>
           <label class="toggle-switch">
-            <input type="checkbox" id="turboModeToggle" checked onchange="toast('⚡ تم تفعيل وضع السرعة الفائقة!')">
+            <input type="checkbox" id="turboModeToggle" checked>
             <span class="slider"></span>
           </label>
         </div>
@@ -1870,15 +1932,24 @@ input:checked + .slider:before { transform: translateX(20px); }
         <div class="settings-item">
           <div class="settings-label">
             <span class="settings-title">إصدار التطبيق الحالي</span>
-            <span class="settings-desc" id="settingsVersionTxt">SDN v1.0.5</span>
+            <span class="settings-desc" id="settingsVersionTxt">SDN v1.0.6</span>
           </div>
           <button class="header-btn" id="checkUpdatesManualBtn" style="width:auto; padding:0 10px; font-size:0.78rem; color:var(--primary);">فحص التحديثات</button>
+        </div>
+
+        <div class="settings-item">
+          <div class="settings-label">
+            <span class="settings-title">محرّك الاستخراج (yt-dlp)</span>
+            <span class="settings-desc" id="engineVersionTxt">الإصدار: غير معروف</span>
+          </div>
+          <button class="header-btn" id="updateEngineBtn" style="width:auto; padding:0 10px; font-size:0.78rem; color:var(--primary);">تحديث المحرّك</button>
         </div>
     </div><!-- End settings-group group 4 -->
 
     </div><!-- End viewSettings -->
 
     <!-- TAB 4: LARK MUSIC PLAYER (مشغل الصوتيات والموسيقى) -->
+    <div id="playerPage" style="display:contents;">
     <div id="viewMusicPlayer" class="music-panel">
       <div class="music-header">
         <div style="display:flex; align-items:center; gap:8px;">
@@ -2022,6 +2093,7 @@ input:checked + .slider:before { transform: translateX(20px); }
       </div>
     </div>
 
+    </div>
   </main>
 
   <!-- Lark Player Floating Mini-Player Bar -->
@@ -2046,22 +2118,22 @@ input:checked + .slider:before { transform: translateX(20px); }
 
   <!-- Bottom Navigation Bar (4 Tabs: الرئيسية - الموسيقى - السجل - الإعدادات) -->
   <nav class="bottom-nav">
-    <button class="nav-tab active" data-target="viewHome">
+    <button class="nav-item nav-tab active" data-target="viewHome">
       <i class="fas fa-home"></i>
       <span>الرئيسية</span>
     </button>
 
-    <button class="nav-tab" data-target="viewMusicPlayer">
+    <button class="nav-item nav-tab" data-target="viewMusicPlayer">
       <i class="fas fa-music"></i>
       <span>الموسيقى</span>
     </button>
 
-    <button class="nav-tab" data-target="viewHistory">
+    <button class="nav-item nav-tab" data-target="viewHistory">
       <i class="fas fa-history"></i>
       <span>السجل</span>
     </button>
 
-    <button class="nav-tab" data-target="viewSettings">
+    <button class="nav-item nav-tab" data-target="viewSettings">
       <i class="fas fa-cog"></i>
       <span>الإعدادات</span>
     </button>
@@ -2073,6 +2145,73 @@ input:checked + .slider:before { transform: translateX(20px); }
 'use strict';
 
 let gData = null, gOpt = null, gBusy = false, gDownloadActive = false;
+
+/* ── Persistent Preferences Helper ── */
+function getPref(key, fallback) {
+  try {
+    const raw = localStorage.getItem('sdn_pref_' + key);
+    return raw === null ? fallback : JSON.parse(raw);
+  } catch (_) {
+    return fallback;
+  }
+}
+function setPref(key, value) {
+  try { localStorage.setItem('sdn_pref_' + key, JSON.stringify(value)); } catch (_) {}
+}
+
+/* ── Cookies & Proxy Helpers ── */
+let gCookieFilePath = '';
+try { gCookieFilePath = localStorage.getItem('sdn_cookie_file') || ''; } catch (_) {}
+
+function getCookieSource() {
+  const select = document.getElementById('cookieSourceSelect');
+  const value = select ? select.value : 'none';
+  if (value === 'file') return gCookieFilePath || 'none';
+  return value;
+}
+
+function getProxyValue() {
+  return (document.getElementById('proxyInp')?.value || '').trim();
+}
+
+function updateCookieFileUI(showRow) {
+  const row = document.getElementById('cookieFileRow');
+  const txt = document.getElementById('cookieFileTxt');
+  const shouldShow = typeof showRow === 'boolean' ? showRow : getPref('cookieSource', 'none') === 'file';
+  if (row) row.style.display = shouldShow ? 'flex' : 'none';
+  if (txt) txt.innerText = gCookieFilePath ? gCookieFilePath : 'لم يتم اختيار ملف';
+}
+
+function onCookieSourceChange() {
+  const value = document.getElementById('cookieSourceSelect')?.value || 'none';
+  setPref('cookieSource', value);
+  updateCookieFileUI(value === 'file');
+}
+
+function pickCookieFile() {
+  const onPicked = (path) => {
+    if (!path) return;
+    gCookieFilePath = path;
+    try { localStorage.setItem('sdn_cookie_file', path); } catch (_) {}
+    updateCookieFileUI(true);
+    toast('🔑 تم تحديد ملف الكوكيز');
+  };
+  if (window.pywebview?.api?.choose_cookie_file) {
+    window.pywebview.api.choose_cookie_file().then(onPicked).catch(() => {});
+  } else if (window.androidInterface?.pickCookieFile) {
+    window.handleCookieFileSelected = (path) => {
+      onPicked(path);
+      delete window.handleCookieFileSelected;
+    };
+    try {
+      window.androidInterface.pickCookieFile();
+    } catch (_) {
+      toast('⚠️ تعذر فتح منتقي الملفات');
+    }
+  } else {
+    toast('⚠️ اختيار الملف غير متاح على هذه المنصة');
+  }
+}
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -2201,6 +2340,27 @@ function onDrawerNavClick(targetId) {
 }
 
 /* ── Unified Navigation Tab Switching (Desktop & Mobile) ── */
+
+/* ── Compatibility Page Navigation ── */
+function switchPage(pageId) {
+  const map = {
+    'homePage': 'viewHome',
+    'playerPage': 'viewMusicPlayer',
+    'settingsPage': 'viewSettings',
+    'historyPage': 'viewHistory',
+    'home': 'viewHome',
+    'player': 'viewMusicPlayer',
+    'settings': 'viewSettings',
+    'history': 'viewHistory'
+  };
+  const target = map[pageId] || pageId;
+  switchTab(target);
+}
+
+function navigate(pageId) {
+  switchPage(pageId);
+}
+
 function switchTab(targetId) {
   document.querySelectorAll('.nav-tab').forEach(t => {
     t.classList.toggle('active', t.dataset.target === targetId);
@@ -2252,15 +2412,6 @@ function onPickFolderClick() {
     });
   } else {
     document.getElementById('folderModal')?.classList.add('active');
-  }
-}
-
-function openDownloadFolder(filepath) {
-  if (!filepath) return;
-  if (window.pywebview?.api?.locate_file) {
-    window.pywebview.api.locate_file(filepath);
-  } else if (window.pywebview?.api?.open_folder) {
-    window.pywebview.api.open_folder(filepath);
   }
 }
 
@@ -2936,22 +3087,96 @@ document.getElementById('viewAllBtn')?.addEventListener('click', () => {
 
 /* ── Theme Switcher Handler (Dark/Light) ── */
 const themeToggle = document.getElementById('themeToggle');
+function applyTheme(light) {
+  document.body.classList.toggle('light-theme', Boolean(light));
+  if (themeToggle) themeToggle.checked = Boolean(light);
+}
+applyTheme(getPref('theme', false));
 themeToggle?.addEventListener('change', () => {
-  if (themeToggle.checked) {
-    document.body.classList.add('light-theme');
-    toast('☀️ تم تفعيل الثيم الفاتح');
-  } else {
-    document.body.classList.remove('light-theme');
-    toast('🌙 تم تفعيل الثيم الداكن');
+  applyTheme(themeToggle.checked);
+  setPref('theme', themeToggle.checked);
+  toast(themeToggle.checked ? '☀️ تم تفعيل الثيم الفاتح' : '🌙 تم تفعيل الثيم الداكن');
+});
+
+/* ── Settings Wiring (persisted preferences) ── */
+function bindToggle(id, prefKey, toastOn, toastOff) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.checked = Boolean(getPref(prefKey, el.checked));
+  el.addEventListener('change', () => {
+    setPref(prefKey, el.checked);
+    if (el.checked && toastOn) toast(toastOn);
+    if (!el.checked && toastOff) toast(toastOff);
+  });
+}
+
+function restoreSelect(id, prefKey) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const saved = getPref(prefKey, null);
+  if (saved !== null) el.value = String(saved);
+}
+
+bindToggle('autoPasteToggle', 'autoPaste', '📋 سيتم لصق الرابط تلقائياً', '📋 تم إيقاف اللصق التلقائي');
+bindToggle('smartLiveDetectToggle', 'allowLive', '🎯 سيتم السماح بتنزيل البث المباشر', '⛔ تم رفض روابط البث المباشر');
+bindToggle('turboModeToggle', 'turboMode', '⚡ تم تفعيل وضع السرعة الفائقة', '🐢 تم إيقاف وضع السرعة الفائقة');
+bindToggle('autoUpdateToggle', 'autoUpdate', '🚀 سيتم فحص التحديثات تلقائياً', '🔕 تم إيقاف فحص التحديثات التلقائي');
+bindToggle('soundToggle', 'sound', '🔔 سيتم تشغيل نغمة الاكتمال', '🔇 تم كتم نغمة الاكتمال');
+
+restoreSelect('defaultQualitySelect', 'defaultQuality');
+restoreSelect('speedLimitSelect', 'speedLimit');
+restoreSelect('cookieSourceSelect', 'cookieSource');
+
+const defaultQualitySelectEl = document.getElementById('defaultQualitySelect');
+defaultQualitySelectEl?.addEventListener('change', () => setPref('defaultQuality', defaultQualitySelectEl.value));
+const speedLimitSelectEl = document.getElementById('speedLimitSelect');
+speedLimitSelectEl?.addEventListener('change', () => setPref('speedLimit', speedLimitSelectEl.value));
+const cookieSourceSelectEl = document.getElementById('cookieSourceSelect');
+cookieSourceSelectEl?.addEventListener('change', onCookieSourceChange);
+document.getElementById('pickCookieFileBtn')?.addEventListener('click', pickCookieFile);
+
+const proxyInpEl = document.getElementById('proxyInp');
+if (proxyInpEl) {
+  proxyInpEl.value = getPref('proxy', '');
+  proxyInpEl.addEventListener('change', () => setPref('proxy', proxyInpEl.value.trim()));
+}
+updateCookieFileUI();
+
+/* ── yt-dlp Engine Update ── */
+const updateEngineBtn = document.getElementById('updateEngineBtn');
+updateEngineBtn?.addEventListener('click', async () => {
+  if (!window.pywebview?.api?.update_ytdlp_engine) {
+    toast('⚠️ تحديث المحرّك متاح على نسخة الكمبيوتر فقط');
+    return;
+  }
+  updateEngineBtn.disabled = true;
+  const original = updateEngineBtn.innerText;
+  updateEngineBtn.innerText = '... جاري التحديث';
+  toast('🔄 جاري فحص وتحديث محرّك yt-dlp...');
+  try {
+    const res = await window.pywebview.api.update_ytdlp_engine(true);
+    if (res && res.updated) {
+      toast(`✅ تم تحديث المحرّك إلى ${res.version || 'إصدار أحدث'} — سيعاد تشغيل البرنامج`);
+      const engineTxt = document.getElementById('engineVersionTxt');
+      if (engineTxt) engineTxt.innerText = `الإصدار: ${res.version || 'محدّث'}`;
+      setTimeout(() => {
+        try { window.pywebview?.api?.restart_app?.(); } catch (_) {}
+      }, 1600);
+    } else {
+      toast('✨ المحرّك محدّث بالفعل: ' + (res?.version || ''));
+    }
+  } catch (_) {
+    toast('❌ تعذر تحديث محرّك الاستخراج');
+  } finally {
+    updateEngineBtn.disabled = false;
+    updateEngineBtn.innerText = original;
   }
 });
 
 /* ── Change Download Folder Handler ── */
 function windowHandleSelectedFolder(path) {
   if (!path) return;
-  const pathTxt = document.getElementById('savePathTxt');
-  if (pathTxt) pathTxt.innerText = path;
-  localStorage.setItem('customSavePath', path);
+  updateSavePathDisplays(path);
   toast(`📁 تم تحديد مجلد الحفظ: ${path}`);
   document.getElementById('folderModal')?.classList.remove('active');
 }
@@ -3205,8 +3430,11 @@ function doFetch() {
   const btn = document.getElementById('fetchBtn'), txt = document.getElementById('fetchTxt');
   btn.disabled = true; txt.innerText = 'جاري الجلب...';
 
+  const cookieSource = getCookieSource();
+  const proxyValue = getProxyValue();
+
   if (window.pywebview?.api?.fetch_info) {
-    window.pywebview.api.fetch_info(url, 'none', '').then(res => {
+    window.pywebview.api.fetch_info(url, cookieSource, proxyValue).then(res => {
       gBusy = false; btn.disabled = false; txt.innerText = 'جلب الرابط ✨';
       if (res.error) { toast('❌ ' + res.error); return; }
       renderMediaCard(res.data);
@@ -3214,9 +3442,11 @@ function doFetch() {
       gBusy = false; btn.disabled = false; txt.innerText = 'جلب الرابط ✨';
       toast('❌ فشل جلب تفاصيل الرابط');
     });
-  } else if (window.androidInterface?.fetchMediaInfo) {
+  } else if (window.androidInterface?.fetchMediaInfoEx || window.androidInterface?.fetchMediaInfo) {
     try {
-      const started = window.androidInterface.fetchMediaInfo(url);
+      const started = window.androidInterface.fetchMediaInfoEx
+        ? window.androidInterface.fetchMediaInfoEx(url, cookieSource, proxyValue)
+        : window.androidInterface.fetchMediaInfo(url);
       if (!started) throw new Error('not started');
     } catch (_) {
       gBusy = false; btn.disabled = false; txt.innerText = 'جلب الرابط ✨';
@@ -3311,19 +3541,22 @@ function updateProgress(p) {
       setTimeout(refreshAudioPlaylist, 500);
     }
 
-    // Play completion sound
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-      osc.start();
-    } catch(e) {}
+    // Play completion sound (respects the sound toggle)
+    if (getPref('sound', true)) {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+        osc.start();
+      } catch(e) {}
+      try { navigator.vibrate?.(120); } catch(e) {}
+    }
 
     // Desktop Notification if window is in background
     try {
@@ -3395,8 +3628,8 @@ let currentVideoOpts = [];
 let currentAudioOpts = [];
 
 function switchFormatTab(tab) {
-  const vBtn = document.getElementById('tabVideoBtn');
-  const aBtn = document.getElementById('tabAudioBtn');
+  const vBtn = document.getElementById('videoTabBtn') || document.getElementById('tabVideoBtn');
+  const aBtn = document.getElementById('audioTabBtn') || document.getElementById('tabAudioBtn');
   
   if (tab === 'video') {
     vBtn?.classList.add('active');
@@ -3624,12 +3857,45 @@ function getTrimOptions() {
   };
 }
 
+function selectQualityRow(index) {
+  const grid = document.getElementById('qGrid');
+  if (!grid) return;
+  const rows = Array.from(grid.querySelectorAll('.q-option-row'));
+  const list = document.getElementById('audioTabBtn')?.classList.contains('active')
+    ? currentAudioOpts
+    : currentVideoOpts;
+  const option = list[index];
+  if (!option || !rows[index]) return;
+  rows.forEach(r => r.classList.remove('selected'));
+  rows[index].classList.add('selected');
+  gOpt = option;
+}
+
+function applyDefaultQuality() {
+  const pref = String(getPref('defaultQuality', '720'));
+  if (pref === 'best') return;
+  if (pref === 'mp3') {
+    const index = currentAudioOpts.findIndex(o => String(o.quality_tag || '').toUpperCase().startsWith('MP3'));
+    selectQualityRow(index >= 0 ? index : 0);
+    return;
+  }
+  const tag = pref + 'p';
+  const index = currentVideoOpts.findIndex(o => (o.quality_tag || '') === tag);
+  if (index >= 0) selectQualityRow(index);
+}
+
 function renderMediaCard(d) {
   gData = d;
   resetTrimFields();
   document.getElementById('mThumb').src = d.thumbnail || '';
   document.getElementById('mTitle').innerText = d.title || 'عنوان الفيديو';
-  document.getElementById('mUp').innerText = d.uploader || '';
+  const isLive = Boolean(d.is_live) || d.live_status === 'is_live' || d.live_status === 'is_upcoming';
+  document.getElementById('mUp').innerText = (d.uploader || '') + (isLive ? ' • 🔴 بث مباشر' : '');
+  if (isLive) {
+    toast(getPref('allowLive', true)
+      ? '🔴 بث مباشر — سيتم التسجيل من بدايته'
+      : '🔴 بث مباشر — التنزيل موقوف من الإعدادات');
+  }
 
   const vOpts = d.video_options || [];
   const aOpts = d.audio_options || [];
@@ -3644,6 +3910,7 @@ function renderMediaCard(d) {
   } else {
     switchFormatTab('audio');
   }
+  applyDefaultQuality();
 
   const hero = document.getElementById('heroSection');
   if (hero) hero.style.display = 'none';
@@ -3713,7 +3980,11 @@ document.getElementById('dlBtn').addEventListener('click', async () => {
     ...gOpt,
     ...trimOpts,
     download_subtitles: Boolean(document.getElementById('subtitlesCheck')?.checked),
-    ratelimit: Number(document.getElementById('speedLimitSelect')?.value || 0),
+    ratelimit: Number(document.getElementById('speedLimitSelect')?.value || 0) * 1024,
+    allow_live: Boolean(document.getElementById('smartLiveDetectToggle')?.checked),
+    turbo: Boolean(document.getElementById('turboModeToggle')?.checked),
+    proxy: getProxyValue(),
+    cookies: getCookieSource(),
     is_playlist: Boolean(gData.is_playlist),
     playlist_items: downloadFullPlaylist ? [] : selectedPlaylistItems,
     playlist_mode: downloadFullPlaylist ? 'all' : 'selected',
@@ -3729,7 +4000,7 @@ document.getElementById('dlBtn').addEventListener('click', async () => {
 
   if (window.pywebview?.api?.start_download) {
     try {
-      const result = await window.pywebview.api.start_download(sourceUrl, requestOption, 'none');
+      const result = await window.pywebview.api.start_download(sourceUrl, requestOption, getCookieSource());
       if (result && result.started === false) {
         setDownloadActive(false);
         updateProgress({ status: 'error', error: result.error || 'تعذر بدء التنزيل' });
@@ -3903,8 +4174,11 @@ function incrementDlCounter() {
   num.style.animation = 'dlBadgeBump 0.35s ease';
 }
 
-let CURRENT_VERSION = '1.0.5';
+let CURRENT_VERSION = '1.0.6';
 let gLatestReleaseUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
+let gLatestReleasePage = gLatestReleaseUrl;
+let gLatestAssetUrl = '';
+let gLatestSha256 = '';
 
 function compareVersions(left, right) {
   const normalize = value => String(value || '')
@@ -3931,6 +4205,10 @@ async function checkForAppUpdates(isManual = false) {
         const stTxt = document.getElementById('settingsVersionTxt');
         if (stTxt) stTxt.innerText = `SDN v${CURRENT_VERSION}`;
       }
+      if (appInfo && appInfo.yt_dlp_version) {
+        const engineTxt = document.getElementById('engineVersionTxt');
+        if (engineTxt) engineTxt.innerText = `الإصدار: ${appInfo.yt_dlp_version}`;
+      }
     } catch(_) {}
   }
 
@@ -3940,6 +4218,9 @@ async function checkForAppUpdates(isManual = false) {
 
   let latestTag = null;
   let directDownloadUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
+  let releasePageUrl = directDownloadUrl;
+  let assetUrl = '';
+  let assetSha256 = '';
 
   // 1. Try releases/latest API
   try {
@@ -3947,19 +4228,23 @@ async function checkForAppUpdates(isManual = false) {
     if (resp.ok) {
       const release = await resp.json();
       latestTag = (release.tag_name || '').replace(/^v/, '');
+      if (release.html_url) releasePageUrl = release.html_url;
       if (release.assets && Array.isArray(release.assets)) {
         const wantedAsset = window.androidInterface
           ? 'SDN_Downloader_Ultra.apk'
           : 'SDN_Downloader_Setup.exe';
         const releaseAsset = release.assets.find(a => a.name === wantedAsset);
         if (releaseAsset && releaseAsset.browser_download_url) {
-          directDownloadUrl = releaseAsset.browser_download_url;
+          assetUrl = releaseAsset.browser_download_url;
+          directDownloadUrl = assetUrl;
+          const digest = String(releaseAsset.digest || '');
+          if (digest.startsWith('sha256:')) assetSha256 = digest.slice(7);
         }
       }
     }
   } catch(e) {}
 
-  // 2. Fallback to tags API if release tag is missing
+  // 2. Fallback to tags API if release tag is missing (page only, no asset)
   if (!latestTag) {
     try {
       const resp = await fetch('https://api.github.com/repos/samer20032020-dev/sdn-downloader-ultra/tags');
@@ -3967,12 +4252,18 @@ async function checkForAppUpdates(isManual = false) {
         const tags = await resp.json();
         if (tags && tags.length > 0) {
           latestTag = (tags[0].name || '').replace(/^v/, '');
-          directDownloadUrl = `https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/tag/v${latestTag}`;
+          releasePageUrl = `https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/tag/v${latestTag}`;
+          directDownloadUrl = releasePageUrl;
+          assetUrl = '';
+          assetSha256 = '';
         }
       }
     } catch(e) {}
   }
 
+  gLatestAssetUrl = assetUrl;
+  gLatestSha256 = assetSha256;
+  gLatestReleasePage = releasePageUrl;
   gLatestReleaseUrl = directDownloadUrl;
 
   if (latestTag && compareVersions(latestTag, CURRENT_VERSION) > 0) {
@@ -4023,8 +4314,8 @@ function showUpdateBadge(upInfo) {
 }
 window.showUpdateBadge = showUpdateBadge;
 
-let gPendingUpdatePath = null;
 let gUpdateRestarting = false;
+window.gPendingUpdatePath = window.gPendingUpdatePath || '';
 
 function onUpdateProgress(payload) {
   const modal = document.getElementById('updateModal');
@@ -4054,6 +4345,19 @@ function onUpdateProgress(payload) {
     if (msg) msg.innerText = mbTotal > 0 ? `جاري تنزيل الملف (${mbDownloaded} MB من ${mbTotal} MB)` : 'جاري تنزيل نسخة البرنامج المحدثة...';
   }
   else if (payload.status === 'complete') {
+    if (payload.kind === 'android') {
+      modal.classList.add('active');
+      window.gPendingUpdatePath = '';
+      if (fill) fill.style.width = '100%';
+      if (pctText) pctText.innerText = '100%';
+      if (icon) icon.innerText = '📦';
+      if (title) title.innerText = 'اكتمل تنزيل التحديث';
+      if (msg) msg.innerText = 'سيُفتح مثبّت الحزمة تلقائياً. وافق على التثبيت لإتمام التحديث.';
+      if (actionsBox) actionsBox.style.display = 'none';
+      toast('📦 اكتمل التنزيل، أكمل التثبيت من النافذة الظاهرة');
+      setTimeout(() => closeUpdateModal(), 6000);
+      return;
+    }
     modal.classList.add('active');
     window.gPendingUpdatePath = payload.update_path || payload.setup_path || '';
 
@@ -4119,11 +4423,26 @@ function onHeaderUpdateClick() {
   if (btn && btn.classList.contains('has-update')) {
     document.getElementById('updateModal')?.classList.add('active');
     if (window.androidInterface?.downloadUpdate) {
-      const started = window.androidInterface.downloadUpdate(gLatestReleaseUrl);
-      closeUpdateModal();
-      toast(started
-        ? '📱 بدأ تنزيل تحديث Android. افتح إشعار التنزيل لتثبيته عند الاكتمال.'
-        : '❌ تعذر بدء تنزيل تحديث Android');
+      if (!gLatestAssetUrl) {
+        closeUpdateModal();
+        if (gLatestReleasePage) {
+          toast('🌐 سيتم فتح صفحة الإصدار لتنزيل التحديث يدوياً');
+          try { window.open(gLatestReleasePage, '_blank'); } catch (_) {}
+        } else {
+          toast('❌ لم يتم العثور على ملف APK في الإصدار');
+        }
+        return;
+      }
+      let started = false;
+      try {
+        started = Boolean(window.androidInterface.downloadUpdate(gLatestAssetUrl, gLatestSha256 || ''));
+      } catch (_) {
+        started = false;
+      }
+      if (!started) {
+        closeUpdateModal();
+        toast('❌ تعذر بدء تنزيل تحديث Android');
+      }
     } else if (window.pywebview?.api?.apply_app_update) {
       window.pywebview.api.apply_app_update(gLatestReleaseUrl).then(res => {
         if (res && res.success === false) {
@@ -4166,6 +4485,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Keep update button hidden unless an update is genuinely detected
 
+  // Inform the backend about the auto-update preference and honour it locally
+  const autoUpdateEnabled = getPref('autoUpdate', true);
+  try { window.pywebview?.api?.set_auto_update_enabled?.(autoUpdateEnabled); } catch (_) {}
+  document.getElementById('autoUpdateToggle')?.addEventListener('change', event => {
+    try { window.pywebview?.api?.set_auto_update_enabled?.(event.target.checked); } catch (_) {}
+  });
+
+  // Auto-paste clipboard URL on startup when enabled
+  if (getPref('autoPaste', true)) {
+    setTimeout(async () => {
+      try {
+        let text = '';
+        if (window.pywebview?.api?.get_clipboard) {
+          text = await window.pywebview.api.get_clipboard();
+        } else if (navigator.clipboard?.readText) {
+          text = await navigator.clipboard.readText();
+        }
+        text = String(text || '').trim();
+        if (!/^https?:\/\//i.test(text)) return;
+        const inp = document.getElementById('urlInp');
+        if (inp && !inp.value.trim()) {
+          inp.value = text;
+          toast('📋 تم لصق الرابط من الحافظة تلقائياً');
+          setTimeout(doFetch, 400);
+        }
+      } catch (_) {}
+    }, 900);
+  }
+
   // Fetch save directory
   if (window.pywebview?.api?.get_save_dir) {
     window.pywebview.api.get_save_dir().then(path => {
@@ -4194,7 +4542,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }).catch(() => {});
   }
 
-  checkForAppUpdates();
+  if (getPref('autoUpdate', true)) {
+    checkForAppUpdates();
+  }
 
   /* ── Drag & Drop URL Handler ── */
   const dropOverlay = document.getElementById('dragDropOverlay');

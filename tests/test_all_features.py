@@ -16,6 +16,7 @@ import urllib.request
 from pathlib import Path
 from unittest import mock
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import downloader
 import main
 from version import APP_VERSION, GITHUB_REPO

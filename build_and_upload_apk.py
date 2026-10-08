@@ -99,8 +99,37 @@ def configure_environment() -> None:
     print(f"Using Android build cache: {ANDROID_BUILD_ROOT}")
 
 
+def sync_version_files() -> None:
+    """Keep build.gradle and the web UI in sync with version.py."""
+    major, minor, patch = (int(part) for part in APP_VERSION.split(".")[:3])
+    version_code = major * 10000 + minor * 100 + patch
+
+    gradle_file = ANDROID_DIR / "app" / "build.gradle"
+    gradle_text = gradle_file.read_text(encoding="utf-8")
+    gradle_text = re.sub(r"versionCode \d+", f"versionCode {version_code}", gradle_text, count=1)
+    gradle_text = re.sub(
+        r'versionName "[^"]*"',
+        f'versionName "{APP_VERSION}"',
+        gradle_text,
+        count=1,
+    )
+    gradle_file.write_text(gradle_text, encoding="utf-8")
+
+    ui_file = ROOT / "ui" / "index.html"
+    ui_text = ui_file.read_text(encoding="utf-8")
+    ui_text = re.sub(
+        r"let CURRENT_VERSION = '[^']*';",
+        f"let CURRENT_VERSION = '{APP_VERSION}';",
+        ui_text,
+        count=1,
+    )
+    ui_file.write_text(ui_text, encoding="utf-8")
+    print(f"Synced version {APP_VERSION} (versionCode {version_code}) into Gradle and UI")
+
+
 def build_apk() -> Path:
     configure_environment()
+    sync_version_files()
     run([sys.executable, "sync_ui.py"])
     npx = shutil.which("npx.cmd") or shutil.which("npx")
     if not npx:
@@ -110,16 +139,24 @@ def build_apk() -> Path:
     gradle_wrapper = ANDROID_DIR / "gradle" / "wrapper" / "gradle-wrapper.jar"
     if not gradle_wrapper.is_file():
         raise RuntimeError(f"Gradle wrapper was not found: {gradle_wrapper}")
+
+    release_signed = (ANDROID_DIR / "keystore.properties").is_file()
+    variant = "release" if release_signed else "debug"
+    assemble_task = "assembleRelease" if release_signed else "assembleDebug"
+    print(f"Building {variant} APK" + (" (release keystore found)" if release_signed else " (debug signing)"))
+
     # Calling the wrapper JAR directly avoids cmd.exe corrupting the Arabic
     # workspace path on some Windows installations.
     gradle_command = ["java", "-jar", "gradle/wrapper/gradle-wrapper.jar"]
     run(gradle_command + ["--stop"], cwd=ANDROID_DIR, timeout=120)
     run(
-        gradle_command + ["clean", "assembleDebug", "--no-daemon", "--stacktrace"],
+        gradle_command + ["clean", assemble_task, "--no-daemon", "--stacktrace"],
         cwd=ANDROID_DIR,
     )
 
-    apk_source = ANDROID_BUILD_ROOT / "app" / "outputs" / "apk" / "debug" / "app-debug.apk"
+    apk_source = (
+        ANDROID_BUILD_ROOT / "app" / "outputs" / "apk" / variant / f"app-{variant}.apk"
+    )
     if not apk_source.is_file():
         raise RuntimeError(f"Generated APK was not found: {apk_source}")
     DIST_DIR.mkdir(parents=True, exist_ok=True)

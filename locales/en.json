@@ -4,11 +4,21 @@
   "direction": "ltr",
   "strings": {
     "app_title": "SDN Downloader Ultra",
-    "download_now": "⚡ Download Now",
+    "download_now": "⬇️ Download Now",
     "downloading": "⬇️ Downloading...",
-    "completed": "🎉 Download Completed Successfully!",
-    "cancelled": "⏹️ Download Cancelled",
-    "trim_video": "✂️ Trim Video Clip",
-    "download_subtitles": "💬 Download Subtitles"
+    "completed": "🎉 Download completed successfully!",
+    "cancelled": "⏹️ Download cancelled",
+    "trim_video": "✂️ Trim video clip",
+    "download_subtitles": "💬 Download subtitles",
+    "settings": "Settings",
+    "history": "History",
+    "player": "Music player",
+    "home": "Home",
+    "cookies": "Cookies",
+    "proxy": "Proxy",
+    "speed_limit": "Download speed limit",
+    "save_folder": "Save folder",
+    "check_updates": "Check for updates",
+    "update_engine": "Update extraction engine"
   }
 }

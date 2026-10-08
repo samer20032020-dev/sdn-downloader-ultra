@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "SDN Downloader Ultra",
+  "version": "1.0.6",
+  "description": "Send the current page or any link straight to SDN Downloader Ultra running on your PC.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "sdn-downloader@local",
+      "strict_min_version": "115.0"
+    }
+  },
+  "permissions": ["contextMenus", "activeTab", "notifications", "storage"],
+  "host_permissions": ["http://127.0.0.1:4567/*"],
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "action": {
+    "default_title": "Send to SDN Downloader",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "commands": {
+    "send-current-page": {
+      "suggested_key": {
+        "default": "Alt+Shift+S"
+      },
+      "description": "Send the current page to SDN Downloader"
+    }
+  }
+}

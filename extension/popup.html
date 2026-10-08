@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SDN Downloader Ultra</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 300px;
+      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+      background: #070914;
+      color: #e2e8f0;
+      padding: 14px;
+    }
+    .brand { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .brand img { width: 28px; height: 28px; border-radius: 7px; }
+    .brand h1 { font-size: 0.95rem; font-weight: 700; color: #38bdf8; }
+    .url {
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 9px;
+      padding: 9px 10px;
+      font-size: 0.72rem;
+      line-height: 1.5;
+      word-break: break-all;
+      max-height: 68px;
+      overflow: auto;
+      color: #94a3b8;
+      direction: ltr;
+      text-align: left;
+    }
+    button {
+      width: 100%;
+      margin-top: 11px;
+      padding: 10px;
+      border: 0;
+      border-radius: 9px;
+      background: linear-gradient(135deg, #38bdf8, #6366f1);
+      color: #fff;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: filter 0.15s ease;
+    }
+    button:hover { filter: brightness(1.1); }
+    button:disabled { opacity: 0.6; cursor: default; }
+    .status { margin-top: 9px; font-size: 0.72rem; min-height: 16px; text-align: center; }
+    .status.ok { color: #4ade80; }
+    .status.err { color: #f87171; }
+  </style>
+</head>
+<body>
+  <div class="brand">
+    <img src="icons/icon128.png" alt="SDN">
+    <h1>SDN Downloader Ultra</h1>
+  </div>
+  <div class="url" id="url">جارٍ قراءة الرابط…</div>
+  <button id="send" disabled>⬇️ إرسال إلى التطبيق</button>
+  <div class="status" id="status"></div>
+  <script src="popup.js"></script>
+</body>
+</html>

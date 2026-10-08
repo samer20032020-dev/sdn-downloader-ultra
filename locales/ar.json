@@ -4,11 +4,21 @@
   "direction": "rtl",
   "strings": {
     "app_title": "SDN Downloader Ultra",
-    "download_now": "⚡ تنزيل الآن",
+    "download_now": "⬇️ تنزيل الآن",
     "downloading": "⬇️ جاري التنزيل...",
-    "completed": "🎉 اكتمل التحميل بنجاح!",
+    "completed": "🎉 اكتمل التنزيل بنجاح!",
     "cancelled": "⏹️ تم إلغاء التنزيل",
-    "trim_video": "✂️ اقتطاع جزء من المقطع",
-    "download_subtitles": "💬 تنزيل الترجمة المصاحبة"
+    "trim_video": "✂️ قص المقطع",
+    "download_subtitles": "💬 تنزيل الترجمة",
+    "settings": "الإعدادات",
+    "history": "السجل",
+    "player": "مشغل الصوتيات",
+    "home": "الرئيسية",
+    "cookies": "الكوكيز",
+    "proxy": "البروكسي",
+    "speed_limit": "تحديد سرعة التحميل",
+    "save_folder": "مجلد الحفظ",
+    "check_updates": "فحص التحديثات",
+    "update_engine": "تحديث محرّك الاستخراج"
   }
 }

@@ -477,6 +477,7 @@ class DownloaderBridgeAPI:
         self._media_path_tokens = {}
         self._media_prepare_lock = threading.Lock()
         self._media_cache_dir = None
+        self._auto_update_enabled = True
         
         ExtensionHTTPHandler.bridge_api = self
         MediaHTTPHandler.bridge_api = self
@@ -553,6 +554,9 @@ class DownloaderBridgeAPI:
     def _trigger_bg_auto_updates(self):
         def _update_job():
             time.sleep(3)  # Let UI settle
+            if not self._auto_update_enabled:
+                _log.info("Automatic update checks are disabled by the user")
+                return
             try:
                 from downloader import auto_update_ytdlp
                 update_result = auto_update_ytdlp()
@@ -1075,6 +1079,38 @@ class DownloaderBridgeAPI:
             return {'cancelled': True}
         return {'cancelled': False}
 
+    def set_auto_update_enabled(self, enabled=True):
+        """Respect the user's auto-update preference from the settings screen."""
+        self._auto_update_enabled = bool(enabled)
+        _log.info(f"Automatic updates {'enabled' if self._auto_update_enabled else 'disabled'} by user")
+        return {'ok': True, 'enabled': self._auto_update_enabled}
+
+    def update_ytdlp_engine(self, force=True):
+        """Update the yt-dlp extraction engine (verified PyPI wheel when packaged)."""
+        try:
+            from downloader import auto_update_ytdlp
+            result = auto_update_ytdlp(force=bool(force))
+            _log.info(f"Manual yt-dlp engine update: {result}")
+            return result
+        except Exception as e:
+            _log.error(f"Manual yt-dlp engine update failed: {e}")
+            return {'updated': False, 'reason': str(e), 'version': 'unknown'}
+
+    def restart_app(self):
+        """Relaunch the application so a staged engine update takes effect."""
+        try:
+            if getattr(sys, 'frozen', False):
+                subprocess.Popen([sys.executable], close_fds=True)
+            else:
+                subprocess.Popen([sys.executable, os.path.abspath(__file__)], close_fds=True)
+            _log.info("Restarting application for engine update")
+            time.sleep(0.2)
+            os._exit(0)
+            return {'success': True}
+        except Exception as e:
+            _log.error(f"Restart failed: {e}")
+            return {'success': False, 'error': str(e)}
+
     def _async_download(self, url, option, browser_cookies):
         start_t = time.time()
         
@@ -1539,9 +1575,41 @@ class DownloaderBridgeAPI:
 # ================================================================
 # ULTRA MAIN - Optimized startup sequence
 # ================================================================
+_single_instance_mutex = None
+
+
+def _ensure_single_instance() -> bool:
+    """Allow only one running copy; focus the existing window instead."""
+    global _single_instance_mutex
+    if sys.platform != 'win32':
+        return True
+    try:
+        kernel32 = ctypes.windll.kernel32
+        kernel32.CreateMutexW.restype = ctypes.c_void_p
+        handle = kernel32.CreateMutexW(None, False, "SDN_Downloader_Ultra_SingleInstance")
+        if not handle:
+            return True
+        if kernel32.GetLastError() == 183:  # ERROR_ALREADY_EXISTS
+            user32 = ctypes.windll.user32
+            hwnd = user32.FindWindowW(None, "SDN")
+            if hwnd:
+                user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+                user32.SetForegroundWindow(hwnd)
+            _log.info("Another SDN instance is already running; focusing it and exiting")
+            return False
+        _single_instance_mutex = handle
+        return True
+    except Exception as e:
+        _log.debug(f"Single instance check skipped: {e}")
+        return True
+
+
 def main():
     _log.info(f"🚀 SDN v{CURRENT_APP_VERSION} starting...")
-    
+
+    if not _ensure_single_instance():
+        return
+
     api = DownloaderBridgeAPI()
     
     base_dir = os.path.dirname(os.path.abspath(__file__))
