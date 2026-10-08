@@ -102,7 +102,7 @@ class SilentUpdateTests(unittest.TestCase):
             self.assertIn("-WindowStyle", command)
             self.assertIn("Hidden", command)
             self.assertIn("-TargetPath", command)
-            self.assertEqual(command[command.index("-TargetPath") + 1], str(target))
+            self.assertEqual(command[command.index("-TargetPath") + 1], str(target.resolve()))
             self.assertEqual(kwargs["creationflags"], subprocess.CREATE_NO_WINDOW)
 
             script_path = Path(command[command.index("-File") + 1])
@@ -130,7 +130,7 @@ class SilentUpdateTests(unittest.TestCase):
             self.assertIn("/VERYSILENT", command)
             self.assertIn("/SUPPRESSMSGBOXES", command)
             self.assertIn("/LANG=arabic", command)
-            self.assertIn(f"/DIR={target.parent}", command)
+            self.assertIn(f"/DIR={target.parent.resolve()}", command)
             self.assertEqual(popen.call_args.kwargs["creationflags"], subprocess.CREATE_NO_WINDOW)
 
     def test_restart_dispatches_verified_portable_update_then_exits(self):
