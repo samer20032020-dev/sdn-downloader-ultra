@@ -1,0 +1,39 @@
+name: tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Compile Python sources
+        run: python -m py_compile main.py downloader.py app_logger.py installer_gui.py uninstaller.py sync_ui.py
+
+      - name: Parse UI JavaScript
+        run: node tests/check_ui.js
+
+      - name: Run test suite
+        run: python -m unittest discover -s tests -v
