@@ -199,6 +199,15 @@ def get_github_token():
     token = os.environ.get("GITHUB_TOKEN", "").strip()
     if token:
         return token
+    gh_exe = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools", "gh", "gh.exe")
+    if os.path.exists(gh_exe):
+        try:
+            res = subprocess.run([gh_exe, "auth", "token"], capture_output=True, text=True, timeout=10)
+            tok = res.stdout.strip()
+            if tok and not tok.startswith("error"):
+                return tok
+        except Exception:
+            pass
     try:
         git_exe = find_git()
         if git_exe:

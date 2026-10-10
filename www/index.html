@@ -1915,11 +1915,11 @@ input:checked + .slider:before { transform: translateX(20px); }
 
         <div class="settings-item">
           <div class="settings-label">
-            <span class="settings-title">نغمة التنزيل والاهتزاز</span>
-            <span class="settings-desc">تشغيل صوت وتنبيه عند اكتمال الفيديو</span>
+            <span class="settings-title">اهتزاز وتنبيه الاكتمال</span>
+            <span class="settings-desc">تنبيه بالاهتزاز عند اكتمال التنزيل (بدون رنين صوتي)</span>
           </div>
           <label class="toggle-switch">
-            <input type="checkbox" id="soundToggle" checked>
+            <input type="checkbox" id="soundToggle">
             <span class="slider"></span>
           </label>
         </div>
@@ -3121,7 +3121,7 @@ bindToggle('autoPasteToggle', 'autoPaste', '📋 سيتم لصق الرابط ت
 bindToggle('smartLiveDetectToggle', 'allowLive', '🎯 سيتم السماح بتنزيل البث المباشر', '⛔ تم رفض روابط البث المباشر');
 bindToggle('turboModeToggle', 'turboMode', '⚡ تم تفعيل وضع السرعة الفائقة', '🐢 تم إيقاف وضع السرعة الفائقة');
 bindToggle('autoUpdateToggle', 'autoUpdate', '🚀 سيتم فحص التحديثات تلقائياً', '🔕 تم إيقاف فحص التحديثات التلقائي');
-bindToggle('soundToggle', 'sound', '🔔 سيتم تشغيل نغمة الاكتمال', '🔇 تم كتم نغمة الاكتمال');
+bindToggle('soundToggle', 'sound', '📳 تم تفعيل تنبيه الاهتزاز عند الاكتمال', '🔕 تم إيقاف تنبيه الاكتمال');
 
 restoreSelect('defaultQualitySelect', 'defaultQuality');
 restoreSelect('speedLimitSelect', 'speedLimit');
@@ -3541,30 +3541,19 @@ function updateProgress(p) {
       setTimeout(refreshAudioPlaylist, 500);
     }
 
-    // Play completion sound (respects the sound toggle)
-    if (getPref('sound', true)) {
-      try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, ctx.currentTime);
-        gain.gain.setValueAtTime(0.3, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-        osc.start();
-      } catch(e) {}
-      try { navigator.vibrate?.(120); } catch(e) {}
+    // Completion haptic feedback (if enabled and supported, no audio chime)
+    if (getPref('sound', false)) {
+      try { navigator.vibrate?.(120); } catch(_) {}
     }
 
-    // Desktop Notification if window is in background
+    // Desktop Notification if window is in background (silent: true to avoid OS chimes)
     try {
       if (document.hidden || (document.hasFocus && !document.hasFocus())) {
         if ('Notification' in window && Notification.permission === 'granted') {
           new Notification('SDN Downloader Ultra', {
             body: p.count > 1 ? `🎉 اكتمل تنزيل ${p.count} ملفات بنجاح!` : `🎉 اكتمل تنزيل: ${summaryTitle}`,
-            icon: 'app_icon.ico'
+            icon: 'app_icon.ico',
+            silent: true
           });
         }
       }
