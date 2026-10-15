@@ -260,10 +260,127 @@ def _common_ydl_options(proxy: str | None = None) -> dict[str, Any]:
     return options
 
 
+def get_youtube_session_cookie_path() -> str:
+    """Path to the internally saved YouTube login cookie file."""
+    base = os.environ.get("LOCALAPPDATA")
+    root = Path(base) if base else Path.home() / ".config"
+    target_dir = root / "SDN"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    return str(target_dir / "youtube_session_cookies.txt")
+
+
+def save_cookies_to_netscape_file(cookies: list[Any], output_file: str) -> bool:
+    """Convert SimpleCookie objects or cookie dictionaries to standard Netscape cookie file."""
+    lines = [
+        "# Netscape HTTP Cookie File\n",
+        "# https://curl.haxx.se/rfc/cookie_spec.html\n",
+        "# This is a generated file by SDN Downloader. Do not edit.\n\n",
+    ]
+    seen = set()
+    now = int(time.time())
+    default_expiry = now + 365 * 24 * 3600
+
+    for item in cookies or []:
+        if hasattr(item, "values"):
+            for morsel in item.values():
+                name = getattr(morsel, "key", "")
+                val = getattr(morsel, "value", "")
+                if not name:
+                    continue
+                domain = morsel.get("domain") or ".youtube.com"
+                if not domain.startswith(".") and not domain.startswith("www"):
+                    domain = "." + domain
+                path = morsel.get("path") or "/"
+                secure = "TRUE" if morsel.get("secure") else "FALSE"
+                exp_raw = morsel.get("expires")
+                expires = default_expiry
+                if exp_raw:
+                    try:
+                        import email.utils
+                        parsed = email.utils.parsedate_to_datetime(str(exp_raw))
+                        expires = int(parsed.timestamp())
+                    except Exception:
+                        try:
+                            expires = int(float(exp_raw))
+                        except Exception:
+                            expires = default_expiry
+                key = (domain, path, name)
+                if key not in seen:
+                    seen.add(key)
+                    sub = "TRUE" if domain.startswith(".") else "FALSE"
+                    lines.append(f"{domain}\t{sub}\t{path}\t{secure}\t{expires}\t{name}\t{val}\n")
+        elif isinstance(item, dict):
+            name = item.get("name")
+            val = item.get("value")
+            if not name:
+                continue
+            domain = item.get("domain") or ".youtube.com"
+            if not domain.startswith(".") and not domain.startswith("www"):
+                domain = "." + domain
+            path = item.get("path") or "/"
+            secure = "TRUE" if item.get("secure") else "FALSE"
+            exp_raw = item.get("expires")
+            expires = default_expiry
+            if exp_raw:
+                try:
+                    expires = int(float(exp_raw))
+                except Exception:
+                    expires = default_expiry
+            key = (domain, path, name)
+            if key not in seen:
+                seen.add(key)
+                sub = "TRUE" if domain.startswith(".") else "FALSE"
+                lines.append(f"{domain}\t{sub}\t{path}\t{secure}\t{expires}\t{name}\t{val}\n")
+
+    if not seen:
+        return False
+
+    target_path = Path(output_file)
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(target_path, "w", encoding="utf-8") as f:
+        f.writelines(lines)
+    return True
+
+
+def is_youtube_logged_in() -> bool:
+    """Check if valid YouTube session cookies exist."""
+    path = get_youtube_session_cookie_path()
+    if not os.path.isfile(path) or os.path.getsize(path) < 20:
+        return False
+    try:
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            content = f.read()
+        return any(k in content for k in ("LOGIN_INFO", "SID", "SAPISID", "SSID", "__Secure-3PSID"))
+    except Exception:
+        return False
+
+
+def logout_youtube() -> bool:
+    """Remove saved YouTube session cookies."""
+    path = get_youtube_session_cookie_path()
+    try:
+        if os.path.isfile(path):
+            os.remove(path)
+        return True
+    except Exception:
+        return False
+
+
 def _apply_cookies(options: dict[str, Any], browser_cookies: str | None) -> None:
     cookie_source = (browser_cookies or "").strip()
+    session_path = get_youtube_session_cookie_path()
+    has_session = os.path.isfile(session_path) and os.path.getsize(session_path) > 20
+
     if not cookie_source or cookie_source == "none":
+        if has_session:
+            options["cookiefile"] = session_path
         return
+
+    if cookie_source == "youtube_login":
+        if has_session:
+            options["cookiefile"] = session_path
+        return
+
     if os.path.isfile(cookie_source):
         options["cookiefile"] = cookie_source
     else:

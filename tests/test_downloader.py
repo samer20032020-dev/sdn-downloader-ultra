@@ -113,6 +113,66 @@ class DownloaderTests(unittest.TestCase):
         self.assertIn("تشفير", msg)
         self.assertIn("cookies.txt", msg)
 
+    def test_save_cookies_to_netscape_file_creates_valid_file(self):
+        import tempfile, http.cookiejar
+        from http.cookies import SimpleCookie
+        c = SimpleCookie()
+        c["LOGIN_INFO"] = "sample_login_token"
+        c["LOGIN_INFO"]["domain"] = ".youtube.com"
+        c["LOGIN_INFO"]["path"] = "/"
+        c["LOGIN_INFO"]["secure"] = True
+
+        with tempfile.NamedTemporaryFile("w", delete=False) as tf:
+            path = tf.name
+
+        try:
+            ok = downloader.save_cookies_to_netscape_file([c], path)
+            self.assertTrue(ok)
+            jar = http.cookiejar.MozillaCookieJar(path)
+            jar.load()
+            self.assertIn(".youtube.com", jar._cookies)
+            self.assertIn("LOGIN_INFO", jar._cookies[".youtube.com"]["/"])
+            self.assertEqual(jar._cookies[".youtube.com"]["/"]["LOGIN_INFO"].value, "sample_login_token")
+        finally:
+            if os.path.exists(path):
+                os.remove(path)
+
+    def test_is_youtube_logged_in_and_logout(self):
+        import tempfile
+        with tempfile.NamedTemporaryFile("w", delete=False) as tf:
+            path = tf.name
+
+        try:
+            with patch("downloader.get_youtube_session_cookie_path", return_value=path):
+                self.assertFalse(downloader.is_youtube_logged_in())
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write("# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tTRUE\t2000000000\tLOGIN_INFO\tval123\n")
+                self.assertTrue(downloader.is_youtube_logged_in())
+                self.assertTrue(downloader.logout_youtube())
+                self.assertFalse(downloader.is_youtube_logged_in())
+        finally:
+            if os.path.exists(path):
+                os.remove(path)
+
+    def test_apply_cookies_uses_youtube_session(self):
+        import tempfile
+        with tempfile.NamedTemporaryFile("w", delete=False) as tf:
+            tf.write("# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tTRUE\t2000000000\tLOGIN_INFO\tval123\n")
+            path = tf.name
+
+        try:
+            with patch("downloader.get_youtube_session_cookie_path", return_value=path):
+                opts = {}
+                downloader._apply_cookies(opts, "none")
+                self.assertEqual(opts.get("cookiefile"), path)
+
+                opts2 = {}
+                downloader._apply_cookies(opts2, "youtube_login")
+                self.assertEqual(opts2.get("cookiefile"), path)
+        finally:
+            if os.path.exists(path):
+                os.remove(path)
+
     def test_clean_url_keeps_a_single_shared_video(self):
         cleaned = downloader.clean_url("https://youtu.be/abc123?t=5")
         self.assertIn("v=abc123", cleaned)

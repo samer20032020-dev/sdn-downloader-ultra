@@ -17,10 +17,20 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.app.Dialog;
+import android.graphics.Color;
+import android.graphics.Typeface;
 import android.provider.Settings;
 import android.util.Log;
+import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.MimeTypeMap;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.core.content.FileProvider;
@@ -267,6 +277,39 @@ public class MainActivity extends BridgeActivity {
                 Log.w(TAG, "deleteFile failed", exception);
                 return false;
             }
+        }
+
+        @JavascriptInterface
+        public boolean isYouTubeLoggedIn() {
+            File sessionFile = getYouTubeSessionCookieFile();
+            if (!sessionFile.isFile() || sessionFile.length() < 20) return false;
+            try {
+                byte[] data = new byte[(int) sessionFile.length()];
+                try (FileInputStream fis = new FileInputStream(sessionFile)) {
+                    fis.read(data);
+                }
+                String content = new String(data, "UTF-8");
+                return content.contains("LOGIN_INFO") || content.contains("SID") || content.contains("SAPISID");
+            } catch (Exception e) {
+                return false;
+            }
+        }
+
+        @JavascriptInterface
+        public boolean logoutYouTube() {
+            try {
+                File sessionFile = getYouTubeSessionCookieFile();
+                if (sessionFile.isFile()) sessionFile.delete();
+                runOnUiThread(() -> CookieManager.getInstance().removeAllCookies(null));
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+        }
+
+        @JavascriptInterface
+        public void startYouTubeLogin() {
+            showYouTubeLoginDialog();
         }
 
         @JavascriptInterface
@@ -546,14 +589,134 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    private File getYouTubeSessionCookieFile() {
+        return new File(getFilesDir(), "sdn_youtube_cookies.txt");
+    }
+
     private void applyAccessOptions(YoutubeDLRequest request, JSONObject option) {
         String cookies = option.optString("cookies", "");
-        if (!cookies.isEmpty() && !"none".equals(cookies)) {
+        File sessionFile = getYouTubeSessionCookieFile();
+        boolean hasSession = sessionFile.isFile() && sessionFile.length() > 20;
+
+        if ("youtube_login".equals(cookies)) {
+            if (hasSession) request.addOption("--cookies", sessionFile.getAbsolutePath());
+        } else if (cookies.isEmpty() || "none".equals(cookies)) {
+            if (hasSession) request.addOption("--cookies", sessionFile.getAbsolutePath());
+        } else {
             File cookieFile = new File(cookies);
-            if (cookieFile.isFile()) request.addOption("--cookies", cookieFile.getAbsolutePath());
+            if (cookieFile.isFile()) {
+                request.addOption("--cookies", cookieFile.getAbsolutePath());
+            } else if (hasSession) {
+                request.addOption("--cookies", sessionFile.getAbsolutePath());
+            }
         }
         String proxy = option.optString("proxy", "").trim();
         if (!proxy.isEmpty()) request.addOption("--proxy", proxy);
+    }
+
+    private void showYouTubeLoginDialog() {
+        runOnUiThread(() -> {
+            try {
+                final Dialog dialog = new Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+                LinearLayout layout = new LinearLayout(this);
+                layout.setOrientation(LinearLayout.VERTICAL);
+
+                LinearLayout topBar = new LinearLayout(this);
+                topBar.setOrientation(LinearLayout.HORIZONTAL);
+                topBar.setPadding(32, 32, 32, 32);
+                topBar.setBackgroundColor(Color.parseColor("#0f0f0f"));
+
+                TextView title = new TextView(this);
+                title.setText("تسجيل الدخول إلى YouTube");
+                title.setTextColor(Color.WHITE);
+                title.setTextSize(16);
+                title.setTypeface(null, Typeface.BOLD);
+                LinearLayout.LayoutParams lpTitle = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
+                title.setLayoutParams(lpTitle);
+
+                Button closeBtn = new Button(this);
+                closeBtn.setText("إغلاق ✕");
+                closeBtn.setTextColor(Color.parseColor("#ff5555"));
+                closeBtn.setBackgroundColor(Color.TRANSPARENT);
+                closeBtn.setOnClickListener(v -> dialog.dismiss());
+
+                topBar.addView(title);
+                topBar.addView(closeBtn);
+                layout.addView(topBar);
+
+                WebView webView = new WebView(this);
+                webView.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT
+                ));
+                WebSettings ws = webView.getSettings();
+                ws.setJavaScriptEnabled(true);
+                ws.setDomStorageEnabled(true);
+                ws.setDatabaseEnabled(true);
+                ws.setUserAgentString("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36");
+
+                webView.setWebViewClient(new WebViewClient() {
+                    @Override
+                    public void onPageFinished(WebView view, String url) {
+                        super.onPageFinished(view, url);
+                        String cookies = CookieManager.getInstance().getCookie("https://www.youtube.com");
+                        if (cookies != null && (cookies.contains("LOGIN_INFO") || cookies.contains("SID") || cookies.contains("SAPISID"))) {
+                            saveAndroidYouTubeCookies(cookies);
+                            dialog.dismiss();
+                            runOnUiThread(() -> {
+                                if (bridge != null && bridge.getWebView() != null) {
+                                    bridge.getWebView().evaluateJavascript("if (window.onYouTubeLoginComplete) window.onYouTubeLoginComplete(true);", null);
+                                }
+                            });
+                        }
+                    }
+                });
+
+                webView.loadUrl("https://accounts.google.com/ServiceLogin?service=youtube&continue=https%3A%2F%2Fwww.youtube.com%2F");
+                layout.addView(webView);
+
+                dialog.setContentView(layout);
+                dialog.show();
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to show YouTube login dialog", e);
+            }
+        });
+    }
+
+    private void saveAndroidYouTubeCookies(String rawCookies) {
+        if (rawCookies == null || rawCookies.trim().isEmpty()) return;
+        StringBuilder sb = new StringBuilder();
+        sb.append("# Netscape HTTP Cookie File\n");
+        sb.append("# https://curl.haxx.se/rfc/cookie_spec.html\n");
+        sb.append("# Generated by SDN Downloader on Android\n\n");
+
+        long expiry = (System.currentTimeMillis() / 1000L) + (365L * 24L * 3600L);
+        String[] pairs = rawCookies.split(";");
+        for (String pair : pairs) {
+            String trimmed = pair.trim();
+            int eq = trimmed.indexOf('=');
+            if (eq > 0) {
+                String name = trimmed.substring(0, eq).trim();
+                String val = trimmed.substring(eq + 1).trim();
+                if (!name.isEmpty()) {
+                    sb.append(".youtube.com\tTRUE\t/\tTRUE\t")
+                      .append(expiry)
+                      .append("\t")
+                      .append(name)
+                      .append("\t")
+                      .append(val)
+                      .append("\n");
+                }
+            }
+        }
+        try {
+            File target = getYouTubeSessionCookieFile();
+            try (FileOutputStream fos = new FileOutputStream(target)) {
+                fos.write(sb.toString().getBytes("UTF-8"));
+            }
+            Log.i(TAG, "Saved YouTube cookies on Android: " + target.getAbsolutePath());
+        } catch (Exception e) {
+            Log.e(TAG, "Error saving Android YouTube cookies", e);
+        }
     }
 
     private void applyTrimOptions(YoutubeDLRequest request, JSONObject option) {

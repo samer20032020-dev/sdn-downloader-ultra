@@ -1840,13 +1840,36 @@ input:checked + .slider:before { transform: translateX(20px); }
       <div class="settings-group">
         <div style="font-size:0.82rem; font-weight:800; color:var(--primary);">🔑 الوصول والمحتوى الخاص</div>
 
+        <!-- YouTube Account Login Card -->
+        <div class="settings-item" id="youtubeLoginRow" style="background: rgba(255, 0, 0, 0.08); border: 1px solid rgba(255, 0, 0, 0.22); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; display:flex; justify-content:space-between; align-items:center;">
+          <div class="settings-label" style="flex:1;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <i class="fab fa-youtube" style="color:#ff334b; font-size:1.3rem;"></i>
+              <span class="settings-title" style="font-weight:700;">تسجيل الدخول إلى YouTube</span>
+              <span id="youtubeBadge" style="font-size:0.72rem; padding:2px 8px; border-radius:20px; background:rgba(255,255,255,0.1); color:var(--text-muted); font-weight:600;">غير متصل</span>
+            </div>
+            <span class="settings-desc" id="youtubeLoginStatus" style="margin-top:4px;">
+              يتيح تنزيل قائمة المشاهدة لاحقاً، المحتوى المقيد عمرياً (18+)، والفيديوهات الخاصة بحسابك مباشرة.
+            </span>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button class="header-btn" id="youtubeLoginBtn" style="width:auto; padding:6px 14px; font-size:0.8rem; background:linear-gradient(135deg, #e50914, #ff334b); color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer;">
+              <i class="fas fa-sign-in-alt"></i> تسجيل الدخول
+            </button>
+            <button class="header-btn" id="youtubeLogoutBtn" style="display:none; width:auto; padding:6px 12px; font-size:0.8rem; background:rgba(255,255,255,0.08); color:var(--text-muted); border:1px solid var(--border); border-radius:8px; font-weight:600; cursor:pointer;">
+              خروج
+            </button>
+          </div>
+        </div>
+
         <div class="settings-item">
           <div class="settings-label">
             <span class="settings-title">مصدر الكوكيز (Cookies)</span>
             <span class="settings-desc" id="cookieSourceDesc">للمحتوى الخاص أو الذي يتطلب تسجيل دخول</span>
           </div>
           <select class="select-dropdown" id="cookieSourceSelect">
-            <option value="none" selected>بدون كوكيز</option>
+            <option value="none" selected>بدون كوكيز (تلقائي)</option>
+            <option value="youtube_login" id="youtubeLoginOption">حساب YouTube المسجل</option>
             <option value="chrome">Google Chrome</option>
             <option value="edge">Microsoft Edge</option>
             <option value="brave">Brave</option>
@@ -2163,10 +2186,96 @@ function setPref(key, value) {
 let gCookieFilePath = '';
 try { gCookieFilePath = localStorage.getItem('sdn_cookie_file') || ''; } catch (_) {}
 
+/* ── YouTube Login Session Helpers ── */
+let gYouTubeLoggedIn = false;
+
+function refreshYouTubeUI(isLoggedIn) {
+  gYouTubeLoggedIn = Boolean(isLoggedIn);
+  const badge = document.getElementById('youtubeBadge');
+  const loginBtn = document.getElementById('youtubeLoginBtn');
+  const logoutBtn = document.getElementById('youtubeLogoutBtn');
+  const statusDesc = document.getElementById('youtubeLoginStatus');
+  const opt = document.getElementById('youtubeLoginOption');
+
+  if (badge) {
+    badge.innerText = gYouTubeLoggedIn ? 'متصل ✅' : 'غير متصل';
+    badge.style.background = gYouTubeLoggedIn ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255, 255, 255, 0.1)';
+    badge.style.color = gYouTubeLoggedIn ? '#4ade80' : 'var(--text-muted)';
+  }
+  if (loginBtn) {
+    loginBtn.style.display = gYouTubeLoggedIn ? 'none' : 'inline-flex';
+  }
+  if (logoutBtn) {
+    logoutBtn.style.display = gYouTubeLoggedIn ? 'inline-flex' : 'none';
+  }
+  if (statusDesc) {
+    statusDesc.innerText = gYouTubeLoggedIn
+      ? 'أنت مسجل الدخول الآن. يتم استخدام جلسة حسابك تلقائياً لتحميل المشاهدة لاحقاً والمحتوى المقيد.'
+      : 'يتيح تنزيل قائمة المشاهدة لاحقاً، المحتوى المقيد عمرياً (18+)، والفيديوهات الخاصة بحسابك مباشرة.';
+  }
+  if (opt) {
+    opt.innerText = gYouTubeLoggedIn ? 'حساب YouTube المسجل (متصل ✅)' : 'حساب YouTube المسجل';
+  }
+}
+
+function checkYouTubeLoginStatus() {
+  if (window.pywebview?.api?.get_youtube_login_status) {
+    window.pywebview.api.get_youtube_login_status().then(res => {
+      refreshYouTubeUI(res && res.logged_in);
+    }).catch(() => {});
+  } else if (window.androidInterface?.isYouTubeLoggedIn) {
+    try {
+      refreshYouTubeUI(window.androidInterface.isYouTubeLoggedIn());
+    } catch (_) {}
+  }
+}
+
+function startYouTubeLogin() {
+  toast('🚀 جاري فتح نافذة تسجيل الدخول إلى YouTube...');
+  if (window.pywebview?.api?.start_youtube_login) {
+    window.pywebview.api.start_youtube_login().catch(() => {
+      toast('❌ تعذر فتح نافذة تسجيل الدخول');
+    });
+  } else if (window.androidInterface?.startYouTubeLogin) {
+    try {
+      window.androidInterface.startYouTubeLogin();
+    } catch (_) {
+      toast('❌ تعذر فتح نافذة تسجيل الدخول على Android');
+    }
+  } else {
+    toast('⚠️ تسجيل الدخول متاح في تطبيق Windows و Android');
+  }
+}
+
+function logoutYouTube() {
+  if (window.pywebview?.api?.logout_youtube) {
+    window.pywebview.api.logout_youtube().then(() => {
+      refreshYouTubeUI(false);
+      toast('🔒 تم تسجيل الخروج من حساب YouTube');
+    }).catch(() => {});
+  } else if (window.androidInterface?.logoutYouTube) {
+    try {
+      window.androidInterface.logoutYouTube();
+      refreshYouTubeUI(false);
+      toast('🔒 تم تسجيل الخروج من حساب YouTube');
+    } catch (_) {}
+  }
+}
+
+window.onYouTubeLoginComplete = function(success, errMsg) {
+  if (success) {
+    refreshYouTubeUI(true);
+    toast('🎉 تم تسجيل الدخول بنجاح! تم ربط حساب YouTube.');
+  } else if (errMsg) {
+    toast('❌ خطأ في تسجيل الدخول: ' + errMsg);
+  }
+};
+
 function getCookieSource() {
   const select = document.getElementById('cookieSourceSelect');
   const value = select ? select.value : 'none';
   if (value === 'file') return gCookieFilePath || 'none';
+  if (value === 'none' && gYouTubeLoggedIn) return 'youtube_login';
   return value;
 }
 
@@ -2383,6 +2492,8 @@ function switchTab(targetId) {
         if (res && res.tracks && res.tracks.length > 0) addTracksToPlaylist(res.tracks);
       }).catch(() => {});
     }, 300);
+  } else if (targetId === 'viewSettings') {
+    checkYouTubeLoginStatus();
   }
 }
 
@@ -3142,6 +3253,10 @@ if (proxyInpEl) {
   proxyInpEl.addEventListener('change', () => setPref('proxy', proxyInpEl.value.trim()));
 }
 updateCookieFileUI();
+
+document.getElementById('youtubeLoginBtn')?.addEventListener('click', startYouTubeLogin);
+document.getElementById('youtubeLogoutBtn')?.addEventListener('click', logoutYouTube);
+checkYouTubeLoginStatus();
 
 /* ── yt-dlp Engine Update ── */
 const updateEngineBtn = document.getElementById('updateEngineBtn');

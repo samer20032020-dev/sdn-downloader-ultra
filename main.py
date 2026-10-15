@@ -1112,6 +1112,86 @@ class DownloaderBridgeAPI:
             _log.error(f"Restart failed: {e}")
             return {'success': False, 'error': str(e)}
 
+    # ================================================================
+    # YouTube In-App Login & Session Management
+    # ================================================================
+    def get_youtube_login_status(self):
+        try:
+            from downloader import is_youtube_logged_in
+            return {'logged_in': is_youtube_logged_in()}
+        except Exception as e:
+            _log.warning(f"Error checking YouTube login status: {e}")
+            return {'logged_in': False, 'error': str(e)}
+
+    def logout_youtube(self):
+        try:
+            from downloader import logout_youtube
+            res = logout_youtube()
+            _log.info("Logged out from YouTube session")
+            return {'success': res}
+        except Exception as e:
+            _log.error(f"Error logging out from YouTube: {e}")
+            return {'success': False, 'error': str(e)}
+
+    def start_youtube_login(self):
+        """Open a dedicated window for YouTube login and extract session cookies automatically."""
+        threading.Thread(target=self._run_youtube_login_flow, daemon=True).start()
+        return {'started': True}
+
+    def _run_youtube_login_flow(self):
+        try:
+            import webview
+            from downloader import save_cookies_to_netscape_file, get_youtube_session_cookie_path
+
+            login_url = "https://accounts.google.com/ServiceLogin?service=youtube&continue=https%3A%2F%2Fwww.youtube.com%2F"
+            login_win = webview.create_window(
+                title='تسجيل الدخول إلى YouTube - SDN Downloader',
+                url=login_url,
+                width=620,
+                height=740,
+                resizable=True,
+                background_color='#0f0f0f'
+            )
+
+            def monitor_cookies():
+                cookie_path = get_youtube_session_cookie_path()
+                max_checks = 180
+                for _ in range(max_checks):
+                    time.sleep(1.5)
+                    try:
+                        cookies = login_win.get_cookies()
+                        if not cookies:
+                            continue
+                        has_auth = False
+                        for c in cookies:
+                            if hasattr(c, "values"):
+                                for morsel in c.values():
+                                    k = getattr(morsel, "key", "")
+                                    if k in ("LOGIN_INFO", "SID", "SAPISID", "SSID", "__Secure-3PSID"):
+                                        has_auth = True
+                                        break
+                            if has_auth:
+                                break
+                        if has_auth:
+                            if save_cookies_to_netscape_file(cookies, cookie_path):
+                                _log.info("YouTube session cookies saved successfully")
+                                try:
+                                    login_win.destroy()
+                                except Exception:
+                                    pass
+                                if self._window:
+                                    self._window.evaluate_js("if (window.onYouTubeLoginComplete) window.onYouTubeLoginComplete(true);")
+                                return
+                    except Exception:
+                        break
+
+            threading.Thread(target=monitor_cookies, daemon=True).start()
+
+        except Exception as e:
+            _log.error(f"Failed to start YouTube login flow: {e}")
+            if self._window:
+                self._window.evaluate_js(f"if (window.onYouTubeLoginComplete) window.onYouTubeLoginComplete(false, '{str(e)}');")
+
     def _async_download(self, url, option, browser_cookies):
         start_t = time.time()
         
