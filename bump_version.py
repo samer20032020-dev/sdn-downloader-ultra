@@ -115,6 +115,26 @@ def update_metadata_json(new_version: str) -> None:
         print(f"  [!] Failed to update components.json: {e}")
 
 
+def update_installer_html(new_version: str) -> None:
+    html_file = ROOT / "ui" / "installer.html"
+    if not html_file.is_file():
+        return
+    text = html_file.read_text(encoding="utf-8")
+    text = re.sub(r'v\d+\.\d+\.\d+', f'v{new_version}', text)
+    html_file.write_text(text, encoding="utf-8")
+    print(f"  [✓] Updated ui/installer.html -> v{new_version}")
+
+
+def update_app_config(new_version: str) -> None:
+    cfg = ROOT / "assets" / "config" / "app.config"
+    if not cfg.is_file():
+        return
+    text = cfg.read_text(encoding="utf-8")
+    text = re.sub(r'<add key="Version" value="[^"]*" />', f'<add key="Version" value="{new_version}" />', text, count=1)
+    cfg.write_text(text, encoding="utf-8")
+    print(f"  [✓] Updated assets/config/app.config -> {new_version}")
+
+
 def update_extensions(new_version: str) -> None:
     for name in ["manifest.json", "manifest.firefox.json"]:
         mf = ROOT / "extension" / name
@@ -144,7 +164,9 @@ def bump(mode: str = "patch", explicit: str | None = None) -> str:
     update_version_py(new_version)
     update_android_gradle(new_version)
     update_ui_index_html(new_version)
+    update_installer_html(new_version)
     update_installer_iss(new_version)
+    update_app_config(new_version)
     update_metadata_json(new_version)
     update_extensions(new_version)
     sync_ui()

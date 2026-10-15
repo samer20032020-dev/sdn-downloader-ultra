@@ -330,18 +330,18 @@ html, body {
       <div class="ring-outer"></div>
       <div class="hero-logo">⚡</div>
     </div>
-    <div class="hero-title" id="heroTitle">SDN Downloader ⚡ Ultra</div>
-    <div class="hero-sub" id="heroSub">المثبت الذكي فائق السرعة لقوائم التشغيل والفيديوهات</div>
+    <div class="hero-title" id="heroTitle">SDN Downloader ⚡ Ultra <span class="badge-ver" id="heroVerBadge" style="font-size:11px; vertical-align:middle; margin-right:6px; background:rgba(0,242,254,0.18); border:1px solid rgba(0,242,254,0.35); color:#38bdf8;">v1.0.7</span></div>
+    <div class="hero-sub" id="heroSub">المثبت الذكي فائق السرعة — الإصدار v1.0.7</div>
   </div>
 
   <div class="update-banner" id="updateBanner" style="display: none;">
     <div class="update-badge-pill">
       <span class="pulse-dot"></span>
-      <span>وضع التحديث الذكي</span>
-      <span class="badge-ver" id="prevVerBadge"></span>
+      <span id="updateModeTitle">الترقية إلى الإصدار الجديد:</span>
+      <span class="badge-ver" id="prevVerBadge" style="background:rgba(16,185,129,0.25); color:#a7f3d0; border-color:rgba(16,185,129,0.4);">v1.0.7</span>
     </div>
-    <div class="update-banner-desc">
-      تم العثور على البرنامج مثبت مسبقاً — سيتم التحديث في نفس المسار مع الحفاظ الكامل على إعداداتك وبياناتك.
+    <div class="update-banner-desc" id="updateBannerDesc">
+      تم العثور على البرنامج مثبت مسبقاً — سيتم التحديث إلى الإصدار الأحدث v1.0.7 في نفس المسار مع الحفاظ الكامل على إعداداتك وبياناتك.
     </div>
   </div>
 
@@ -388,12 +388,15 @@ function applyInstallInfo(info) {
   }
 
   isUpdateMode = (typeof info === 'object') && Boolean(info.is_update);
-  const existingVer = (typeof info === 'object' && info.existing_version) ? info.existing_version : '';
-  const appVer = (typeof info === 'object' && info.app_version) ? info.app_version : '';
+  const existingVer = (typeof info === 'object' && info.existing_version) ? String(info.existing_version).replace(/^v/i, '') : '';
+  const appVer = (typeof info === 'object' && info.app_version) ? String(info.app_version).replace(/^v/i, '') : '1.0.7';
 
   const brandText = document.getElementById('brandText');
   const heroSub = document.getElementById('heroSub');
+  const heroVerBadge = document.getElementById('heroVerBadge');
   const updateBanner = document.getElementById('updateBanner');
+  const updateModeTitle = document.getElementById('updateModeTitle');
+  const updateBannerDesc = document.getElementById('updateBannerDesc');
   const prevVerBadge = document.getElementById('prevVerBadge');
   const installBtn = document.getElementById('installBtn');
   const installBtnText = document.getElementById('installBtnText');
@@ -401,34 +404,42 @@ function applyInstallInfo(info) {
   const progSt = document.getElementById('progSt');
   const launchBtnText = document.getElementById('launchBtnText');
 
+  if (heroVerBadge) heroVerBadge.textContent = 'v' + appVer;
+
   if (isUpdateMode) {
-    if (brandText) brandText.textContent = 'SDN ULTRA UPDATER';
-    if (heroSub) heroSub.textContent = 'وضع التحديث الذكي — الحفاظ الكامل على إعداداتك وبياناتك';
+    if (brandText) brandText.textContent = `SDN ULTRA UPDATER (v${appVer})`;
+    if (heroSub) heroSub.textContent = `الترقية إلى الإصدار الأحدث v${appVer} — الحفاظ الكامل على إعداداتك وبياناتك`;
     if (updateBanner) updateBanner.style.display = 'flex';
+    if (updateModeTitle) updateModeTitle.textContent = 'الترقية إلى الإصدار الجديد:';
     if (prevVerBadge) {
-      prevVerBadge.textContent = existingVer ? ('v' + existingVer) : 'مثبت مسبقاً';
+      prevVerBadge.textContent = existingVer ? (`v${existingVer} ➔ v${appVer}`) : ('v' + appVer);
+    }
+    if (updateBannerDesc) {
+      updateBannerDesc.textContent = existingVer 
+        ? `تم العثور على إصدار سابق مثبت (v${existingVer}) — سيتم ترقية البرنامج إلى الإصدار الأحدث v${appVer} مع الحفاظ التام على بياناتك.`
+        : `سيتم تحديث البرنامج إلى الإصدار الأحدث v${appVer} مع الحفاظ الكامل على إعداداتك وبياناتك.`;
     }
     if (installBtn) installBtn.classList.add('update-mode');
     if (installBtnText) {
-      installBtnText.textContent = '🔄 تحديث البرنامج الآن';
+      installBtnText.textContent = `🔄 تحديث إلى v${appVer} الآن`;
     }
     if (chkDesktopText) {
       chkDesktopText.textContent = 'تحديث اختصار سطح المكتب (Desktop Shortcut)';
     }
     if (progSt) {
-      progSt.textContent = 'جاري تحديث ملفات البرنامج...';
+      progSt.textContent = `جاري تحديث ملفات البرنامج إلى v${appVer}...`;
     }
     if (launchBtnText) {
-      launchBtnText.textContent = '🚀 تشغيل SDN Downloader المحدث الآن';
+      launchBtnText.textContent = `🚀 تشغيل SDN Downloader Ultra (v${appVer}) الآن`;
     }
-    document.title = 'تحديث SDN Downloader Ultra';
+    document.title = `تحديث SDN Downloader Ultra (v${appVer})`;
   } else {
-    if (brandText) brandText.textContent = 'SDN ULTRA INSTALLER';
-    if (heroSub) heroSub.textContent = 'المثبت الذكي فائق السرعة لقوائم التشغيل والفيديوهات';
+    if (brandText) brandText.textContent = `SDN ULTRA INSTALLER (v${appVer})`;
+    if (heroSub) heroSub.textContent = `المثبت الذكي فائق السرعة — الإصدار v${appVer}`;
     if (updateBanner) updateBanner.style.display = 'none';
     if (installBtn) installBtn.classList.remove('update-mode');
     if (installBtnText) {
-      installBtnText.textContent = '⚡ تثبيت بنقرة واحدة الآن';
+      installBtnText.textContent = `⚡ تثبيت الإصدار v${appVer} الآن`;
     }
     if (chkDesktopText) {
       chkDesktopText.textContent = 'إنشاء اختصار على سطح المكتب (Desktop Shortcut)';
@@ -437,9 +448,9 @@ function applyInstallInfo(info) {
       progSt.textContent = 'جاري التثبيت...';
     }
     if (launchBtnText) {
-      launchBtnText.textContent = '🚀 تشغيل SDN Downloader الآن';
+      launchBtnText.textContent = `🚀 تشغيل SDN Downloader Ultra (v${appVer}) الآن`;
     }
-    document.title = 'تثبيت SDN Downloader Ultra';
+    document.title = `تثبيت SDN Downloader Ultra (v${appVer})`;
   }
 }
 
