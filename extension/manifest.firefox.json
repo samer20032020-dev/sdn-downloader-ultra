@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SDN Downloader Ultra",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Send the current page or any link straight to SDN Downloader Ultra running on your PC.",
   "browser_specific_settings": {
     "gecko": {
@@ -9,10 +9,19 @@
       "strict_min_version": "115.0"
     }
   },
-  "permissions": ["contextMenus", "activeTab", "notifications", "storage"],
-  "host_permissions": ["http://127.0.0.1:4567/*"],
+  "permissions": [
+    "contextMenus",
+    "activeTab",
+    "notifications",
+    "storage"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:4567/*"
+  ],
   "background": {
-    "scripts": ["background.js"]
+    "scripts": [
+      "background.js"
+    ]
   },
   "action": {
     "default_title": "Send to SDN Downloader",

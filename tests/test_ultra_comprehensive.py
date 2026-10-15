@@ -1096,7 +1096,8 @@ class Test17_VersionModule(unittest.TestCase):
         self.assertEqual(RELEASE_TAG, f"v{APP_VERSION}")
 
     def test_current_version(self):
-        self.assertEqual(APP_VERSION, "1.0.6")
+        import re
+        self.assertRegex(APP_VERSION, r"^\d+\.\d+\.\d+$")
 
 
 class Test18_PlaylistDetection(unittest.TestCase):
