@@ -701,12 +701,19 @@ public class MainActivity extends BridgeActivity {
                 topBar.setBackgroundColor(Color.parseColor("#0f172a"));
 
                 TextView title = new TextView(this);
-                title.setText("🎬 متصفح YouTube الذكي (بدون إعلانات)");
+                title.setText("🎬 متصفح YouTube");
                 title.setTextColor(Color.WHITE);
-                title.setTextSize(15);
+                title.setTextSize(14);
                 title.setTypeface(null, Typeface.BOLD);
                 LinearLayout.LayoutParams lpTitle = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
                 title.setLayoutParams(lpTitle);
+
+                Button dlNowBtn = new Button(this);
+                dlNowBtn.setText("⚡ تحميل الفيديو");
+                dlNowBtn.setTextColor(Color.WHITE);
+                dlNowBtn.setTextSize(12);
+                dlNowBtn.setBackgroundColor(Color.parseColor("#0284c7"));
+                dlNowBtn.setPadding(20, 8, 20, 8);
 
                 Button closeBtn = new Button(this);
                 closeBtn.setText("إغلاق ✕");
@@ -715,6 +722,7 @@ public class MainActivity extends BridgeActivity {
                 closeBtn.setOnClickListener(v -> dialog.dismiss());
 
                 topBar.addView(title);
+                topBar.addView(dlNowBtn);
                 topBar.addView(closeBtn);
                 layout.addView(topBar);
 
@@ -727,6 +735,18 @@ public class MainActivity extends BridgeActivity {
                 ws.setDomStorageEnabled(true);
                 ws.setDatabaseEnabled(true);
                 ws.setUserAgentString("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36");
+
+                dlNowBtn.setOnClickListener(v -> {
+                    String currentUrl = webView.getUrl();
+                    if (currentUrl != null && !currentUrl.isEmpty()) {
+                        dialog.dismiss();
+                        if (bridge != null && bridge.getWebView() != null) {
+                            String cleanUrl = currentUrl.replace("'", "\\'");
+                            String js = "if (window.onBrowserQuickDownload) window.onBrowserQuickDownload('" + cleanUrl + "', 'best');";
+                            bridge.getWebView().evaluateJavascript(js, null);
+                        }
+                    }
+                });
 
                 webView.addJavascriptInterface(new Object() {
                     @JavascriptInterface
@@ -767,16 +787,16 @@ public class MainActivity extends BridgeActivity {
                     "    sk.forEach(function(b) { b.click(); });" +
                     "  }, 400);" +
                     "  var idm = document.createElement('div');" +
-                    "  idm.style.cssText = 'position:fixed; top:70px; left:16px; z-index:999999; direction:rtl;';" +
-                    "  idm.innerHTML = '<button id=\"sdnIdmMobileBtn\" style=\"background:linear-gradient(135deg,#0284c7,#2563eb);color:#fff;border:none;padding:8px 16px;border-radius:20px;font-weight:bold;font-size:12px;box-shadow:0 4px 15px rgba(0,0,0,0.5);\">⚡ تحميل بواسطة SDN</button>';" +
-                    "  document.body.appendChild(idm);" +
+                    "  idm.style.cssText = 'position:fixed; top:65px; right:16px; z-index:999999; direction:rtl; font-family:sans-serif;';" +
+                    "  idm.innerHTML = '<button id=\"sdnIdmMobileBtn\" style=\"background:linear-gradient(135deg,#0284c7,#2563eb);color:#fff;border:1px solid rgba(255,255,255,0.4);padding:9px 18px;border-radius:22px;font-weight:bold;font-size:12.5px;box-shadow:0 6px 20px rgba(0,0,0,0.6);\">⚡ تحميل بواسطة SDN</button>';" +
+                    "  (document.body || document.documentElement).appendChild(idm);" +
                     "  document.getElementById('sdnIdmMobileBtn').onclick = function() {" +
                     "    if (window.pywebview_api) window.pywebview_api.download_url(window.location.href, 'best');" +
                     "  };" +
                     "  setInterval(function() {" +
                     "    var u = window.location.href;" +
                     "    idm.style.display = (u.indexOf('/watch') !== -1 || u.indexOf('/shorts/') !== -1 || u.indexOf('list=') !== -1) ? 'block' : 'none';" +
-                    "  }, 600);" +
+                    "  }, 500);" +
                     "})();";
 
                 webView.setWebViewClient(new WebViewClient() {

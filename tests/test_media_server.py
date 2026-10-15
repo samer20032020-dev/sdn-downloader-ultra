@@ -30,7 +30,7 @@ class MediaServerTests(unittest.TestCase):
             self.api._media_server.server_close()
 
     def test_tokenized_media_url_supports_head_and_byte_ranges(self):
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as directory:
             media_path = Path(directory) / "sample.mp3"
             payload = bytes(range(256)) * 4
             media_path.write_bytes(payload)
