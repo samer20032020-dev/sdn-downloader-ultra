@@ -1867,6 +1867,13 @@ body.light-theme select option, body.light-theme .select-dropdown option {
         <i class="fas fa-cog"></i>
         <span>الإعدادات</span>
       </button>
+
+      <div style="margin:8px 0; border-top:1px solid rgba(255,255,255,0.06);"></div>
+
+      <button class="nav-item drawer-nav-item" onclick="onPickFolderClick(); toggleSideMenu(false);">
+        <i class="fas fa-folder-open" style="color:#38bdf8;"></i>
+        <span>مجلد التنزيلات</span>
+      </button>
     </div>
   </div>
 </div>
@@ -1898,45 +1905,14 @@ body.light-theme select option, body.light-theme .select-dropdown option {
       </div>
     </div>
 
-    <!-- Center (Desktop Navigation Tabs) -->
-    <nav class="desktop-nav-tabs" id="desktopNavTabs">
-      <button class="nav-tab active" data-target="viewHome" onclick="switchMainView('viewHome')">
-        <i class="fas fa-arrow-down"></i>
-        <span>الرئيسية</span>
-      </button>
-      <button class="nav-tab" data-target="viewYouTube" onclick="openYouTubeBrowser()">
-        <i class="fab fa-youtube" style="color:#ef4444;"></i>
-        <span>متصفح YouTube</span>
-      </button>
-      <button class="nav-tab" data-target="viewMusicPlayer" onclick="switchMainView('viewMusicPlayer')">
-        <i class="fas fa-music"></i>
-        <span>الموسيقى</span>
-      </button>
-      <button class="nav-tab" data-target="viewHistory" onclick="switchMainView('viewHistory')">
-        <i class="fas fa-history"></i>
-        <span>السجل</span>
-      </button>
-      <button class="nav-tab" data-target="viewSettings" onclick="switchMainView('viewSettings')">
-        <i class="fas fa-cog"></i>
-        <span>الإعدادات</span>
-      </button>
-    </nav>
+    <!-- Hidden state elements for script compatibility -->
+    <div style="display:none;" aria-hidden="true">
+      <span id="desktopSavePathTxt">C:\Downloads</span>
+      <div id="dlCounterBadge"><span id="dlCounterNum">0</span></div>
+    </div>
 
-    <!-- Left side (Last element in RTL): Folder Selector & Update button -->
+    <!-- Left side (Last element in RTL): Update button (shown only when update is ready) -->
     <div class="header-actions-group" style="display:flex; align-items:center; gap:8px;">
-      <div class="desktop-folder-bar" id="desktopFolderBar">
-        <i class="fas fa-folder" style="color:#38bdf8; font-size:0.85rem;"></i>
-        <span class="folder-path-text" id="desktopSavePathTxt">C:\Downloads</span>
-        <button class="folder-change-btn" id="desktopChangeFolderBtn" onclick="onPickFolderClick()">تغيير</button>
-      </div>
-
-      <!-- Download Counter Badge -->
-      <div id="dlCounterBadge" title="عدد التحميلات في هذه الجلسة" style="display:flex; align-items:center; gap:5px; background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.25); color:#4ade80; padding:4px 10px; border-radius:10px; font-size:0.75rem; font-weight:800; cursor:default; transition:all 0.3s;">
-        <i class="fas fa-check-circle" style="font-size:0.8rem;"></i>
-        <span id="dlCounterNum">0</span>
-        <span class="counter-label" style="opacity:0.8; font-weight:600;">تحميل</span>
-      </div>
-
       <!-- Update Header Button -->
       <button id="headerUpdateBtn" onclick="onHeaderUpdateClick()" class="update-header-btn" title="فحص التحديثات" style="display:none;">
         <i class="fas fa-cog" id="updateHeaderIcon"></i>
@@ -2953,6 +2929,7 @@ function switchTab(targetId) {
     checkYouTubeLoginStatus();
   }
 }
+window.switchMainView = switchTab;
 
 document.querySelectorAll('.nav-tab').forEach(tab => {
   tab.addEventListener('click', () => {
