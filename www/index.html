@@ -99,63 +99,85 @@ html, body {
   .desktop-nav-tabs {
     display: flex;
     align-items: center;
-    gap: 8px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--card-border);
-    padding: 4px 8px;
-    border-radius: 30px;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.065);
+    padding: 3px 5px;
+    border-radius: 12px;
   }
 
   .desktop-nav-tabs .nav-tab {
     padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: var(--text-sub);
+    border-radius: 9px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #94a3b8;
     display: flex;
     align-items: center;
-    gap: 6px;
-    background: none;
-    border: none;
+    gap: 7px;
+    background: transparent;
+    border: 1px solid transparent;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    font-family: inherit;
+  }
+
+  .desktop-nav-tabs .nav-tab:hover {
+    color: #f8fafc;
+    background: rgba(255, 255, 255, 0.045);
   }
 
   .desktop-nav-tabs .nav-tab.active {
-    background: var(--primary);
-    color: #000;
+    background: rgba(56, 189, 248, 0.12);
+    color: #38bdf8;
+    border-color: rgba(56, 189, 248, 0.26);
+    font-weight: 700;
   }
 
   .desktop-folder-bar {
     display: flex;
     align-items: center;
     gap: 8px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--card-border);
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.065);
     padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 0.78rem;
+    border-radius: 10px;
+    font-size: 0.76rem;
+    transition: all 0.2s;
+  }
+
+  .desktop-folder-bar:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
   }
 
   .folder-path-text {
-    max-width: 180px;
+    max-width: 150px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    color: var(--primary);
-    font-weight: 700;
+    color: #cbd5e1;
+    font-weight: 600;
+    direction: ltr;
+    text-align: left;
   }
 
   .folder-change-btn {
-    background: var(--primary);
-    color: #000;
-    border: none;
-    padding: 4px 10px;
-    border-radius: 8px;
-    font-size: 0.75rem;
-    font-weight: 800;
+    background: rgba(56, 189, 248, 0.12);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
     cursor: pointer;
     font-family: inherit;
+    transition: all 0.2s;
+  }
+
+  .folder-change-btn:hover {
+    background: #38bdf8;
+    color: #070a14;
   }
 
   /* Hide mobile bottom nav on PC */
@@ -851,127 +873,316 @@ body.light-theme select option, body.light-theme .select-dropdown option {
   color: #0f172a !important;
 }
 
-/* Soft, Clean, 60% Simpler Hero & Feature Hub */
-.soft-hero-container {
+/* Ultra-Clean, Soft, Minimalist Downloader Hub */
+.clean-hero-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 24px 16px 16px 16px;
-  gap: 12px;
-  max-width: 800px;
+  padding: 28px 16px 14px 16px;
+  gap: 16px;
+  max-width: 780px;
   margin: 0 auto;
   width: 100%;
 }
 
-.soft-hero-badge {
+.clean-hero-badge {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: rgba(56, 189, 248, 0.08);
-  border: 1px solid rgba(56, 189, 248, 0.22);
+  background: rgba(56, 189, 248, 0.06);
+  border: 1px solid rgba(56, 189, 248, 0.2);
   color: #38bdf8;
-  padding: 5px 14px;
+  padding: 4px 14px;
   border-radius: 20px;
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   font-weight: 700;
+  letter-spacing: 0.3px;
 }
 
-.soft-hero-dot {
+.clean-hero-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: #34d399;
-  box-shadow: 0 0 8px #34d399;
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.7);
 }
 
-.soft-hero-title {
-  font-size: 1.6rem;
-  font-weight: 800;
+.clean-hero-title {
+  font-size: 1.75rem;
+  font-weight: 900;
   color: var(--text-main);
   letter-spacing: -0.3px;
-  margin: 2px 0 0 0;
+  margin: 0;
+  line-height: 1.25;
 }
 
-.soft-hero-sub {
-  font-size: 0.9rem;
+.clean-hero-sub {
+  font-size: 0.88rem;
   color: var(--text-sub);
   max-width: 520px;
   line-height: 1.5;
-  margin-bottom: 8px;
+  margin: 0;
 }
 
-.quick-feature-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 12px;
+/* Master URL Input Bar */
+.master-input-wrap {
   width: 100%;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
-.quick-feature-card {
+.master-input-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: 16px;
-  padding: 12px 16px;
-  text-align: right;
-  cursor: pointer;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 6px 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
-.quick-feature-card:hover {
-  transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(56, 189, 248, 0.35);
-  box-shadow: 0 8px 24px rgba(56, 189, 248, 0.12);
+.master-input-bar:focus-within {
+  border-color: rgba(56, 189, 248, 0.45);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12), 0 12px 35px rgba(0, 0, 0, 0.45);
 }
 
-.qf-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+.master-paste-btn {
+  padding: 0 15px;
+  height: 42px;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  font-family: inherit;
+}
+
+.master-paste-btn:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.master-input-field {
+  flex: 1;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+}
+
+.master-input-field input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #f8fafc;
+  font-family: inherit;
+  direction: rtl;
+}
+
+.master-input-field input::placeholder {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.master-clear-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: transparent;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.15rem;
+  cursor: pointer;
+  color: #64748b;
+  font-size: 1rem;
+  transition: all 0.2s;
   flex-shrink: 0;
 }
 
-.qf-info {
+.master-clear-btn:hover {
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.master-fetch-btn {
+  padding: 0 20px;
+  height: 42px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+  font-family: inherit;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.master-fetch-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(2, 132, 199, 0.45);
+  filter: brightness(1.08);
+}
+
+.master-fetch-btn:active {
+  transform: translateY(0);
+}
+
+/* Quick Action Chips (Single line, sleek, unobtrusive) */
+.quick-action-chips {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+
+.action-chip-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 20px;
+  padding: 7px 14px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #94a3b8;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.action-chip-pill:hover {
+  background: rgba(255, 255, 255, 0.065);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #f8fafc;
+  transform: translateY(-1px);
+}
+
+.action-chip-pill.chip-yt {
+  border-color: rgba(239, 68, 68, 0.25);
+  background: rgba(239, 68, 68, 0.06);
+  color: #fca5a5;
+}
+
+.action-chip-pill.chip-yt:hover {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fff;
+}
+
+.action-chip-pill.chip-yt i {
+  color: #ef4444;
+  font-size: 0.95rem;
+}
+
+.action-chip-pill.chip-turbo {
+  border-color: rgba(168, 85, 247, 0.25);
+  background: rgba(168, 85, 247, 0.06);
+  color: #d8b4fe;
+}
+
+.action-chip-pill.chip-turbo:hover {
+  background: rgba(168, 85, 247, 0.12);
+  border-color: rgba(168, 85, 247, 0.4);
+  color: #fff;
+}
+
+.action-chip-pill.chip-turbo i {
+  color: #a855f7;
+}
+
+/* Supported Platforms Row */
+.clean-platforms-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  width: 100%;
+  max-width: 580px;
+}
+
+.platform-badge-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #64748b;
+  transition: color 0.2s;
+}
+
+.platform-badge-item:hover {
+  color: #94a3b8;
+}
+
+/* Modern Empty State */
+.clean-empty-box {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  flex: 1;
-  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 36px 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.07);
+  border-radius: 18px;
+  gap: 10px;
+  margin-top: 8px;
 }
 
-.qf-title {
-  font-size: 0.88rem;
+.clean-empty-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: rgba(56, 189, 248, 0.08);
+  color: #38bdf8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+}
+
+.clean-empty-title {
+  font-size: 0.95rem;
   font-weight: 800;
-  color: var(--text-main);
+  color: #e2e8f0;
+  margin: 0;
 }
 
-.qf-desc {
-  font-size: 0.74rem;
-  color: var(--text-sub);
-  line-height: 1.35;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.qf-action {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--primary);
-  background: rgba(56, 189, 248, 0.1);
-  padding: 4px 10px;
-  border-radius: 8px;
-  white-space: nowrap;
+.clean-empty-desc {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0;
+  max-width: 380px;
+  line-height: 1.45;
 }
 
 /* Modals & Overlays */
@@ -1670,33 +1881,32 @@ body.light-theme select option, body.light-theme .select-dropdown option {
 <div class="app-viewport">
   
   <!-- Header Bar with 3-Lines Menu Icon -->
-  <header class="app-header" style="display:flex; align-items:center; justify-content:space-between; padding:0 24px; background:rgba(7, 10, 20, 0.92); backdrop-filter:blur(20px); border-bottom:1px solid rgba(255,255,255,0.06); height:64px;">
+  <!-- Header Bar -->
+  <header class="app-header" style="display:flex; align-items:center; justify-content:space-between; padding:0 20px; background:rgba(7, 10, 20, 0.95); backdrop-filter:blur(20px); border-bottom:1px solid rgba(255,255,255,0.06); height:56px;">
     
     <!-- Right side (First element in RTL): Hamburger Menu + Brand Logo -->
-    <div class="header-brand-group" style="display:flex; align-items:center; gap:14px;">
-      <button onclick="toggleSideMenu(true)" style="width:40px; height:40px; border-radius:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); color:#fff; font-size:1.15rem; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s;" title="القائمة المنسدلة">
+    <div class="header-brand-group" style="display:flex; align-items:center; gap:12px;">
+      <button onclick="toggleSideMenu(true)" style="width:36px; height:36px; border-radius:10px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); color:#fff; font-size:1.05rem; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s;" title="القائمة المنسدلة">
         <i class="fas fa-bars"></i>
       </button>
 
-      <div class="header-brand-lockup" style="display:flex; align-items:center; gap:10px;">
-        <div class="brand-badge" style="width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg, #38bdf8 0%, #6366f1 100%); display:flex; align-items:center; justify-content:center; font-size:1.05rem; color:#fff; box-shadow:0 4px 16px rgba(56, 189, 248, 0.35);">
+      <div class="header-brand-lockup" style="display:flex; align-items:center; gap:8px;">
+        <div class="brand-badge" style="width:32px; height:32px; border-radius:9px; background:linear-gradient(135deg, #0284c7 0%, #2563eb 100%); display:flex; align-items:center; justify-content:center; font-size:0.95rem; color:#fff; box-shadow:0 3px 12px rgba(2, 132, 199, 0.35);">
           ⚡
         </div>
-        <div style="display:flex; flex-direction:column; align-items:flex-start;">
-          <span style="font-size:1.15rem; font-weight:900; color:#f8fafc; letter-spacing:0.5px;">SDN</span>
-        </div>
+        <span style="font-size:1.15rem; font-weight:900; color:#f8fafc; letter-spacing:0.3px;">SDN</span>
       </div>
     </div>
 
     <!-- Center (Desktop Navigation Tabs) -->
     <nav class="desktop-nav-tabs" id="desktopNavTabs">
       <button class="nav-tab active" data-target="viewHome" onclick="switchMainView('viewHome')">
-        <i class="fas fa-bolt"></i>
-        <span>التحميل السريع</span>
+        <i class="fas fa-arrow-down"></i>
+        <span>الرئيسية</span>
       </button>
       <button class="nav-tab" data-target="viewYouTube" onclick="openYouTubeBrowser()">
         <i class="fab fa-youtube" style="color:#ef4444;"></i>
-        <span>متصفح YouTube الذكي</span>
+        <span>متصفح YouTube</span>
       </button>
       <button class="nav-tab" data-target="viewMusicPlayer" onclick="switchMainView('viewMusicPlayer')">
         <i class="fas fa-music"></i>
@@ -1713,16 +1923,16 @@ body.light-theme select option, body.light-theme .select-dropdown option {
     </nav>
 
     <!-- Left side (Last element in RTL): Folder Selector & Update button -->
-    <div class="header-actions-group" style="display:flex; align-items:center; gap:10px;">
-      <div class="desktop-folder-bar" id="desktopFolderBar" style="display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); padding:6px 14px; border-radius:14px; font-size:0.82rem;">
-        <i class="fas fa-folder-open" style="color:#fbbf24; font-size:1rem;"></i>
-        <span class="folder-path-text" id="desktopSavePathTxt" style="color:var(--primary); font-weight:700; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; direction:ltr; text-align:left;">C:\Downloads</span>
-        <button class="folder-change-btn" id="desktopChangeFolderBtn" onclick="onPickFolderClick()" style="background:var(--primary); color:#000; border:none; padding:4px 10px; border-radius:8px; font-size:0.75rem; font-weight:800; cursor:pointer; font-family:inherit;">تغيير</button>
+    <div class="header-actions-group" style="display:flex; align-items:center; gap:8px;">
+      <div class="desktop-folder-bar" id="desktopFolderBar">
+        <i class="fas fa-folder" style="color:#38bdf8; font-size:0.85rem;"></i>
+        <span class="folder-path-text" id="desktopSavePathTxt">C:\Downloads</span>
+        <button class="folder-change-btn" id="desktopChangeFolderBtn" onclick="onPickFolderClick()">تغيير</button>
       </div>
 
       <!-- Download Counter Badge -->
-      <div id="dlCounterBadge" title="عدد التحميلات في هذه الجلسة" style="display:flex; align-items:center; gap:6px; background:rgba(34,197,94,0.12); border:1px solid rgba(34,197,94,0.3); color:#4ade80; padding:5px 12px; border-radius:12px; font-size:0.8rem; font-weight:800; cursor:default; transition:all 0.3s; animation:dlBadgePop 0.4s ease;">
-        <i class="fas fa-check-circle" style="font-size:0.85rem;"></i>
+      <div id="dlCounterBadge" title="عدد التحميلات في هذه الجلسة" style="display:flex; align-items:center; gap:5px; background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.25); color:#4ade80; padding:4px 10px; border-radius:10px; font-size:0.75rem; font-weight:800; cursor:default; transition:all 0.3s;">
+        <i class="fas fa-check-circle" style="font-size:0.8rem;"></i>
         <span id="dlCounterNum">0</span>
         <span class="counter-label" style="opacity:0.8; font-weight:600;">تحميل</span>
       </div>
@@ -1740,87 +1950,75 @@ body.light-theme select option, body.light-theme .select-dropdown option {
 
     <!-- TAB 1: HOME (الرئيسية) -->
     <div id="homePage" style="display:contents;">
-    <div id="viewHome" style="display:flex; flex-direction:column; gap:24px; max-width:850px; margin:0 auto; width:100%;">
+    <div id="viewHome" style="display:flex; flex-direction:column; gap:18px; max-width:800px; margin:0 auto; width:100%;">
       
-      <!-- Input Card Box -->
-      <section class="url-action-card" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:24px; padding:10px 14px; display:flex; align-items:center; margin-top:10px; backdrop-filter:blur(15px); box-shadow:0 10px 30px rgba(0,0,0,0.3);">
-
-        <!-- 1st child (Right side in RTL): Paste Button -->
-        <button id="pasteBtn" class="url-paste-btn" style="padding:0 20px; height:46px; border-radius:16px; background:rgba(255,255,255,0.06); border:1px solid rgba(56,189,248,0.3); font-size:0.95rem; font-weight:800; color:#f8fafc; cursor:pointer; display:flex; align-items:center; gap:8px; transition:all 0.2s;" title="لصق من الحافظة">
-          لصق 📋
-        </button>
-
-        <!-- 2nd child (Middle): Input -->
-        <div class="url-input-wrap" style="flex:1; padding:0 15px; position:relative; display:flex; align-items:center;">
-          <input type="text" id="urlInp" placeholder="...ألصق رابط الفيديو من يوتيوب، تيكتوك، إنستغرام، فيسبوك" autocomplete="off" spellcheck="false" style="width:100%; background:transparent; border:none; outline:none; font-size:0.95rem; font-weight:600; color:#f8fafc; font-family:inherit;">
+      <!-- Clean Welcome Header -->
+      <div style="display:flex; flex-direction:column; align-items:center; text-align:center; padding-top:16px; gap:8px;">
+        <div class="clean-hero-badge">
+          <span class="clean-hero-dot"></span>
+          <span>الإصدار 1.0.6 — تنزيل فائق السرعة وبدون إعلانات</span>
         </div>
+        <h1 class="clean-hero-title">نزّل الفيديوهات والموسيقى بأعلى جودة</h1>
+        <p class="clean-hero-sub">ضع رابط أي فيديو من YouTube أو TikTok أو Instagram أو Facebook للتحميل الفوري</p>
+      </div>
 
-        <!-- 3rd child: Clear Button -->
-        <button id="clearBtn" class="url-clear-btn" style="width:42px; height:42px; border-radius:14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; justify-content:center; cursor:pointer; margin-left:10px; transition:all 0.2s;">
-          <i class="fas fa-times" style="color:#94a3b8; font-size:1.1rem;"></i>
-        </button>
+      <!-- Master URL Input Bar (Stays visible and focused) -->
+      <section class="master-input-wrap">
+        <div class="master-input-bar">
+          <!-- Paste Button (Right in RTL) -->
+          <button id="pasteBtn" class="master-paste-btn" type="button" title="لصق الرابط من الحافظة">
+            <i class="fas fa-clipboard"></i>
+            <span>لصق</span>
+          </button>
 
-        <!-- 4th child (Left side in RTL): Fetch Button -->
-        <button id="fetchBtn" class="url-fetch-btn" style="min-width:130px; height:46px; border-radius:16px; background:linear-gradient(135deg, #38bdf8 0%, #6366f1 100%); border:none; color:#fff; font-size:1rem; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 6px 20px rgba(56,189,248,0.35); font-family:inherit; transition:all 0.2s;">
-          <span id="fetchTxt">جلب الرابط ✨</span>
-        </button>
+          <!-- Text Input (Center) -->
+          <div class="master-input-field">
+            <input type="text" id="urlInp" placeholder="ألصق رابط الفيديو أو الصوت هنا..." autocomplete="off" spellcheck="false">
+          </div>
+
+          <!-- Clear Button -->
+          <button id="clearBtn" class="master-clear-btn" type="button" title="مسح">
+            <i class="fas fa-times"></i>
+          </button>
+
+          <!-- Fetch / Download Button (Left in RTL) -->
+          <button id="fetchBtn" class="master-fetch-btn" type="button">
+            <i class="fas fa-arrow-down"></i>
+            <span id="fetchTxt">تنزيل</span>
+          </button>
+        </div>
       </section>
 
-      <!-- Clean, Soft, Modern Welcome & Quick Feature Hub -->
-      <section class="soft-hero-container" id="heroSection">
-        <div class="soft-hero-badge">
-          <span class="soft-hero-dot"></span>
-          <span>الإصدار المتكامل v1.0.6 — محرك التنزيل فائق السرعة</span>
+      <!-- Soft Welcome Hero & Format Chips Section -->
+      <section class="clean-hero-container" id="heroSection" style="padding:4px 0 10px 0; gap:14px;">
+        <!-- Quick Action Chips (Single line, modern, replaces bulky 2x2 cards) -->
+        <div class="quick-action-chips">
+          <button type="button" class="action-chip-pill chip-yt" onclick="openYouTubeBrowser()">
+            <i class="fab fa-youtube"></i>
+            <span>متصفح YouTube (بلا إعلانات)</span>
+          </button>
+          <button type="button" class="action-chip-pill" onclick="focusInputWithHint('audio')">
+            <i class="fas fa-music"></i>
+            <span>تحويل إلى MP3</span>
+          </button>
+          <button type="button" class="action-chip-pill" onclick="focusInputWithHint('playlist')">
+            <i class="fas fa-list-ul"></i>
+            <span>قوائم التشغيل</span>
+          </button>
+          <button type="button" class="action-chip-pill chip-turbo" id="cardTurboState" onclick="toggleTurboFromCard()">
+            <i class="fas fa-bolt"></i>
+            <span>التيربو: مفعّل</span>
+          </button>
         </div>
-        
-        <h1 class="soft-hero-title">مركز التحميل الذكي ⚡</h1>
-        <p class="soft-hero-sub">ضع الرابط أعلاه للتحميل الفوري، أو استخدم متصفح يوتيوب الذكي للتحميل بضغطة زر وبدون إعلانات</p>
 
-        <!-- 4 Soft Quick Action Cards -->
-        <div class="quick-feature-grid">
-          <div class="quick-feature-card" onclick="openYouTubeBrowser()">
-            <div class="qf-icon" style="background:rgba(239, 68, 68, 0.15); color:#ef4444;">
-              <i class="fab fa-youtube"></i>
-            </div>
-            <div class="qf-info">
-              <strong class="qf-title">متصفح YouTube الذكي</strong>
-              <span class="qf-desc">تصفح بدون أي إعلانات مع زر التحميل المباشر IDM</span>
-            </div>
-            <span class="qf-action">فتح 🚀</span>
-          </div>
-
-          <div class="quick-feature-card" onclick="focusInputWithHint('playlist')">
-            <div class="qf-icon" style="background:rgba(52, 211, 153, 0.15); color:#34d399;">
-              <i class="fas fa-list-ul"></i>
-            </div>
-            <div class="qf-info">
-              <strong class="qf-title">قوائم التشغيل (Playlists)</strong>
-              <span class="qf-desc">تحميل كامل القائمة أو اختيار فيديوهات محددة بنقرة واحدة</span>
-            </div>
-            <span class="qf-action">تنزيل 📥</span>
-          </div>
-
-          <div class="quick-feature-card" onclick="focusInputWithHint('audio')">
-            <div class="qf-icon" style="background:rgba(56, 189, 248, 0.15); color:#38bdf8;">
-              <i class="fas fa-music"></i>
-            </div>
-            <div class="qf-info">
-              <strong class="qf-title">استخراج الصوت (MP3)</strong>
-              <span class="qf-desc">تحويل الفيديوهات إلى ملفات صوتية بأعلى نقاء 320kbps</span>
-            </div>
-            <span class="qf-action">تحويل 🎵</span>
-          </div>
-
-          <div class="quick-feature-card" onclick="toggleTurboFromCard()">
-            <div class="qf-icon" style="background:rgba(168, 85, 247, 0.15); color:#a855f7;">
-              <i class="fas fa-bolt"></i>
-            </div>
-            <div class="qf-info">
-              <strong class="qf-title">تسريع التيربو (Turbo)</strong>
-              <span class="qf-desc">تنزيل متعدد المسارات لمضاعفة سرعة التحميل إلى أقصى حد</span>
-            </div>
-            <span class="qf-action" id="cardTurboState">مفعّل ⚡</span>
-          </div>
+        <!-- Supported Platforms Strip -->
+        <div class="clean-platforms-strip">
+          <span class="platform-badge-item"><i class="fab fa-youtube" style="color:#ef4444;"></i> YouTube</span>
+          <span class="platform-badge-item"><i class="fab fa-tiktok"></i> TikTok</span>
+          <span class="platform-badge-item"><i class="fab fa-instagram" style="color:#ec4899;"></i> Instagram</span>
+          <span class="platform-badge-item"><i class="fab fa-facebook" style="color:#3b82f6;"></i> Facebook</span>
+          <span class="platform-badge-item"><i class="fab fa-x-twitter"></i> X</span>
+          <span class="platform-badge-item"><i class="fab fa-soundcloud" style="color:#f97316;"></i> SoundCloud</span>
         </div>
       </section>
 
@@ -1936,7 +2134,11 @@ body.light-theme select option, body.light-theme .select-dropdown option {
           <span class="link-all" id="viewAllBtn">عرض الكل</span>
         </div>
         <div class="recent-cards-list" id="recentList">
-          <div class="empty-state" id="emptyRecent" style="text-align:center; color:var(--muted); padding:20px; font-weight:700; font-size:0.85rem;">لا توجد تنزيلات سابقة حتى الآن 🚀</div>
+          <div class="clean-empty-box" id="emptyRecent">
+            <div class="clean-empty-icon"><i class="fas fa-cloud-arrow-down"></i></div>
+            <strong class="clean-empty-title">جاهز للتنزيل الفوري</strong>
+            <p class="clean-empty-desc">ألصق رابط أي فيديو أو صوت بالأعلى، أو استخدم متصفح YouTube الذكي للتنزيل بضغطة زر واحدة وبدون إعلانات</p>
+          </div>
         </div>
       </section>
       
