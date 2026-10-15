@@ -135,6 +135,120 @@ def _version_key(value):
     numbers = [int(part) for part in re.findall(r'\d+', str(value or '').lstrip('vV'))[:4]]
     return tuple((numbers + [0, 0, 0, 0])[:4])
 
+
+class YouTubeBrowserBridge:
+    def __init__(self, main_api):
+        self.main_api = main_api
+
+    def download_url(self, url, quality="best"):
+        return self.main_api.quick_download_from_browser(url, quality)
+
+    def send_to_main(self, url):
+        return self.main_api.load_url_in_main(url)
+
+
+YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
+(function() {
+    if (window.__sdn_injected) return;
+    window.__sdn_injected = true;
+
+    // 1. Inject Ad-Blocker CSS
+    var style = document.createElement('style');
+    style.id = 'sdn-adblock';
+    style.innerHTML = [
+        '.video-ads, .ytp-ad-module, .ytp-ad-overlay-container,',
+        'ytd-ad-slot-renderer, ytd-in-feed-ad-layout-renderer,',
+        '#masthead-ad, ytd-banner-promo-renderer, ytd-promoted-sparkles-web-renderer,',
+        '.ytd-display-ad-renderer, ytd-statement-banner-renderer,',
+        '#player-ads, .ytp-ad-player-overlay, ytd-merch-shelf-renderer,',
+        'ytd-action-companion-ad-renderer, .ytd-in-feed-ad-layout-renderer {',
+        '   display: none !important; visibility: hidden !important; height: 0 !important;',
+        '}'
+    ].join(' ');
+    (document.head || document.documentElement).appendChild(style);
+
+    // 2. Continuous Ad-Skipper
+    setInterval(function() {
+        var adShowing = document.querySelector('.ad-showing, .ad-interrupting');
+        var video = document.querySelector('video');
+        if (adShowing && video) {
+            video.muted = true;
+            video.currentTime = video.duration || 999;
+            video.playbackRate = 16.0;
+        }
+        var skipBtns = document.querySelectorAll('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytp-ad-overlay-close-button');
+        skipBtns.forEach(function(b) { b.click(); });
+    }, 400);
+
+    // 3. Inject Floating IDM-Style Download Widget
+    var idmRoot = document.createElement('div');
+    idmRoot.id = 'sdn-idm-container';
+    idmRoot.style.cssText = 'position:fixed; top:65px; left:20px; z-index:2147483647; direction:rtl; font-family:Segoe UI, Tahoma, sans-serif;';
+    idmRoot.innerHTML = [
+        '<div id="sdnIdmBtn" style="display:flex; align-items:center; gap:8px; background:linear-gradient(135deg, #0284c7, #2563eb); color:#fff; padding:9px 16px; border-radius:24px; font-size:13px; font-weight:bold; cursor:pointer; box-shadow:0 6px 20px rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.3);">',
+        '  <span style="font-size:16px;">⚡</span>',
+        '  <span id="sdnIdmLabel">تحميل بواسطة SDN</span>',
+        '  <span style="font-size:10px; opacity:0.8;">▼</span>',
+        '</div>',
+        '<div id="sdnIdmMenu" style="display:none; position:absolute; top:calc(100% + 6px); left:0; width:260px; background:#0f172a; border:1px solid #38bdf8; border-radius:14px; padding:6px; box-shadow:0 15px 35px rgba(0,0,0,0.8); flex-direction:column; gap:4px;">',
+        '  <div class="sdn-opt" data-q="best" style="padding:8px 10px; border-radius:8px; color:#f8fafc; font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px;">🎬 فيديو بأعلى دقة متوفرة</div>',
+        '  <div class="sdn-opt" data-q="1080p" style="padding:8px 10px; border-radius:8px; color:#f8fafc; font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px;">📺 دقة 1080p Full HD</div>',
+        '  <div class="sdn-opt" data-q="720p" style="padding:8px 10px; border-radius:8px; color:#f8fafc; font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px;">📽️ دقة 720p HD</div>',
+        '  <div class="sdn-opt" data-q="mp3" style="padding:8px 10px; border-radius:8px; color:#38bdf8; font-size:12px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:8px;">🎵 استخراج الصوت MP3</div>',
+        '  <div class="sdn-opt" data-q="playlist" id="sdnOptPlaylist" style="display:none; padding:8px 10px; border-radius:8px; color:#34d399; font-size:12px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:8px;">📑 تحميل قائمة التشغيل كاملة</div>',
+        '  <div class="sdn-opt" data-q="send_main" style="padding:8px 10px; border-radius:8px; color:#94a3b8; font-size:11.5px; cursor:pointer; border-top:1px solid rgba(255,255,255,0.1); display:flex; align-items:center; gap:8px; margin-top:2px;">🚀 فتح في واجهة SDN الرئيسية</div>',
+        '</div>'
+    ].join('');
+    (document.body || document.documentElement).appendChild(idmRoot);
+
+    var btn = document.getElementById('sdnIdmBtn');
+    var menu = document.getElementById('sdnIdmMenu');
+    var plOpt = document.getElementById('sdnOptPlaylist');
+
+    btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        menu.style.display = menu.style.display === 'flex' ? 'none' : 'flex';
+    });
+    document.addEventListener('click', function() {
+        menu.style.display = 'none';
+    });
+
+    var opts = menu.querySelectorAll('.sdn-opt');
+    opts.forEach(function(opt) {
+        opt.addEventListener('mouseenter', function() { opt.style.background = 'rgba(56, 189, 248, 0.2)'; });
+        opt.addEventListener('mouseleave', function() { opt.style.background = 'transparent'; });
+        opt.addEventListener('click', function(e) {
+            e.stopPropagation();
+            menu.style.display = 'none';
+            var q = opt.getAttribute('data-q');
+            var curr = window.location.href;
+            if (q === 'send_main') {
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.send_to_main) {
+                    window.pywebview.api.send_to_main(curr);
+                }
+            } else {
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.download_url) {
+                    window.pywebview.api.download_url(curr, q);
+                }
+            }
+        });
+    });
+
+    setInterval(function() {
+        var u = window.location.href;
+        var hasVideo = u.indexOf('/watch') !== -1 || u.indexOf('/shorts/') !== -1;
+        var hasList = u.indexOf('list=') !== -1;
+        if (hasVideo || hasList) {
+            idmRoot.style.display = 'block';
+            if (plOpt) plOpt.style.display = hasList ? 'flex' : 'none';
+        } else {
+            idmRoot.style.display = 'none';
+        }
+    }, 600);
+})();
+"""
+
+
 # ============================================================
 # ULTRA LOGGING & DIAGNOSTICS
 # ============================================================
@@ -1191,6 +1305,59 @@ class DownloaderBridgeAPI:
             _log.error(f"Failed to start YouTube login flow: {e}")
             if self._window:
                 self._window.evaluate_js(f"if (window.onYouTubeLoginComplete) window.onYouTubeLoginComplete(false, '{str(e)}');")
+
+    # ================================================================
+    # In-App YouTube Smart Browser with AdBlocker & IDM Download Sniffer
+    # ================================================================
+    def open_youtube_browser(self, start_url=None):
+        """Open the integrated Ad-Free YouTube Browser with IDM-style Floating Download Widget."""
+        threading.Thread(target=self._run_youtube_browser, args=(start_url,), daemon=True).start()
+        return {'success': True}
+
+    def _run_youtube_browser(self, start_url=None):
+        try:
+            import webview
+            target_url = start_url or "https://www.youtube.com"
+            bridge = YouTubeBrowserBridge(self)
+
+            browser_win = webview.create_window(
+                title='متصفح YouTube الذكي - SDN Downloader (بدون إعلانات + تحميل IDM)',
+                url=target_url,
+                width=1180,
+                height=780,
+                resizable=True,
+                background_color='#0f0f0f',
+                js_api=bridge
+            )
+
+            def inject_loop():
+                for _ in range(300):
+                    time.sleep(1.2)
+                    try:
+                        browser_win.evaluate_js(YOUTUBE_IDM_ADBLOCK_SCRIPT)
+                    except Exception:
+                        break
+
+            threading.Thread(target=inject_loop, daemon=True).start()
+
+        except Exception as e:
+            _log.error(f"Failed to open YouTube browser: {e}")
+
+    def quick_download_from_browser(self, url, quality="best"):
+        """Called from the in-app YouTube Browser IDM widget to start download immediately."""
+        _log.info(f"IDM quick download received: {url} (quality: {quality})")
+        if self._window:
+            safe_url = json.dumps(str(url))
+            safe_q = json.dumps(str(quality))
+            self._window.evaluate_js(f"if (window.onBrowserQuickDownload) window.onBrowserQuickDownload({safe_url}, {safe_q});")
+        return {'success': True}
+
+    def load_url_in_main(self, url):
+        """Send URL to main window input bar and fetch info."""
+        if self._window:
+            safe_url = json.dumps(str(url))
+            self._window.evaluate_js(f"if (window.onBrowserSendUrl) window.onBrowserSendUrl({safe_url});")
+        return {'success': True}
 
     def _async_download(self, url, option, browser_cookies):
         start_t = time.time()

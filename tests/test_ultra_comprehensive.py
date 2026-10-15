@@ -1222,6 +1222,24 @@ class Test21_IntegrationChecks(unittest.TestCase):
         self.assertTrue(os.path.isfile(os.path.join(root, "ui", "index.html")))
         self.assertTrue(os.path.isfile(os.path.join(root, "ui", "installer.html")))
 
+    def test_youtube_browser_methods(self):
+        import main
+        api = main.DownloaderBridgeAPI()
+        # Test quick_download_from_browser
+        res1 = api.quick_download_from_browser("https://www.youtube.com/watch?v=dQw4w9WgXcQ", "best")
+        self.assertTrue(res1.get("success"))
+
+        # Test load_url_in_main
+        res2 = api.load_url_in_main("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+        self.assertTrue(res2.get("success"))
+
+        # Test YouTubeBrowserBridge
+        bridge = main.YouTubeBrowserBridge(api)
+        res3 = bridge.download_url("https://www.youtube.com/watch?v=dQw4w9WgXcQ", "mp3")
+        self.assertTrue(res3.get("success"))
+        res4 = bridge.send_to_main("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+        self.assertTrue(res4.get("success"))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

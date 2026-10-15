@@ -313,6 +313,11 @@ public class MainActivity extends BridgeActivity {
         }
 
         @JavascriptInterface
+        public void openYouTubeBrowser(String startUrl) {
+            showYouTubeBrowserDialog(startUrl);
+        }
+
+        @JavascriptInterface
         public void openDownloads() {
             runOnUiThread(() -> {
                 try {
@@ -678,6 +683,118 @@ public class MainActivity extends BridgeActivity {
                 dialog.show();
             } catch (Exception e) {
                 Log.e(TAG, "Failed to show YouTube login dialog", e);
+            }
+        });
+    }
+
+    private void showYouTubeBrowserDialog(String startUrl) {
+        runOnUiThread(() -> {
+            try {
+                final Dialog dialog = new Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+                LinearLayout layout = new LinearLayout(this);
+                layout.setOrientation(LinearLayout.VERTICAL);
+
+                // Top Bar
+                LinearLayout topBar = new LinearLayout(this);
+                topBar.setOrientation(LinearLayout.HORIZONTAL);
+                topBar.setPadding(24, 24, 24, 24);
+                topBar.setBackgroundColor(Color.parseColor("#0f172a"));
+
+                TextView title = new TextView(this);
+                title.setText("🎬 متصفح YouTube الذكي (بدون إعلانات)");
+                title.setTextColor(Color.WHITE);
+                title.setTextSize(15);
+                title.setTypeface(null, Typeface.BOLD);
+                LinearLayout.LayoutParams lpTitle = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
+                title.setLayoutParams(lpTitle);
+
+                Button closeBtn = new Button(this);
+                closeBtn.setText("إغلاق ✕");
+                closeBtn.setTextColor(Color.parseColor("#38bdf8"));
+                closeBtn.setBackgroundColor(Color.TRANSPARENT);
+                closeBtn.setOnClickListener(v -> dialog.dismiss());
+
+                topBar.addView(title);
+                topBar.addView(closeBtn);
+                layout.addView(topBar);
+
+                WebView webView = new WebView(this);
+                webView.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT
+                ));
+                WebSettings ws = webView.getSettings();
+                ws.setJavaScriptEnabled(true);
+                ws.setDomStorageEnabled(true);
+                ws.setDatabaseEnabled(true);
+                ws.setUserAgentString("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36");
+
+                webView.addJavascriptInterface(new Object() {
+                    @JavascriptInterface
+                    public void download_url(String url, String quality) {
+                        runOnUiThread(() -> {
+                            dialog.dismiss();
+                            if (bridge != null && bridge.getWebView() != null) {
+                                String cleanUrl = url.replace("'", "\\'");
+                                String cleanQ = quality.replace("'", "\\'");
+                                String js = "if (window.onBrowserQuickDownload) window.onBrowserQuickDownload('" + cleanUrl + "', '" + cleanQ + "');";
+                                bridge.getWebView().evaluateJavascript(js, null);
+                            }
+                        });
+                    }
+
+                    @JavascriptInterface
+                    public void send_to_main(String url) {
+                        runOnUiThread(() -> {
+                            dialog.dismiss();
+                            if (bridge != null && bridge.getWebView() != null) {
+                                String cleanUrl = url.replace("'", "\\'");
+                                String js = "if (window.onBrowserSendUrl) window.onBrowserSendUrl('" + cleanUrl + "');";
+                                bridge.getWebView().evaluateJavascript(js, null);
+                            }
+                        });
+                    }
+                }, "pywebview_api");
+
+                final String adBlockScript =
+                    "(function() {" +
+                    "  var st = document.createElement('style');" +
+                    "  st.innerHTML = '.video-ads, .ytp-ad-module, .ytp-ad-overlay-container, ytd-ad-slot-renderer, ytd-in-feed-ad-layout-renderer, #player-ads, .ytp-ad-player-overlay { display: none !important; }';" +
+                    "  document.documentElement.appendChild(st);" +
+                    "  setInterval(function() {" +
+                    "    var v = document.querySelector('video');" +
+                    "    if (v && document.querySelector('.ad-showing, .ad-interrupting')) { v.muted = true; v.currentTime = v.duration || 999; }" +
+                    "    var sk = document.querySelectorAll('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button');" +
+                    "    sk.forEach(function(b) { b.click(); });" +
+                    "  }, 400);" +
+                    "  var idm = document.createElement('div');" +
+                    "  idm.style.cssText = 'position:fixed; top:70px; left:16px; z-index:999999; direction:rtl;';" +
+                    "  idm.innerHTML = '<button id=\"sdnIdmMobileBtn\" style=\"background:linear-gradient(135deg,#0284c7,#2563eb);color:#fff;border:none;padding:8px 16px;border-radius:20px;font-weight:bold;font-size:12px;box-shadow:0 4px 15px rgba(0,0,0,0.5);\">⚡ تحميل بواسطة SDN</button>';" +
+                    "  document.body.appendChild(idm);" +
+                    "  document.getElementById('sdnIdmMobileBtn').onclick = function() {" +
+                    "    if (window.pywebview_api) window.pywebview_api.download_url(window.location.href, 'best');" +
+                    "  };" +
+                    "  setInterval(function() {" +
+                    "    var u = window.location.href;" +
+                    "    idm.style.display = (u.indexOf('/watch') !== -1 || u.indexOf('/shorts/') !== -1 || u.indexOf('list=') !== -1) ? 'block' : 'none';" +
+                    "  }, 600);" +
+                    "})();";
+
+                webView.setWebViewClient(new WebViewClient() {
+                    @Override
+                    public void onPageFinished(WebView view, String url) {
+                        super.onPageFinished(view, url);
+                        view.evaluateJavascript(adBlockScript, null);
+                    }
+                });
+
+                String loadUrl = (startUrl != null && !startUrl.trim().isEmpty()) ? startUrl : "https://www.youtube.com/";
+                webView.loadUrl(loadUrl);
+                layout.addView(webView);
+
+                dialog.setContentView(layout);
+                dialog.show();
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to show YouTube browser dialog", e);
             }
         });
     }
