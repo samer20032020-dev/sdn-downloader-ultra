@@ -62,14 +62,105 @@ def get_real_start_menu():
         pass
     return os.path.join(os.environ.get('APPDATA', ''), 'Microsoft', 'Windows', 'Start Menu', 'Programs')
 
+def check_dir_is_installation(folder):
+    """
+    Check if a folder contains an existing SDN Downloader Ultra installation.
+    Returns: (is_installed: bool, version: str | None)
+    """
+    if not folder or not os.path.isdir(folder):
+        return False, None
+    has_exe = os.path.exists(os.path.join(folder, 'SDN_Downloader.exe')) or os.path.exists(os.path.join(folder, 'SDN_Downloader_Standalone.exe'))
+    has_vjson = os.path.exists(os.path.join(folder, 'version.json'))
+    has_uninst = os.path.exists(os.path.join(folder, 'Uninstall.exe'))
+    if has_exe or has_vjson or has_uninst:
+        ver = None
+        if has_vjson:
+            try:
+                with open(os.path.join(folder, 'version.json'), 'r', encoding='utf-8') as f:
+                    ver = json.load(f).get('version')
+            except Exception:
+                pass
+        return True, ver
+    return False, None
+
+def find_existing_installation():
+    """
+    Search Windows Registry and known standard locations for an existing installation of SDN Downloader Ultra.
+    Returns: (install_dir: str | None, version: str | None)
+    """
+    # 1. Search Registry Uninstall keys (HKCU first, then HKLM)
+    subkeys = [
+        r"Software\Microsoft\Windows\CurrentVersion\Uninstall\SDN_Downloader_Ultra",
+        r"Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\SDN_Downloader_Ultra"
+    ]
+    hives = [
+        winreg.HKEY_CURRENT_USER,
+        winreg.HKEY_LOCAL_MACHINE
+    ]
+    for hive in hives:
+        for subkey in subkeys:
+            try:
+                with winreg.OpenKey(hive, subkey) as key:
+                    loc = None
+                    ver = None
+                    try:
+                        loc, _ = winreg.QueryValueEx(key, "InstallLocation")
+                    except OSError:
+                        pass
+                    try:
+                        ver, _ = winreg.QueryValueEx(key, "DisplayVersion")
+                    except OSError:
+                        pass
+
+                    if loc and os.path.isdir(loc):
+                        is_inst, f_ver = check_dir_is_installation(loc)
+                        if is_inst:
+                            return loc, (f_ver or ver)
+                        return loc, ver
+            except OSError:
+                pass
+
+    # 2. Search Default Standard Directories
+    local_app_data = os.environ.get('LOCALAPPDATA', '')
+    prog_files = os.environ.get('ProgramFiles', '')
+    prog_files_x86 = os.environ.get('ProgramFiles(x86)', '')
+    default_checks = [
+        os.path.join(local_app_data, 'Programs', 'SDN Downloader Ultra') if local_app_data else None,
+        os.path.join(prog_files, 'SDN Downloader Ultra') if prog_files else None,
+        os.path.join(prog_files_x86, 'SDN Downloader Ultra') if prog_files_x86 else None,
+    ]
+    for p in default_checks:
+        if p and os.path.isdir(p):
+            is_inst, ver = check_dir_is_installation(p)
+            if is_inst:
+                return p, ver
+
+    return None, None
+
 class InstallerAPI:
     def __init__(self):
         self._window = None
-        self.install_dir = get_default_install_dir()
+        existing_dir, existing_ver = find_existing_installation()
+        if existing_dir:
+            self.install_dir = existing_dir
+            self.is_update = True
+            self.existing_version = existing_ver
+        else:
+            self.install_dir = get_default_install_dir()
+            self.is_update = False
+            self.existing_version = None
         self.exe_path = None
 
     def set_window(self, window):
         self._window = window
+
+    def get_install_info(self):
+        return {
+            "install_dir": self.install_dir,
+            "is_update": self.is_update,
+            "existing_version": self.existing_version or "",
+            "app_version": APP_VERSION
+        }
 
     def get_default_dir(self):
         return self.install_dir
@@ -78,9 +169,23 @@ class InstallerAPI:
         if self._window:
             res = self._window.create_file_dialog(webview.FOLDER_DIALOG, directory=self.install_dir)
             if res and len(res) > 0:
-                self.install_dir = res[0]
-                return self.install_dir
-        return self.install_dir
+                selected = res[0]
+                self.install_dir = selected
+                is_inst, ver = check_dir_is_installation(selected)
+                self.is_update = is_inst
+                self.existing_version = ver
+                return {
+                    "path": self.install_dir,
+                    "is_update": self.is_update,
+                    "existing_version": self.existing_version or "",
+                    "app_version": APP_VERSION
+                }
+        return {
+            "path": self.install_dir,
+            "is_update": self.is_update,
+            "existing_version": self.existing_version or "",
+            "app_version": APP_VERSION
+        }
 
     def close_window(self):
         if self._window:
@@ -89,10 +194,20 @@ class InstallerAPI:
     def start_install(self, target_dir, create_desktop):
         if target_dir:
             target_dir = target_dir.strip()
-            norm_target = os.path.normpath(target_dir).lower()
-            if not norm_target.endswith('sdn downloader ultra'):
-                target_dir = os.path.join(target_dir, 'SDN Downloader Ultra')
-            self.install_dir = target_dir
+            is_inst, ver = check_dir_is_installation(target_dir)
+            if is_inst:
+                self.install_dir = target_dir
+                self.is_update = True
+                self.existing_version = ver
+            else:
+                norm_target = os.path.normpath(target_dir).lower()
+                if not norm_target.endswith('sdn downloader ultra'):
+                    target_dir = os.path.join(target_dir, 'SDN Downloader Ultra')
+                self.install_dir = target_dir
+                is_inst, ver = check_dir_is_installation(self.install_dir)
+                if is_inst:
+                    self.is_update = True
+                    self.existing_version = ver
 
         threading.Thread(
             target=self._run_installation,
@@ -102,19 +217,25 @@ class InstallerAPI:
 
     def _update_progress(self, percent, text, is_done=False):
         if self._window:
-            # json.dumps safely escapes quotes, backslashes and newlines in the
-            # message so error text can never break out into arbitrary JS.
             safe_text = json.dumps(str(text))
             js = f"updateInstallProgress({int(percent)}, {safe_text}, {str(is_done).lower()});"
             self._window.evaluate_js(js)
 
     def _run_installation(self, create_desktop):
         try:
-            self._update_progress(10, '\u062c\u0627\u0631\u064a \u0625\u0646\u0634\u0627\u0621 \u0645\u062c\u0644\u062f\u0627\u062a \u0627\u0644\u0646\u0638\u0627\u0645...')
-            os.makedirs(self.install_dir, exist_ok=True)
-            time.sleep(0.3)
+            init_msg = 'جاري إيقاف التطبيق والعمليات النشطة...' if self.is_update else 'جاري إنشاء مجلدات النظام...'
+            self._update_progress(10, init_msg)
 
-            self._update_progress(30, 'جاري نسخ ملفات البرنامج ومكونات النظام...')
+            CREATE_NO_WINDOW = 0x08000000
+            subprocess.run(['taskkill', '/f', '/im', 'SDN_Downloader.exe'], capture_output=True, creationflags=CREATE_NO_WINDOW)
+            subprocess.run(['taskkill', '/f', '/im', 'SDN_Downloader_Standalone.exe'], capture_output=True, creationflags=CREATE_NO_WINDOW)
+            time.sleep(0.5)
+
+            os.makedirs(self.install_dir, exist_ok=True)
+            time.sleep(0.2)
+
+            copy_msg = 'جاري تحديث ملفات البرنامج ومكونات النظام...' if self.is_update else 'جاري نسخ ملفات البرنامج ومكونات النظام...'
+            self._update_progress(30, copy_msg)
             bundle_dir = get_bundle_dir()
 
             # 1. Main Application Executable (SDN_Downloader.exe)
@@ -149,8 +270,12 @@ class InstallerAPI:
                 if not os.path.exists(src_cfg):
                     src_cfg = os.path.join(os.path.dirname(bundle_dir), 'assets', 'config', cfg_name)
                 if os.path.exists(src_cfg):
+                    dest_cfg = os.path.join(self.install_dir, cfg_name)
+                    # If this is an update and settings.json already exists, PRESERVE user configuration!
+                    if self.is_update and cfg_name == 'settings.json' and os.path.exists(dest_cfg):
+                        continue
                     try:
-                        shutil.copy2(src_cfg, os.path.join(self.install_dir, cfg_name))
+                        shutil.copy2(src_cfg, dest_cfg)
                     except Exception:
                         pass
 
@@ -217,7 +342,9 @@ class InstallerAPI:
                 "publisher": "SDN Software",
                 "engine": "yt-dlp + FFmpeg",
                 "platform": "Windows x64",
-                "installed_at": time.strftime("%Y-%m-%d %H:%M:%S")
+                "installed_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "is_update": self.is_update,
+                "previous_version": self.existing_version if self.is_update else None
             }
             try:
                 with open(os.path.join(self.install_dir, "version.json"), "w", encoding="utf-8") as vf:
@@ -262,7 +389,8 @@ class InstallerAPI:
             icon_path_for_lnk = dest_icon if os.path.exists(dest_icon) else dest_exe
 
             time.sleep(0.4)
-            self._update_progress(65, 'جاري إنشاء الاختصارات...')
+            short_msg = 'جاري تحديث الاختصارات...' if self.is_update else 'جاري إنشاء الاختصارات...'
+            self._update_progress(65, short_msg)
             app_name = "SDN Downloader Ultra"
 
             # Create Desktop Shortcut
@@ -286,11 +414,13 @@ class InstallerAPI:
                     self._create_shortcut("wscript.exe", uninst_shortcut, icon_path_for_lnk, args=f'//nologo "{uninstaller_cmd}"')
 
             time.sleep(0.3)
-            self._update_progress(85, 'جاري تسجيل البرنامج في Windows...')
+            reg_msg = 'جاري تحديث سجل النظام (Windows Registry)...' if self.is_update else 'جاري تسجيل البرنامج في Windows...'
+            self._update_progress(85, reg_msg)
             self._register_uninstall(dest_exe, dest_uninst if has_uninst_exe else None)
 
             time.sleep(0.3)
-            self._update_progress(100, '🎉 اكتمل التثبيت بنجاح!', is_done=True)
+            done_msg = f'🎉 اكتمل تحديث البرنامج بنجاح إلى الإصدار {APP_VERSION}!' if self.is_update else '🎉 اكتمل التثبيت بنجاح!'
+            self._update_progress(100, done_msg, is_done=True)
 
         except Exception as e:
             self._update_progress(0, f'❌ حدث خطأ أثناء التثبيت: {str(e)}', is_done=False)
@@ -408,16 +538,22 @@ def main():
             CREATE_NO_WINDOW = 0x08000000
             subprocess.run(['taskkill', '/f', '/im', 'SDN_Downloader.exe'], capture_output=True, creationflags=CREATE_NO_WINDOW)
             subprocess.run(['taskkill', '/f', '/im', 'SDN_Downloader_Standalone.exe'], capture_output=True, creationflags=CREATE_NO_WINDOW)
-            time.sleep(1.2)
+            time.sleep(1.0)
             
-            target_dir = get_default_install_dir()
+            target_dir = None
             for arg in sys.argv:
                 if arg.upper().startswith('/DIR='):
                     target_dir = arg.split('=', 1)[1].strip('\"\'')
                 elif arg.lower().startswith('--dir='):
                     target_dir = arg.split('=', 1)[1].strip('\"\'')
             
-            api.install_dir = target_dir
+            if target_dir:
+                api.install_dir = target_dir
+                is_inst, ver = check_dir_is_installation(target_dir)
+                if is_inst:
+                    api.is_update = True
+                    api.existing_version = ver
+            
             api._run_installation(create_desktop=True)
             time.sleep(0.5)
             api.launch_app()
@@ -429,11 +565,12 @@ def main():
     bundle_dir = get_bundle_dir()
     html_file = os.path.join(bundle_dir, 'ui', 'installer.html')
 
+    window_title = f"تحديث SDN Downloader Ultra ({APP_VERSION})" if api.is_update else f"تثبيت SDN Downloader Ultra ({APP_VERSION})"
     window = webview.create_window(
-        title='\u062a\u062b\u0628\u064a\u062a SDN Downloader Ultra',
+        title=window_title,
         url=html_file,
         width=560,
-        height=450,
+        height=480,
         resizable=False,
         frameless=True,
         easy_drag=True,

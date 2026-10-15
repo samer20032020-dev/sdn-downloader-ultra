@@ -94,7 +94,7 @@ html, body {
 /* Main Installer Body */
 .container {
   position: relative; z-index: 5;
-  padding: 22px 28px;
+  padding: 16px 24px;
   display: flex; flex-direction: column; align-items: center; text-align: center;
   height: calc(100% - 47px); justify-content: space-between;
 }
@@ -102,7 +102,7 @@ html, body {
 /* Cosmic Animated Logo Ring */
 .logo-cnt {
   position: relative; display: flex; align-items: center; justify-content: center;
-  width: 80px; height: 80px; margin: 0 auto 6px auto;
+  width: 72px; height: 72px; margin: 0 auto 4px auto;
 }
 
 .ring-outer {
@@ -119,21 +119,83 @@ html, body {
 }
 
 .hero-logo {
-  width: 72px; height: 72px; border-radius: 20px;
+  width: 64px; height: 64px; border-radius: 18px;
   background: var(--grd);
   display: flex; align-items: center; justify-content: center;
-  font-size: 38px; color: #fff;
+  font-size: 34px; color: #fff;
   box-shadow: 0 0 35px rgba(0, 242, 254, 0.45);
 }
 
 .hero-title {
   font-family: 'Outfit', 'Tajawal', sans-serif;
-  font-size: 20px; font-weight: 900; margin-top: 8px; color: #fff;
+  font-size: 19px; font-weight: 900; margin-top: 6px; color: #fff;
   letter-spacing: 0.5px;
   text-shadow: 0 0 15px rgba(0, 242, 254, 0.3);
 }
 .hero-sub {
-  font-size: 12px; color: var(--sub); font-weight: 700; margin-top: 3px;
+  font-size: 11.5px; color: var(--sub); font-weight: 700; margin-top: 2px;
+}
+
+/* Smart Update Notification Banner */
+.update-banner {
+  width: 100%;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+  border-radius: 12px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: right;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: fadeInBanner 0.4s ease;
+}
+
+@keyframes fadeInBanner {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.update-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #34d399;
+}
+
+.pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: pulseDot 1.5s infinite;
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.badge-ver {
+  background: rgba(16, 185, 129, 0.25);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #a7f3d0;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 10.5px;
+}
+
+.update-banner-desc {
+  font-size: 11px;
+  color: #e2e8f0;
+  line-height: 1.4;
+  font-weight: 600;
 }
 
 /* Glassmorphic Options Card */
@@ -144,8 +206,8 @@ html, body {
   -webkit-backdrop-filter: blur(25px) saturate(200%);
   border: 1.5px solid rgba(0, 242, 254, 0.25);
   border-top: 1.5px solid rgba(255, 255, 255, 0.35);
-  border-radius: 16px; padding: 12px 14px;
-  display: flex; flex-direction: column; gap: 10px; text-align: right;
+  border-radius: 16px; padding: 11px 14px;
+  display: flex; flex-direction: column; gap: 8px; text-align: right;
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 .path-row {
@@ -182,8 +244,8 @@ html, body {
 /* Buttons & Progress */
 .btn-install {
   width: 100%; background: var(--grd); color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 14px; padding: 12px;
-  font-size: 15px; font-weight: 900; cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 14px; padding: 11px;
+  font-size: 14.5px; font-weight: 900; cursor: pointer;
   font-family: 'Tajawal', sans-serif;
   box-shadow: 0 8px 30px rgba(0, 242, 254, 0.4), inset 0 1px 0 rgba(255,255,255,0.4);
   transition: all .25s ease; display: flex; align-items: center; justify-content: center; gap: 8px;
@@ -191,6 +253,13 @@ html, body {
 .btn-install:hover {
   transform: translateY(-2px) scale(1.02);
   box-shadow: 0 12px 38px rgba(0, 242, 254, 0.6), inset 0 1px 0 rgba(255,255,255,0.6);
+}
+.btn-install.update-mode {
+  background: linear-gradient(135deg, #10b981 0%, #00f2fe 50%, #8b5cf6 100%);
+  box-shadow: 0 8px 30px rgba(16, 185, 129, 0.45), inset 0 1px 0 rgba(255,255,255,0.4);
+}
+.btn-install.update-mode:hover {
+  box-shadow: 0 12px 38px rgba(16, 185, 129, 0.65), inset 0 1px 0 rgba(255,255,255,0.6);
 }
 
 /* Progress Container */
@@ -248,7 +317,7 @@ html, body {
 <div class="titlebar">
   <div class="brand">
     <div class="brand-icon">⚡</div>
-    <span>SDN ULTRA INSTALLER</span>
+    <span id="brandText">SDN ULTRA INSTALLER</span>
   </div>
   <div class="window-controls">
     <button class="win-btn" id="closeBtn" title="إغلاق">✕</button>
@@ -261,8 +330,19 @@ html, body {
       <div class="ring-outer"></div>
       <div class="hero-logo">⚡</div>
     </div>
-    <div class="hero-title">SDN Downloader ⚡ Ultra</div>
-    <div class="hero-sub">المثبت الذكي فائق السرعة لقوائم التشغيل والفيديوهات</div>
+    <div class="hero-title" id="heroTitle">SDN Downloader ⚡ Ultra</div>
+    <div class="hero-sub" id="heroSub">المثبت الذكي فائق السرعة لقوائم التشغيل والفيديوهات</div>
+  </div>
+
+  <div class="update-banner" id="updateBanner" style="display: none;">
+    <div class="update-badge-pill">
+      <span class="pulse-dot"></span>
+      <span>وضع التحديث الذكي</span>
+      <span class="badge-ver" id="prevVerBadge"></span>
+    </div>
+    <div class="update-banner-desc">
+      تم العثور على البرنامج مثبت مسبقاً — سيتم التحديث في نفس المسار مع الحفاظ الكامل على إعداداتك وبياناتك.
+    </div>
   </div>
 
   <div class="options-box" id="optsBox">
@@ -272,7 +352,7 @@ html, body {
     </div>
     <label class="chk-lbl">
       <input type="checkbox" id="chkDesktop" checked>
-      <span>إنشاء اختصار على سطح المكتب (Desktop Shortcut)</span>
+      <span id="chkDesktopText">إنشاء اختصار على سطح المكتب (Desktop Shortcut)</span>
     </label>
   </div>
 
@@ -287,16 +367,81 @@ html, body {
   </div>
 
   <button class="btn-install" id="installBtn">
-    <span>⚡ تثبيت بنقرة واحدة الآن</span>
+    <span id="installBtnText">⚡ تثبيت بنقرة واحدة الآن</span>
   </button>
 
   <button class="btn-launch" id="launchBtn">
-    <span>🚀 تشغيل SDN Downloader الآن</span>
+    <span id="launchBtnText">🚀 تشغيل SDN Downloader الآن</span>
   </button>
 </div>
 
 <script>
 'use strict';
+
+let isUpdateMode = false;
+
+function applyInstallInfo(info) {
+  if (!info) return;
+  const path = (typeof info === 'string') ? info : (info.install_dir || info.path);
+  if (path) {
+    document.getElementById('installPath').value = path;
+  }
+
+  isUpdateMode = (typeof info === 'object') && Boolean(info.is_update);
+  const existingVer = (typeof info === 'object' && info.existing_version) ? info.existing_version : '';
+  const appVer = (typeof info === 'object' && info.app_version) ? info.app_version : '';
+
+  const brandText = document.getElementById('brandText');
+  const heroSub = document.getElementById('heroSub');
+  const updateBanner = document.getElementById('updateBanner');
+  const prevVerBadge = document.getElementById('prevVerBadge');
+  const installBtn = document.getElementById('installBtn');
+  const installBtnText = document.getElementById('installBtnText');
+  const chkDesktopText = document.getElementById('chkDesktopText');
+  const progSt = document.getElementById('progSt');
+  const launchBtnText = document.getElementById('launchBtnText');
+
+  if (isUpdateMode) {
+    if (brandText) brandText.textContent = 'SDN ULTRA UPDATER';
+    if (heroSub) heroSub.textContent = 'وضع التحديث الذكي — الحفاظ الكامل على إعداداتك وبياناتك';
+    if (updateBanner) updateBanner.style.display = 'flex';
+    if (prevVerBadge) {
+      prevVerBadge.textContent = existingVer ? ('v' + existingVer) : 'مثبت مسبقاً';
+    }
+    if (installBtn) installBtn.classList.add('update-mode');
+    if (installBtnText) {
+      installBtnText.textContent = '🔄 تحديث البرنامج الآن';
+    }
+    if (chkDesktopText) {
+      chkDesktopText.textContent = 'تحديث اختصار سطح المكتب (Desktop Shortcut)';
+    }
+    if (progSt) {
+      progSt.textContent = 'جاري تحديث ملفات البرنامج...';
+    }
+    if (launchBtnText) {
+      launchBtnText.textContent = '🚀 تشغيل SDN Downloader المحدث الآن';
+    }
+    document.title = 'تحديث SDN Downloader Ultra';
+  } else {
+    if (brandText) brandText.textContent = 'SDN ULTRA INSTALLER';
+    if (heroSub) heroSub.textContent = 'المثبت الذكي فائق السرعة لقوائم التشغيل والفيديوهات';
+    if (updateBanner) updateBanner.style.display = 'none';
+    if (installBtn) installBtn.classList.remove('update-mode');
+    if (installBtnText) {
+      installBtnText.textContent = '⚡ تثبيت بنقرة واحدة الآن';
+    }
+    if (chkDesktopText) {
+      chkDesktopText.textContent = 'إنشاء اختصار على سطح المكتب (Desktop Shortcut)';
+    }
+    if (progSt) {
+      progSt.textContent = 'جاري التثبيت...';
+    }
+    if (launchBtnText) {
+      launchBtnText.textContent = '🚀 تشغيل SDN Downloader الآن';
+    }
+    document.title = 'تثبيت SDN Downloader Ultra';
+  }
+}
 
 /* Background Starfield Particles */
 (function initStars() {
@@ -346,8 +491,8 @@ document.getElementById('closeBtn').addEventListener('click', () => {
 });
 
 document.getElementById('browseBtn').addEventListener('click', () => {
-  window.pywebview?.api?.choose_install_dir?.().then(path => {
-    if (path) document.getElementById('installPath').value = path;
+  window.pywebview?.api?.choose_install_dir?.().then(res => {
+    applyInstallInfo(res);
   });
 });
 
@@ -356,6 +501,8 @@ document.getElementById('installBtn').addEventListener('click', () => {
   const createDesktop = document.getElementById('chkDesktop').checked;
 
   document.getElementById('optsBox').style.display = 'none';
+  const updateBanner = document.getElementById('updateBanner');
+  if (updateBanner) updateBanner.style.display = 'none';
   document.getElementById('installBtn').style.display = 'none';
   document.getElementById('progBox').style.display = 'flex';
 
@@ -378,9 +525,13 @@ window.updateInstallProgress = function(percent, statusText, isDone) {
 };
 
 window.addEventListener('pywebviewready', () => {
-  window.pywebview?.api?.get_default_dir?.().then(path => {
-    if (path) document.getElementById('installPath').value = path;
-  });
+  if (window.pywebview?.api?.get_install_info) {
+    window.pywebview.api.get_install_info().then(applyInstallInfo);
+  } else if (window.pywebview?.api?.get_default_dir) {
+    window.pywebview.api.get_default_dir().then(path => {
+      if (path) document.getElementById('installPath').value = path;
+    });
+  }
 });
 </script>
 </body>
