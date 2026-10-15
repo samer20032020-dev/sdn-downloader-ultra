@@ -1278,6 +1278,15 @@ public class MainActivity extends BridgeActivity {
         if (lower.contains("unviewable") || lower.contains("this playlist type is unviewable")) {
             return "قائمة التشغيل هذه من نوع ميكس (Mix) أو خاصة وغير متاحة كقائمة.";
         }
+        if (lower.contains("playlist does not exist")) {
+            if (lower.contains("wl") || lower.contains("watch later")) {
+                return "🔒 قائمة «المشاهدة لاحقاً» (Watch Later) خاصة بحسابك في يوتيوب ولا يمكن الوصول إليها بدون كوكيز. انقل الفيديوهات لقائمة جديدة (غير مدرجة أو عامة) أو أضف ملف cookies.txt.";
+            }
+            if (lower.contains("ll") || lower.contains("liked")) {
+                return "🔒 قائمة «الفيديوهات التي أعجبتني» خاصة بحسابك الشخصي. انقل الفيديوهات لقائمة جديدة أو أضف ملف كوكيز.";
+            }
+            return "❌ قائمة التشغيل غير موجودة أو تم حذفها، أو أنها خاصة وتتطلب كوكيز مسجلة الدخول.";
+        }
         if (lower.contains("403") || lower.contains("forbidden")) {
             return "خوادم المنصة رفضت الطلب مؤقتًا (HTTP 403: Forbidden). جرب جودة أخرى.";
         }

@@ -2315,9 +2315,10 @@ function toast(msg) {
   el.innerText = msg;
   box.appendChild(el);
 
+  const duration = Math.max(3200, Math.min(8500, (msg || '').length * 55));
   toastTimer = setTimeout(() => {
     el.remove();
-  }, 2500);
+  }, duration);
 }
 
 /* ── Side Menu Drawer (3 Shahatat Menu) Handler ── */
@@ -3411,7 +3412,9 @@ window.onAndroidMediaInfo = function(payload) {
   if (btn) btn.disabled = false;
   if (txt) txt.innerText = 'جلب الرابط ✨';
   if (result.error) {
-    toast('❌ ' + result.error);
+    const errText = String(result.error || '').trim();
+    const hasIcon = /^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}🔒❌⚠️⚙️🌍🔐⏳💎⛔]/u.test(errText);
+    toast((hasIcon ? '' : '❌ ') + errText);
     return;
   }
   const sourceUrl = result.source_url || document.getElementById('urlInp').value.trim();
@@ -3436,7 +3439,12 @@ function doFetch() {
   if (window.pywebview?.api?.fetch_info) {
     window.pywebview.api.fetch_info(url, cookieSource, proxyValue).then(res => {
       gBusy = false; btn.disabled = false; txt.innerText = 'جلب الرابط ✨';
-      if (res.error) { toast('❌ ' + res.error); return; }
+      if (res.error) {
+        const errText = String(res.error || '').trim();
+        const hasIcon = /^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}🔒❌⚠️⚙️🌍🔐⏳💎⛔]/u.test(errText);
+        toast((hasIcon ? '' : '❌ ') + errText);
+        return;
+      }
       renderMediaCard(res.data);
     }).catch(e => {
       gBusy = false; btn.disabled = false; txt.innerText = 'جلب الرابط ✨';

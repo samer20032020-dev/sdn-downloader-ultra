@@ -1036,8 +1036,9 @@ class DownloaderBridgeAPI:
             _log.debug(f"Link validation: {result.get('valid')} - {url[:60]}...")
             return result
         except Exception as e:
+            from downloader import clean_error_message
             _log.warning(f"Link validation exception: {e}")
-            return {'valid': False, 'reason': str(e)}
+            return {'valid': False, 'reason': clean_error_message(e, url=url)}
 
     def fetch_info(self, url, browser_cookies='none', proxy=None):
         try:
@@ -1053,7 +1054,7 @@ class DownloaderBridgeAPI:
             return {'data': info, 'error': None}
         except Exception as e:
             from downloader import clean_error_message
-            err_msg = clean_error_message(e)
+            err_msg = clean_error_message(e, url=url)
             _log.error(f"Fetch info failed for {url[:60]}: {err_msg}")
             return {'data': None, 'error': err_msg}
 

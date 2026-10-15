@@ -196,17 +196,26 @@ def _is_web_url(url: str) -> bool:
         return False
 
 
-def clean_error_message(err: Exception | str) -> str:
+def clean_error_message(err: Exception | str, url: str | None = None) -> str:
     text = str(err or "").strip()
     lowered = text.lower()
+    url_lowered = str(url or "").lower()
 
     if isinstance(err, DownloadCancelled) or "download cancelled by user" in lowered:
         return "تم إلغاء التنزيل."
     if "unviewable" in lowered or "this playlist type is unviewable" in lowered:
         return "❌ قائمة التشغيل هذه من نوع ميكس (Mix) أو خاصة وغير متاحة كقائمة كاملة."
+    if "playlist does not exist" in lowered:
+        if "wl" in lowered or "watch later" in lowered or "list=wl" in url_lowered:
+            return "🔒 قائمة «المشاهدة لاحقاً» (Watch Later) خاصة بحسابك في يوتيوب ولا يمكن الوصول إليها بدون تسجيل دخول. الحل السريع: انقل الفيديوهات إلى قائمة تشغيل جديدة (غير مدرجة أو عامة)، أو استخدم ملف cookies.txt من الإعدادات."
+        if "ll" in lowered or "liked" in lowered or "list=ll" in url_lowered:
+            return "🔒 قائمة «الفيديوهات التي أعجبتني» (Liked Videos) خاصة بحسابك الشخصي. الحل السريع: انقل الفيديوهات إلى قائمة تشغيل جديدة (غير مدرجة أو عامة)، أو استخدم ملف cookies.txt من الإعدادات."
+        return "❌ قائمة التشغيل غير موجودة أو تم حذفها، أو أنها خاصة وتتطلب تسجيل الدخول عبر الكوكيز (Cookies)."
+    if "failed to decrypt with dpapi" in lowered or "could not copy chrome cookie database" in lowered or "cookie database" in lowered:
+        return "🔒 تعذر قراءة كوكيز المتصفح بسبب تشفير النظام أو قفل المتصفح. أغلق المتصفح أولاً، أو استخدم ملف cookies.txt من الإعدادات."
     if "video unavailable" in lowered or "is unavailable" in lowered:
         return "❌ هذا المقطع غير متوفر أو حُذف من المنصة."
-    if "private video" in lowered or "sign in if you've been granted access" in lowered:
+    if "private video" in lowered or "sign in if you've been granted access" in lowered or "this is a private video" in lowered:
         return "🔒 هذا المحتوى خاص. اختر ملف Cookies أو سجّل الدخول في المتصفح."
     if "members-only" in lowered or "login required" in lowered or "sign in to confirm" in lowered:
         return "🔐 يتطلب هذا المحتوى تسجيل الدخول. استخدم Cookies من المتصفح."
@@ -295,7 +304,7 @@ def validate_link(url: str, proxy: str | None = None) -> dict[str, Any]:
                         }
                 except Exception:
                     pass
-        return {"valid": False, "reason": clean_error_message(exc)}
+        return {"valid": False, "reason": clean_error_message(exc, url=normalized)}
 
 
 def _current_ytdlp_version() -> str:
@@ -616,11 +625,11 @@ class MediaDownloader:
                             info = ydl.extract_info(fallback_url, download=False)
                         normalized = fallback_url
                     except Exception:
-                        raise RuntimeError(clean_error_message(exc)) from exc
+                        raise RuntimeError(clean_error_message(exc, url=normalized)) from exc
                 else:
-                    raise RuntimeError(clean_error_message(exc)) from exc
+                    raise RuntimeError(clean_error_message(exc, url=normalized)) from exc
             else:
-                raise
+                raise RuntimeError(clean_error_message(exc, url=normalized)) from exc
 
         if not info:
             raise RuntimeError("تعذر جلب معلومات الرابط. تحقق من الرابط ثم أعد المحاولة.")

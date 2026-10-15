@@ -98,6 +98,21 @@ class DownloaderTests(unittest.TestCase):
         msg = downloader.clean_error_message("ERROR: [youtube:tab] RD97AHPDXsSEY: YouTube said: This playlist type is unviewable.")
         self.assertIn("ميكس", msg)
 
+    def test_clean_error_message_translates_watch_later_playlist(self):
+        msg = downloader.clean_error_message("ERROR: [youtube:tab] WL: YouTube said: The playlist does not exist.")
+        self.assertIn("المشاهدة لاحقاً", msg)
+        self.assertIn("Watch Later", msg)
+        self.assertIn("cookies", msg.lower())
+
+    def test_clean_error_message_translates_liked_videos_playlist(self):
+        msg = downloader.clean_error_message("ERROR: [youtube:tab] LL: YouTube said: The playlist does not exist.")
+        self.assertIn("الفيديوهات التي أعجبتني", msg)
+
+    def test_clean_error_message_translates_dpapi_cookie_lock(self):
+        msg = downloader.clean_error_message("ERROR: Failed to decrypt with DPAPI. See https://github.com/yt-dlp/yt-dlp/issues/10927")
+        self.assertIn("تشفير", msg)
+        self.assertIn("cookies.txt", msg)
+
     def test_clean_url_keeps_a_single_shared_video(self):
         cleaned = downloader.clean_url("https://youtu.be/abc123?t=5")
         self.assertIn("v=abc123", cleaned)
