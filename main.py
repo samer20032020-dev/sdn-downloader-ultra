@@ -1329,10 +1329,41 @@ class DownloaderBridgeAPI:
     # ================================================================
     # YouTube In-App Login & Session Management
     # ================================================================
+    @staticmethod
+    def _check_cookie_auth(cookies):
+        if not cookies:
+            return False
+        from http.cookies import BaseCookie
+        auth_keys = ("LOGIN_INFO", "SID", "SAPISID", "SSID", "__Secure-3PSID", "__Secure-1PSID", "HSID")
+        for c in cookies:
+            if isinstance(c, BaseCookie):
+                for morsel in c.values():
+                    k = getattr(morsel, "key", "")
+                    if k in auth_keys:
+                        return True
+            elif isinstance(c, dict):
+                k = c.get("name") or c.get("key") or ""
+                if k in auth_keys:
+                    return True
+            elif hasattr(c, "key"):
+                if getattr(c, "key", "") in auth_keys:
+                    return True
+        return False
+
     def get_youtube_login_status(self):
         try:
             from downloader import is_youtube_logged_in
-            return {'logged_in': is_youtube_logged_in()}
+            logged_in = is_youtube_logged_in()
+            if not logged_in and self._window:
+                try:
+                    cookies = self._window.get_cookies()
+                    if self._check_cookie_auth(cookies):
+                        from downloader import save_cookies_to_netscape_file, get_youtube_session_cookie_path
+                        save_cookies_to_netscape_file(cookies, get_youtube_session_cookie_path())
+                        logged_in = True
+                except Exception:
+                    pass
+            return {'logged_in': logged_in}
         except Exception as e:
             _log.warning(f"Error checking YouTube login status: {e}")
             return {'logged_in': False, 'error': str(e)}
@@ -1376,17 +1407,7 @@ class DownloaderBridgeAPI:
                         cookies = login_win.get_cookies()
                         if not cookies:
                             continue
-                        has_auth = False
-                        for c in cookies:
-                            if hasattr(c, "values"):
-                                for morsel in c.values():
-                                    k = getattr(morsel, "key", "")
-                                    if k in ("LOGIN_INFO", "SID", "SAPISID", "SSID", "__Secure-3PSID"):
-                                        has_auth = True
-                                        break
-                            if has_auth:
-                                break
-                        if has_auth:
+                        if self._check_cookie_auth(cookies):
                             if save_cookies_to_netscape_file(cookies, cookie_path):
                                 _log.info("YouTube session cookies saved successfully")
                                 try:
@@ -1449,6 +1470,7 @@ class DownloaderBridgeAPI:
 
             def inject_loop():
                 # Keep running as long as the browser window is open
+                last_cookie_sync = 0
                 while not is_closed[0]:
                     try:
                         browser_win.evaluate_js(YOUTUBE_IDM_ADBLOCK_SCRIPT)
@@ -1457,6 +1479,21 @@ class DownloaderBridgeAPI:
                         if 'destroyed' in err or 'closed' in err or 'disposed' in err:
                             break
                         # Do not break on transient navigation errors; continue looping!
+
+                    # Periodically extract cookies if user logs in inside YouTube
+                    now = time.time()
+                    if now - last_cookie_sync > 5.0:
+                        last_cookie_sync = now
+                        try:
+                            cookies = browser_win.get_cookies()
+                            if self._check_cookie_auth(cookies):
+                                from downloader import save_cookies_to_netscape_file, get_youtube_session_cookie_path
+                                save_cookies_to_netscape_file(cookies, get_youtube_session_cookie_path())
+                                if self._window:
+                                    self._window.evaluate_js("if (window.onYouTubeLoginComplete) window.onYouTubeLoginComplete(true);")
+                        except Exception:
+                            pass
+
                     time.sleep(1.0)
 
             threading.Thread(target=inject_loop, daemon=True).start()
@@ -2005,8 +2042,10 @@ def main():
     )
     api.set_window(window)
     
-    _log.info(f"App ready in {time.time() - api._startup_time:.2f}s - starting WebView...")
-    webview.start(debug=False)
+    user_data_dir = os.path.join(os.environ.get('LOCALAPPDATA', os.path.expanduser('~')), 'SDN', 'WebView2_Data')
+    os.makedirs(user_data_dir, exist_ok=True)
+    _log.info(f"App ready in {time.time() - api._startup_time:.2f}s - starting WebView with persistent storage: {user_data_dir}")
+    webview.start(debug=False, private_mode=False, storage_path=user_data_dir)
 
 
 if __name__ == '__main__':

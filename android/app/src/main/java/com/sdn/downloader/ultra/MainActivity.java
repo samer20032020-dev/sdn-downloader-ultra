@@ -282,17 +282,29 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public boolean isYouTubeLoggedIn() {
             File sessionFile = getYouTubeSessionCookieFile();
-            if (!sessionFile.isFile() || sessionFile.length() < 20) return false;
-            try {
-                byte[] data = new byte[(int) sessionFile.length()];
-                try (FileInputStream fis = new FileInputStream(sessionFile)) {
-                    fis.read(data);
+            if (sessionFile.isFile() && sessionFile.length() > 20) {
+                try {
+                    byte[] data = new byte[(int) sessionFile.length()];
+                    try (FileInputStream fis = new FileInputStream(sessionFile)) {
+                        fis.read(data);
+                    }
+                    String content = new String(data, "UTF-8");
+                    if (content.contains("LOGIN_INFO") || content.contains("SID") || content.contains("SAPISID") || content.contains("SSID") || content.contains("__Secure-3PSID")) {
+                        return true;
+                    }
+                } catch (Exception ignored) {
                 }
-                String content = new String(data, "UTF-8");
-                return content.contains("LOGIN_INFO") || content.contains("SID") || content.contains("SAPISID");
-            } catch (Exception e) {
-                return false;
             }
+            // Check Android CookieManager directly in case file was cleared
+            try {
+                String cookies = CookieManager.getInstance().getCookie("https://www.youtube.com");
+                if (cookies != null && (cookies.contains("LOGIN_INFO") || cookies.contains("SID") || cookies.contains("SAPISID") || cookies.contains("SSID") || cookies.contains("__Secure-3PSID"))) {
+                    saveAndroidYouTubeCookies(cookies);
+                    return true;
+                }
+            } catch (Exception ignored) {
+            }
+            return false;
         }
 
         @JavascriptInterface
@@ -300,7 +312,10 @@ public class MainActivity extends BridgeActivity {
             try {
                 File sessionFile = getYouTubeSessionCookieFile();
                 if (sessionFile.isFile()) sessionFile.delete();
-                runOnUiThread(() -> CookieManager.getInstance().removeAllCookies(null));
+                runOnUiThread(() -> {
+                    CookieManager.getInstance().removeAllCookies(null);
+                    CookieManager.getInstance().flush();
+                });
                 return true;
             } catch (Exception e) {
                 return false;
@@ -659,12 +674,17 @@ public class MainActivity extends BridgeActivity {
                 ws.setDatabaseEnabled(true);
                 ws.setUserAgentString("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36");
 
+                CookieManager.getInstance().setAcceptCookie(true);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
+                }
+
                 webView.setWebViewClient(new WebViewClient() {
                     @Override
                     public void onPageFinished(WebView view, String url) {
                         super.onPageFinished(view, url);
                         String cookies = CookieManager.getInstance().getCookie("https://www.youtube.com");
-                        if (cookies != null && (cookies.contains("LOGIN_INFO") || cookies.contains("SID") || cookies.contains("SAPISID"))) {
+                        if (cookies != null && (cookies.contains("LOGIN_INFO") || cookies.contains("SID") || cookies.contains("SAPISID") || cookies.contains("SSID") || cookies.contains("__Secure-3PSID"))) {
                             saveAndroidYouTubeCookies(cookies);
                             dialog.dismiss();
                             runOnUiThread(() -> {
@@ -736,6 +756,11 @@ public class MainActivity extends BridgeActivity {
                 ws.setDatabaseEnabled(true);
                 ws.setUserAgentString("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36");
 
+                CookieManager.getInstance().setAcceptCookie(true);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
+                }
+
                 dlNowBtn.setOnClickListener(v -> {
                     String currentUrl = webView.getUrl();
                     if (currentUrl != null && !currentUrl.isEmpty()) {
@@ -804,6 +829,13 @@ public class MainActivity extends BridgeActivity {
                     public void onPageFinished(WebView view, String url) {
                         super.onPageFinished(view, url);
                         view.evaluateJavascript(adBlockScript, null);
+                        String cookies = CookieManager.getInstance().getCookie("https://www.youtube.com");
+                        if (cookies != null && (cookies.contains("LOGIN_INFO") || cookies.contains("SID") || cookies.contains("SAPISID") || cookies.contains("SSID") || cookies.contains("__Secure-3PSID"))) {
+                            saveAndroidYouTubeCookies(cookies);
+                            if (bridge != null && bridge.getWebView() != null) {
+                                bridge.getWebView().evaluateJavascript("if (window.onYouTubeLoginComplete) window.onYouTubeLoginComplete(true);", null);
+                            }
+                        }
                     }
                 });
 
@@ -850,6 +882,7 @@ public class MainActivity extends BridgeActivity {
             try (FileOutputStream fos = new FileOutputStream(target)) {
                 fos.write(sb.toString().getBytes("UTF-8"));
             }
+            CookieManager.getInstance().flush();
             Log.i(TAG, "Saved YouTube cookies on Android: " + target.getAbsolutePath());
         } catch (Exception e) {
             Log.e(TAG, "Error saving Android YouTube cookies", e);

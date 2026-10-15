@@ -280,8 +280,10 @@ def save_cookies_to_netscape_file(cookies: list[Any], output_file: str) -> bool:
     now = int(time.time())
     default_expiry = now + 365 * 24 * 3600
 
+    from http.cookies import BaseCookie
+
     for item in cookies or []:
-        if hasattr(item, "values"):
+        if isinstance(item, BaseCookie):
             for morsel in item.values():
                 name = getattr(morsel, "key", "")
                 val = getattr(morsel, "value", "")
@@ -310,8 +312,8 @@ def save_cookies_to_netscape_file(cookies: list[Any], output_file: str) -> bool:
                     sub = "TRUE" if domain.startswith(".") else "FALSE"
                     lines.append(f"{domain}\t{sub}\t{path}\t{secure}\t{expires}\t{name}\t{val}\n")
         elif isinstance(item, dict):
-            name = item.get("name")
-            val = item.get("value")
+            name = item.get("name") or item.get("key")
+            val = item.get("value") or item.get("val")
             if not name:
                 continue
             domain = item.get("domain") or ".youtube.com"
@@ -331,6 +333,21 @@ def save_cookies_to_netscape_file(cookies: list[Any], output_file: str) -> bool:
                 seen.add(key)
                 sub = "TRUE" if domain.startswith(".") else "FALSE"
                 lines.append(f"{domain}\t{sub}\t{path}\t{secure}\t{expires}\t{name}\t{val}\n")
+        elif hasattr(item, "key") and hasattr(item, "value"):
+            name = getattr(item, "key", "")
+            val = getattr(item, "value", "")
+            if not name:
+                continue
+            domain = getattr(item, "domain", None) or ".youtube.com"
+            if not domain.startswith(".") and not domain.startswith("www"):
+                domain = "." + domain
+            path = getattr(item, "path", "/") or "/"
+            secure = "TRUE" if getattr(item, "secure", False) else "FALSE"
+            key = (domain, path, name)
+            if key not in seen:
+                seen.add(key)
+                sub = "TRUE" if domain.startswith(".") else "FALSE"
+                lines.append(f"{domain}\t{sub}\t{path}\t{secure}\t{default_expiry}\t{name}\t{val}\n")
 
     if not seen:
         return False
