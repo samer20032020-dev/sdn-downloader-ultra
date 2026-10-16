@@ -580,46 +580,104 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
     }
 
     // ================================================================
-    // 4. Safe Ad Skipper & Enforcement Neutralizer
-    // CRITICAL: NEVER sets video.currentTime to duration, preventing video truncation!
+    // 4. Ultra-Fast Zero-Delay Ad Defuser & Skipper (uBlock/FadBlock Architecture)
+    // Instantly mutes, accelerates (16x), and completes ads in 0.01s without breaking main video
     // ================================================================
     function dismissAdsAndDialogs() {
         try {
             var player = document.getElementById('movie_player') || document.querySelector('.html5-video-player');
+            var isAdActive = false;
+
             if (player) {
-                var isAdActive = false;
                 if (typeof player.getAdState === 'function') {
                     isAdActive = player.getAdState() > 0;
                 }
                 if (!isAdActive && player.classList && (player.classList.contains('ad-showing') || player.classList.contains('ad-interrupting'))) {
                     isAdActive = true;
                 }
+            }
 
-                if (isAdActive) {
-                    if (typeof player.skipAd === 'function') {
-                        player.skipAd();
-                    }
+            if (!isAdActive && document.querySelector('.video-ads.ytp-ad-module:not(:empty), .ytp-ad-player-overlay, .ytp-ad-text, .ytp-ad-preview-text')) {
+                isAdActive = true;
+            }
 
-                    var skipBtn = player.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytp-ad-skip-button-slot');
-                    if (skipBtn) {
-                        skipBtn.click();
+            var video = (player && player.querySelector('video')) || document.querySelector('video.html5-main-video') || document.querySelector('video');
+
+            if (isAdActive && video) {
+                // 1. Instantly mute audio so the user hears zero ad noise
+                if (!video.muted) {
+                    video.muted = true;
+                    video.__sdn_ad_muted = true;
+                }
+
+                // 2. Accelerate ad video to maximum speed (16x)
+                video.playbackRate = 16.0;
+
+                // 3. Fast-forward the ad to completion safely
+                // Ads are always short (< 300s). We tag each unique ad stream so we never seek twice.
+                if (video.duration && !isNaN(video.duration) && isFinite(video.duration) && video.duration < 300) {
+                    var adKey = (video.currentSrc || '') + '_' + Math.floor(video.duration);
+                    if (video.__sdn_last_skipped_ad !== adKey) {
+                        video.__sdn_last_skipped_ad = adKey;
+                        if (video.currentTime < video.duration - 0.2) {
+                            video.currentTime = video.duration - 0.1;
+                        }
                     }
+                }
+
+                // 4. Try native player skip if available
+                if (player && typeof player.skipAd === 'function') {
+                    try { player.skipAd(); } catch (e) {}
+                }
+
+                // 5. Instantly click any skip or dismiss buttons
+                var skipSelectors = [
+                    '.ytp-ad-skip-button',
+                    '.ytp-ad-skip-button-modern',
+                    '.ytp-skip-ad-button',
+                    '.ytp-ad-skip-button-slot',
+                    'button.ytp-ad-skip-button-modern',
+                    '.ytp-ad-overlay-close-button',
+                    '#dismiss-button'
+                ];
+                for (var s = 0; s < skipSelectors.length; s++) {
+                    var btn = document.querySelector(skipSelectors[s]);
+                    if (btn) {
+                        try { btn.click(); } catch (e) {}
+                    }
+                }
+            } else if (!isAdActive && video) {
+                // Main video is playing: restore speed & unmute safely
+                if (video.playbackRate > 2.0) {
+                    video.playbackRate = 1.0;
+                }
+                if (video.__sdn_ad_muted) {
+                    video.muted = false;
+                    video.__sdn_ad_muted = false;
                 }
             }
 
-            var enforcement = document.querySelector('ytd-enforcement-message-view-model, tp-yt-paper-dialog:has(ytd-enforcement-message-view-model)');
+            // Remove YouTube anti-adblock enforcement dialogs & resume video
+            var enforcement = document.querySelector('ytd-enforcement-message-view-model, tp-yt-paper-dialog:has(ytd-enforcement-message-view-model), tp-yt-iron-overlay-backdrop');
             if (enforcement) {
-                enforcement.remove();
+                try { enforcement.remove(); } catch (e) {}
                 var playBtn = document.querySelector('.ytp-play-button');
                 if (playBtn && playBtn.getAttribute('data-title-no-tooltip') === 'Play') {
-                    playBtn.click();
+                    try { playBtn.click(); } catch (e) {}
+                }
+                if (video && video.paused) {
+                    try { video.play(); } catch (e) {}
                 }
             }
 
             var overlayClose = document.querySelector('.ytp-ad-overlay-close-button');
-            if (overlayClose) overlayClose.click();
+            if (overlayClose) {
+                try { overlayClose.click(); } catch (e) {}
+            }
         } catch (e) {}
     }
+
+    window.dismissAdsAndDialogs = dismissAdsAndDialogs;
 
     function loopTick() {
         ensureIdmPanel();
@@ -630,9 +688,21 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
 
     if (!window.__sdn_events_hooked) {
         window.__sdn_events_hooked = true;
-        setInterval(loopTick, 500);
+        setInterval(loopTick, 100);
 
-        ['yt-navigate-finish', 'yt-page-data-updated', 'spfdone', 'popstate'].forEach(function(ev) {
+        try {
+            var observer = new MutationObserver(function() {
+                dismissAdsAndDialogs();
+            });
+            observer.observe(document.documentElement || document.body, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['class', 'src']
+            });
+        } catch (e) {}
+
+        ['yt-navigate-start', 'yt-navigate-finish', 'yt-page-data-updated', 'spfdone', 'popstate'].forEach(function(ev) {
             window.addEventListener(ev, function() {
                 if (window.__sdn_dismissed_url && window.__sdn_dismissed_url !== window.location.href) {
                     window.__sdn_dismissed_url = null;
@@ -719,6 +789,40 @@ try:
     _log.debug("WebView2 DLL path hook installed")
 except Exception as e:
     _log.warning(f"WebView2 DLL hook not installed: {e}")
+
+# ============================================================
+# ULTRA ADBLOCK: Native WebView2 request interception
+# Blocks doubleclick, tracking, and ad beacons before any byte leaves the machine
+# ============================================================
+try:
+    import webview.platforms.edgechromium as _ec
+    _orig_web_resource_req = _ec.EdgeChrome.on_web_resource_request
+
+    _NATIVE_AD_DOMAINS = (
+        'doubleclick.net',
+        'googleads.g.doubleclick.net',
+        '/api/stats/ads',
+        '/pagead/',
+        '/youtubei/v1/player/ad_break',
+        '/pcs/view',
+        '/ptracking',
+    )
+
+    def _native_adblock_on_web_resource_request(self, sender, args):
+        try:
+            uri = str(args.Request.Uri).lower()
+            for pattern in _NATIVE_AD_DOMAINS:
+                if pattern in uri:
+                    args.Response = sender.Environment.CreateWebResourceResponse(None, 204, 'No Content', '')
+                    return
+        except Exception:
+            pass
+        _orig_web_resource_req(self, sender, args)
+
+    _ec.EdgeChrome.on_web_resource_request = _native_adblock_on_web_resource_request
+    _log.debug("WebView2 native adblock filter installed successfully")
+except Exception as _e_native_ad:
+    _log.debug(f"WebView2 native adblock hook skipped: {_e_native_ad}")
 
 # ============================================================
 # ULTRA PERFORMANCE: Pre-cache heavy imports in background
@@ -1775,7 +1879,7 @@ class DownloaderBridgeAPI:
                 while not is_closed[0]:
                     try:
                         browser_win.evaluate_js(
-                            "if (!window.__sdn_ublock_installed) { " + YOUTUBE_IDM_ADBLOCK_SCRIPT + " }"
+                            "if (!window.__sdn_ublock_installed) { " + YOUTUBE_IDM_ADBLOCK_SCRIPT + " } else if (window.dismissAdsAndDialogs) { window.dismissAdsAndDialogs(); }"
                         )
                     except Exception as e:
                         err = str(e).lower()
