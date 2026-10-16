@@ -149,19 +149,168 @@ class YouTubeBrowserBridge:
 
 YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
 (function() {
-    // 1. Safe CSS Injection via textContent (Trusted Types safe)
+    if (window.__sdn_ublock_installed) return 'ALREADY_INSTALLED';
+    window.__sdn_ublock_installed = true;
+
+    // ================================================================
+    // 1. uBlock Origin Engine: JSON Player Response Pruning / Defusing
+    // Strips adPlacements, playerAds, and adSlots directly at the API level
+    // This stops YouTube from ever queueing or attempting to play ads!
+    // ================================================================
+    function pruneAdData(data) {
+        if (!data || typeof data !== 'object') return data;
+        try {
+            delete data.adPlacements;
+            delete data.adSlots;
+            delete data.playerAds;
+            delete data.adBreakHeartbeatParams;
+            delete data.adPlacementRenderer;
+
+            if (data.playerResponse && typeof data.playerResponse === 'object') {
+                delete data.playerResponse.adPlacements;
+                delete data.playerResponse.adSlots;
+                delete data.playerResponse.playerAds;
+                delete data.playerResponse.adBreakHeartbeatParams;
+            }
+
+            if (data.streamingData && data.streamingData.adFormat) {
+                delete data.streamingData.adFormat;
+            }
+
+            if (Array.isArray(data.items)) {
+                data.items = data.items.filter(function(item) {
+                    return !item.adSlotRenderer && !item.adLayoutRenderer;
+                });
+            }
+        } catch (e) {}
+        return data;
+    }
+
+    // Intercept window.fetch (uBlock json-prune-fetch-response)
+    if (typeof window.fetch === 'function') {
+        var origFetch = window.fetch;
+        window.fetch = async function(...args) {
+            var url = '';
+            try {
+                url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url ? args[0].url : '');
+            } catch (e) {}
+
+            // Instantly block ad beacons, trackers & doubleclick requests with zero delay (204 No Content)
+            if (url && (
+                url.indexOf('/api/stats/ads') !== -1 ||
+                url.indexOf('/pagead/') !== -1 ||
+                url.indexOf('doubleclick.net') !== -1 ||
+                url.indexOf('/youtubei/v1/player/ad_break') !== -1 ||
+                url.indexOf('/pcs/view') !== -1 ||
+                url.indexOf('/ptracking') !== -1
+            )) {
+                return new Response(null, { status: 204, statusText: 'No Content' });
+            }
+
+            var response = await origFetch.apply(this, args);
+
+            // Prune ads from player API responses seamlessly
+            if (url && (
+                url.indexOf('/youtubei/v1/player') !== -1 ||
+                url.indexOf('/reel/reel_item_watch') !== -1 ||
+                url.indexOf('/youtubei/v1/next') !== -1
+            )) {
+                try {
+                    var clone = response.clone();
+                    var json = await clone.json();
+                    pruneAdData(json);
+                    return new Response(JSON.stringify(json), {
+                        status: response.status,
+                        statusText: response.statusText,
+                        headers: response.headers
+                    });
+                } catch (e) {
+                    return response;
+                }
+            }
+
+            return response;
+        };
+    }
+
+    // Intercept XMLHttpRequest
+    if (window.XMLHttpRequest) {
+        var origOpen = XMLHttpRequest.prototype.open;
+        var origSend = XMLHttpRequest.prototype.send;
+
+        XMLHttpRequest.prototype.open = function(method, url) {
+            this._sdn_url = url || '';
+            return origOpen.apply(this, arguments);
+        };
+
+        XMLHttpRequest.prototype.send = function(body) {
+            var xhr = this;
+            var url = xhr._sdn_url || '';
+
+            if (url && (
+                url.indexOf('/api/stats/ads') !== -1 ||
+                url.indexOf('/pagead/') !== -1 ||
+                url.indexOf('doubleclick.net') !== -1 ||
+                url.indexOf('/youtubei/v1/player/ad_break') !== -1
+            )) {
+                Object.defineProperty(xhr, 'status', { value: 204 });
+                Object.defineProperty(xhr, 'responseText', { value: '' });
+                return;
+            }
+
+            if (url && url.indexOf('/youtubei/v1/player') !== -1) {
+                var origOnReady = xhr.onreadystatechange;
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4) {
+                        try {
+                            var data = JSON.parse(xhr.responseText);
+                            pruneAdData(data);
+                            var cleaned = JSON.stringify(data);
+                            Object.defineProperty(xhr, 'responseText', { value: cleaned });
+                            Object.defineProperty(xhr, 'response', { value: data });
+                        } catch (e) {}
+                    }
+                    if (origOnReady) origOnReady.apply(xhr, arguments);
+                };
+            }
+
+            return origSend.apply(this, arguments);
+        };
+    }
+
+    // Intercept ytInitialPlayerResponse
+    try {
+        var _initialResp = window.ytInitialPlayerResponse;
+        Object.defineProperty(window, 'ytInitialPlayerResponse', {
+            get: function() { return _initialResp; },
+            set: function(val) { _initialResp = pruneAdData(val); },
+            configurable: true
+        });
+        if (window.ytInitialPlayerResponse) {
+            window.ytInitialPlayerResponse = pruneAdData(window.ytInitialPlayerResponse);
+        }
+    } catch (e) {}
+
+    // ================================================================
+    // 2. Cosmetic CSS Filtering (uBlock Origin rules - Instant & GPU-accelerated)
+    // ================================================================
     if (!document.getElementById('sdn-styles')) {
         var style = document.createElement('style');
         style.id = 'sdn-styles';
         style.textContent = [
-            '.video-ads, .ytp-ad-module, .ytp-ad-overlay-container,',
-            'ytd-ad-slot-renderer, ytd-in-feed-ad-layout-renderer,',
-            '#masthead-ad, ytd-banner-promo-renderer, ytd-promoted-sparkles-web-renderer,',
-            '.ytd-display-ad-renderer, ytd-statement-banner-renderer,',
-            '#player-ads, .ytp-ad-player-overlay, ytd-merch-shelf-renderer,',
-            'ytd-action-companion-ad-renderer, .ytd-in-feed-ad-layout-renderer,',
-            'tp-yt-paper-dialog:has(ytd-enforcement-message-view-model) {',
+            '.video-ads, .ytp-ad-module, .ytp-ad-overlay-container, .ytp-ad-overlay-slot,',
+            '.ytp-ad-player-overlay, .ytp-ad-player-overlay-layout, .ytp-ad-progress-list,',
+            '.ytp-ad-message-container, .ytp-ad-text, .ytp-paid-content-overlay,',
+            'ytd-ad-slot-renderer, ytd-in-feed-ad-layout-renderer, #masthead-ad,',
+            'ytd-banner-promo-renderer, ytd-promoted-sparkles-web-renderer,',
+            'ytd-promoted-sparkles-text-search-renderer, .ytd-display-ad-renderer,',
+            'ytd-statement-banner-renderer, #player-ads, ytd-merch-shelf-renderer,',
+            'ytd-action-companion-ad-renderer, #premium-ytd-banner, ytd-mealbar-promo-renderer,',
+            'ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-ads"],',
+            'tp-yt-paper-dialog:has(ytd-enforcement-message-view-model),',
+            'ytd-enforcement-message-view-model {',
             '   display: none !important; visibility: hidden !important; height: 0 !important;',
+            '   max-height: 0 !important; opacity: 0 !important; pointer-events: none !important;',
             '}',
             '#sdn-idm-panel {',
             '   position: fixed; top: 68px; right: 20px; z-index: 2147483646;',
@@ -208,7 +357,6 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
 
         var isMediaActive = isWatch || isShorts || isPlaylistPage || hasActiveVideo;
 
-        // Clean single video URL if watch page has list= attached
         var singleUrl = href;
         if (isWatch && hasListParam) {
             try {
@@ -382,7 +530,6 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
         var ctx = getMediaContext();
         var panel = document.getElementById('sdn-idm-panel');
 
-        // IF NOT AN ACTIVE MEDIA PAGE: Completely hide and remove from view!
         if (!ctx.active) {
             if (panel) panel.style.display = 'none';
             if (menu) menu.style.display = 'none';
@@ -391,12 +538,9 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
 
         if (!panel) {
             panel = createEl('div', 'sdn-idm-panel');
-            
-            // Green play icon (IDM signature style)
             var icon = createEl('span', '', 'color:#22c55e; font-size:13px; margin-left:4px;', '▶');
             var txt = createEl('span', 'sdnPanelText', '', ctx.isPlaylist ? 'تحميل هذا الفيديو / القائمة' : 'تحميل هذا الفيديو');
             var arrow = createEl('span', '', 'color:#94a3b8; font-size:10px; margin-right:4px;', '▼');
-            
             var sep = createEl('span', '', 'color:rgba(255,255,255,0.25); margin:0 4px;', '|');
             var dismiss = createEl('span', '', 'color:#94a3b8; font-size:12px; cursor:pointer; padding:0 2px;', '✕');
             dismiss.title = 'إخفاء مؤقت لهذا الفيديو';
@@ -422,7 +566,6 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
             (document.body || document.documentElement).appendChild(panel);
         }
 
-        // Check if user dismissed for current video
         if (window.__sdn_dismissed_url && window.__sdn_dismissed_url === window.location.href) {
             panel.style.display = 'none';
             return;
@@ -436,41 +579,68 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
         panel.style.display = 'flex';
     }
 
-    function runAll() {
+    // ================================================================
+    // 4. Safe Ad Skipper & Enforcement Neutralizer
+    // CRITICAL: NEVER sets video.currentTime to duration, preventing video truncation!
+    // ================================================================
+    function dismissAdsAndDialogs() {
         try {
-            ensureIdmPanel();
+            var player = document.getElementById('movie_player') || document.querySelector('.html5-video-player');
+            if (player) {
+                var isAdActive = false;
+                if (typeof player.getAdState === 'function') {
+                    isAdActive = player.getAdState() > 0;
+                }
+                if (!isAdActive && player.classList && (player.classList.contains('ad-showing') || player.classList.contains('ad-interrupting'))) {
+                    isAdActive = true;
+                }
 
-            // Ad Skipper
-            var adShowing = document.querySelector('.ad-showing, .ad-interrupting');
-            var video = document.querySelector('video');
-            if (adShowing && video) {
-                video.muted = true;
-                video.currentTime = video.duration || 999;
-                video.playbackRate = 16.0;
+                if (isAdActive) {
+                    if (typeof player.skipAd === 'function') {
+                        player.skipAd();
+                    }
+
+                    var skipBtn = player.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytp-ad-skip-button-slot');
+                    if (skipBtn) {
+                        skipBtn.click();
+                    }
+                }
             }
-            var skipBtns = document.querySelectorAll('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytp-ad-overlay-close-button');
-            skipBtns.forEach(function(b) { b.click(); });
+
+            var enforcement = document.querySelector('ytd-enforcement-message-view-model, tp-yt-paper-dialog:has(ytd-enforcement-message-view-model)');
+            if (enforcement) {
+                enforcement.remove();
+                var playBtn = document.querySelector('.ytp-play-button');
+                if (playBtn && playBtn.getAttribute('data-title-no-tooltip') === 'Play') {
+                    playBtn.click();
+                }
+            }
+
+            var overlayClose = document.querySelector('.ytp-ad-overlay-close-button');
+            if (overlayClose) overlayClose.click();
         } catch (e) {}
     }
 
-    runAll();
+    function loopTick() {
+        ensureIdmPanel();
+        dismissAdsAndDialogs();
+    }
 
-    if (!window.__sdn_loop_started) {
-        window.__sdn_loop_started = true;
-        setInterval(runAll, 600);
+    loopTick();
 
-        // SPA Navigation hooks
+    if (!window.__sdn_events_hooked) {
+        window.__sdn_events_hooked = true;
+        setInterval(loopTick, 500);
+
         ['yt-navigate-finish', 'yt-page-data-updated', 'spfdone', 'popstate'].forEach(function(ev) {
             window.addEventListener(ev, function() {
-                // Clear dismissal on navigation to a new video
                 if (window.__sdn_dismissed_url && window.__sdn_dismissed_url !== window.location.href) {
                     window.__sdn_dismissed_url = null;
                 }
-                runAll();
+                loopTick();
             });
         });
 
-        // Keyboard Shortcut: Alt+D or Ctrl+D
         window.addEventListener('keydown', function(e) {
             if ((e.ctrlKey || e.altKey) && (e.key === 'd' || e.key === 'D' || e.key === 'ي')) {
                 e.preventDefault();
@@ -1604,7 +1774,9 @@ class DownloaderBridgeAPI:
                 last_cookie_sync = 0
                 while not is_closed[0]:
                     try:
-                        browser_win.evaluate_js(YOUTUBE_IDM_ADBLOCK_SCRIPT)
+                        browser_win.evaluate_js(
+                            "if (!window.__sdn_ublock_installed) { " + YOUTUBE_IDM_ADBLOCK_SCRIPT + " }"
+                        )
                     except Exception as e:
                         err = str(e).lower()
                         if 'destroyed' in err or 'closed' in err or 'disposed' in err:
