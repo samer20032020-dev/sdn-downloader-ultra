@@ -186,6 +186,33 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
         return data;
     }
 
+    // ================================================================
+    // uBlock Origin Core: Hook JSON.parse globally
+    // Strips adPlacements and playerAds from any JSON payload parsed by YouTube
+    // ================================================================
+    var origJSONParse = JSON.parse;
+    JSON.parse = function(text, reviver) {
+        var data = origJSONParse.apply(this, arguments);
+        if (data && typeof data === 'object') {
+            pruneAdData(data);
+        }
+        return data;
+    };
+
+    // ================================================================
+    // uBlock Origin Core: Hook Response.prototype.json
+    // ================================================================
+    if (typeof Response !== 'undefined' && Response.prototype && Response.prototype.json) {
+        var origResponseJson = Response.prototype.json;
+        Response.prototype.json = async function() {
+            var data = await origResponseJson.apply(this, arguments);
+            if (data && typeof data === 'object') {
+                pruneAdData(data);
+            }
+            return data;
+        };
+    }
+
     // Intercept window.fetch (uBlock json-prune-fetch-response)
     if (typeof window.fetch === 'function') {
         var origFetch = window.fetch;
@@ -610,27 +637,7 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
                     video.__sdn_ad_muted = true;
                 }
 
-                // 2. Accelerate ad video to maximum speed (16x)
-                video.playbackRate = 16.0;
-
-                // 3. Fast-forward the ad to completion safely
-                // Ads are always short (< 300s). We tag each unique ad stream so we never seek twice.
-                if (video.duration && !isNaN(video.duration) && isFinite(video.duration) && video.duration < 300) {
-                    var adKey = (video.currentSrc || '') + '_' + Math.floor(video.duration);
-                    if (video.__sdn_last_skipped_ad !== adKey) {
-                        video.__sdn_last_skipped_ad = adKey;
-                        if (video.currentTime < video.duration - 0.2) {
-                            video.currentTime = video.duration - 0.1;
-                        }
-                    }
-                }
-
-                // 4. Try native player skip if available
-                if (player && typeof player.skipAd === 'function') {
-                    try { player.skipAd(); } catch (e) {}
-                }
-
-                // 5. Instantly click any skip or dismiss buttons
+                // 2. Click any skip or dismiss buttons immediately
                 var skipSelectors = [
                     '.ytp-ad-skip-button',
                     '.ytp-ad-skip-button-modern',
@@ -645,6 +652,30 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
                     if (btn) {
                         try { btn.click(); } catch (e) {}
                     }
+                }
+
+                // 3. Try native player skip if available
+                if (player && typeof player.skipAd === 'function') {
+                    try { player.skipAd(); } catch (e) {}
+                }
+
+                // 4. Accelerate ad video to maximum speed (16x)
+                video.playbackRate = 16.0;
+
+                // 5. Complete ad cleanly with ZERO delay (no 5-second buffering stall):
+                if (video.duration && !isNaN(video.duration) && isFinite(video.duration) && video.duration < 180) {
+                    var adKey = (video.currentSrc || '') + '_' + Math.floor(video.duration);
+                    if (video.__sdn_last_skipped_ad !== adKey) {
+                        video.__sdn_last_skipped_ad = adKey;
+                        try {
+                            video.currentTime = video.duration;
+                        } catch (e) {}
+                    }
+                }
+
+                // 6. Ensure video is unpaused so the transition happens instantaneously
+                if (video.paused) {
+                    try { video.play(); } catch (e) {}
                 }
             } else if (!isAdActive && video) {
                 // Main video is playing: restore speed & unmute safely
@@ -797,6 +828,7 @@ except Exception as e:
 try:
     import webview.platforms.edgechromium as _ec
     _orig_web_resource_req = _ec.EdgeChrome.on_web_resource_request
+    _orig_on_webview_ready = _ec.EdgeChrome.on_webview_ready
 
     _NATIVE_AD_DOMAINS = (
         'doubleclick.net',
@@ -819,8 +851,17 @@ try:
             pass
         _orig_web_resource_req(self, sender, args)
 
+    def _custom_on_webview_ready(self, sender, args):
+        if args.IsSuccess and sender.CoreWebView2:
+            try:
+                sender.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(YOUTUBE_IDM_ADBLOCK_SCRIPT)
+            except Exception as _ex:
+                _log.debug(f"DocumentCreatedAsync injection note: {_ex}")
+        _orig_on_webview_ready(self, sender, args)
+
     _ec.EdgeChrome.on_web_resource_request = _native_adblock_on_web_resource_request
-    _log.debug("WebView2 native adblock filter installed successfully")
+    _ec.EdgeChrome.on_webview_ready = _custom_on_webview_ready
+    _log.debug("WebView2 native adblock filter and early script injection installed successfully")
 except Exception as _e_native_ad:
     _log.debug(f"WebView2 native adblock hook skipped: {_e_native_ad}")
 
