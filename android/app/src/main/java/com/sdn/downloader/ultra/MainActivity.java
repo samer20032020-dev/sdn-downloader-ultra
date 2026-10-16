@@ -776,12 +776,18 @@ public class MainActivity extends BridgeActivity {
                 webView.addJavascriptInterface(new Object() {
                     @JavascriptInterface
                     public void download_url(String url, String quality) {
+                        download_url(url, quality, "single");
+                    }
+
+                    @JavascriptInterface
+                    public void download_url(String url, String quality, String mode) {
                         runOnUiThread(() -> {
                             dialog.dismiss();
                             if (bridge != null && bridge.getWebView() != null) {
                                 String cleanUrl = url.replace("'", "\\'");
                                 String cleanQ = quality.replace("'", "\\'");
-                                String js = "if (window.onBrowserQuickDownload) window.onBrowserQuickDownload('" + cleanUrl + "', '" + cleanQ + "');";
+                                String cleanM = (mode != null ? mode : "single").replace("'", "\\'");
+                                String js = "if (window.onBrowserQuickDownload) window.onBrowserQuickDownload('" + cleanUrl + "', '" + cleanQ + "', '" + cleanM + "');";
                                 bridge.getWebView().evaluateJavascript(js, null);
                             }
                         });

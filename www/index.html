@@ -1916,7 +1916,7 @@ body.light-theme select option, body.light-theme .select-dropdown option {
       <!-- Update Header Button -->
       <button id="headerUpdateBtn" onclick="onHeaderUpdateClick()" class="update-header-btn" title="فحص التحديثات" style="display:none;">
         <i class="fas fa-cog" id="updateHeaderIcon"></i>
-        <span id="updateHeaderTxt">v1.0.9</span>
+        <span id="updateHeaderTxt">v1.0.10</span>
       </button>
     </div>
   </header>
@@ -1932,7 +1932,7 @@ body.light-theme select option, body.light-theme .select-dropdown option {
       <div style="display:flex; flex-direction:column; align-items:center; text-align:center; padding-top:16px; gap:8px;">
         <div class="clean-hero-badge">
           <span class="clean-hero-dot"></span>
-          <span>الإصدار 1.0.9 — تنزيل فائق السرعة وبدون إعلانات</span>
+          <span>الإصدار 1.0.10 — تنزيل فائق السرعة وبدون إعلانات</span>
         </div>
         <h1 class="clean-hero-title">نزّل الفيديوهات والموسيقى بأعلى جودة</h1>
         <p class="clean-hero-sub">ضع رابط أي فيديو من YouTube أو TikTok أو Instagram أو Facebook للتحميل الفوري</p>
@@ -2327,7 +2327,7 @@ body.light-theme select option, body.light-theme .select-dropdown option {
         <div class="settings-item">
           <div class="settings-label">
             <span class="settings-title">إصدار التطبيق الحالي</span>
-            <span class="settings-desc" id="settingsVersionTxt">SDN v1.0.9</span>
+            <span class="settings-desc" id="settingsVersionTxt">SDN v1.0.10</span>
           </div>
           <button class="header-btn" id="checkUpdatesManualBtn" style="width:auto; padding:0 10px; font-size:0.78rem; color:var(--primary);">فحص التحديثات</button>
         </div>
@@ -2687,21 +2687,36 @@ function toggleTurboFromCard() {
   toast('⚡ وضع التيربو فائق السرعة نشط في جميع التحميلات');
 }
 
-window.onBrowserQuickDownload = function(url, quality) {
+window.onBrowserQuickDownload = function(url, quality, mode) {
   if (!url) return;
-  toast('⚡ تم التقاط الرابط من المتصفح، جاري التحضير...');
+  
+  let cleanUrl = String(url).trim();
+  const targetMode = mode || 'single';
+  const targetQuality = quality || 'best';
+
+  // If user requested single video on a URL that has list=, clean it to watch URL only
+  if (targetMode === 'single' && cleanUrl.includes('/watch') && cleanUrl.includes('list=')) {
+    try {
+      const parsed = new URL(cleanUrl);
+      const v = parsed.searchParams.get('v');
+      if (v) cleanUrl = 'https://www.youtube.com/watch?v=' + v;
+    } catch (_) {}
+  }
+
+  toast('⚡ تم التقاط الرابط من المتصفح، جاري بدء التنزيل...');
   const urlInp = document.getElementById('urlInp');
   if (urlInp) {
-    urlInp.value = url;
+    urlInp.value = cleanUrl;
     if (typeof switchMainView === 'function') switchMainView('viewHome');
-    if (quality === 'mp3') {
-      window._idmTargetFormat = 'audio';
-    } else {
-      window._idmTargetFormat = 'video';
-      window._idmTargetQuality = quality;
-    }
-    const fetchBtn = document.getElementById('fetchBtn');
-    if (fetchBtn) fetchBtn.click();
+    
+    window._idmAutoStart = {
+      quality: targetQuality,
+      mode: targetMode,
+      created: Date.now()
+    };
+    
+    // Trigger info fetch
+    doFetch();
   }
 };
 
@@ -4471,6 +4486,57 @@ function renderMediaCard(d) {
   }
   applyDefaultQuality();
 
+  // Handle IDM automatic download request if pending
+  if (window._idmAutoStart && (Date.now() - window._idmAutoStart.created < 60000)) {
+    const auto = window._idmAutoStart;
+    window._idmAutoStart = null;
+
+    if (auto.mode === 'playlist_select') {
+      toast('📋 تم استيراد قائمة التشغيل — حدد الفيديوهات المطلوبة ثم اضغط تنزيل');
+      setTimeout(() => {
+        const picker = document.getElementById('downloadPlaylistPicker');
+        if (picker) {
+          picker.scrollIntoView({ behavior: 'smooth' });
+          picker.style.boxShadow = '0 0 20px rgba(56, 189, 248, 0.4)';
+          setTimeout(() => { if (picker) picker.style.boxShadow = ''; }, 2000);
+        }
+      }, 250);
+    } else {
+      if (auto.mode === 'playlist_all') {
+        setAllPlaylistItems(true);
+      }
+
+      if (auto.quality === 'mp3') {
+        switchFormatTab('audio');
+        const mp3Idx = currentAudioOpts.findIndex(o => String(o.quality_tag || '').toUpperCase().includes('MP3'));
+        selectQualityRow(mp3Idx >= 0 ? mp3Idx : 0);
+      } else {
+        switchFormatTab('video');
+        if (auto.quality === '1080p') {
+          const idx = currentVideoOpts.findIndex(o => String(o.quality_tag || '').includes('1080') || String(o.label || '').includes('1080'));
+          selectQualityRow(idx >= 0 ? idx : 0);
+        } else if (auto.quality === '720p') {
+          const idx = currentVideoOpts.findIndex(o => String(o.quality_tag || '').includes('720') || String(o.label || '').includes('720'));
+          selectQualityRow(idx >= 0 ? idx : 0);
+        } else if (auto.quality === '480p') {
+          const idx = currentVideoOpts.findIndex(o => String(o.quality_tag || '').includes('480') || String(o.label || '').includes('480'));
+          selectQualityRow(idx >= 0 ? idx : 0);
+        } else {
+          selectQualityRow(0);
+        }
+      }
+
+      // Automatically trigger download
+      setTimeout(() => {
+        const dlBtn = document.getElementById('dlBtn');
+        if (dlBtn && !gDownloadActive) {
+          toast('🚀 بدأ التنزيل التلقائي عبر SDN بنجاح!');
+          dlBtn.click();
+        }
+      }, 350);
+    }
+  }
+
   const hero = document.getElementById('heroSection');
   if (hero) hero.style.display = 'none';
 
@@ -4733,7 +4799,7 @@ function incrementDlCounter() {
   num.style.animation = 'dlBadgeBump 0.35s ease';
 }
 
-let CURRENT_VERSION = '1.0.9';
+let CURRENT_VERSION = '1.0.10';
 let gLatestReleaseUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
 let gLatestReleasePage = gLatestReleaseUrl;
 let gLatestAssetUrl = '';
