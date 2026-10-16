@@ -1473,35 +1473,27 @@ class DownloaderBridgeAPI:
         if not cookies:
             return False
         from http.cookies import BaseCookie
-        auth_keys = ("LOGIN_INFO", "SID", "SAPISID", "SSID", "__Secure-3PSID", "__Secure-1PSID", "HSID")
+        keys = set()
         for c in cookies:
             if isinstance(c, BaseCookie):
                 for morsel in c.values():
                     k = getattr(morsel, "key", "")
-                    if k in auth_keys:
-                        return True
+                    if k:
+                        keys.add(k)
             elif isinstance(c, dict):
                 k = c.get("name") or c.get("key") or ""
-                if k in auth_keys:
-                    return True
+                if k:
+                    keys.add(k)
             elif hasattr(c, "key"):
-                if getattr(c, "key", "") in auth_keys:
-                    return True
-        return False
+                k = getattr(c, "key", "")
+                if k:
+                    keys.add(k)
+        return "LOGIN_INFO" in keys or ("SID" in keys and "SAPISID" in keys)
 
     def get_youtube_login_status(self):
         try:
             from downloader import is_youtube_logged_in
             logged_in = is_youtube_logged_in()
-            if not logged_in and self._window:
-                try:
-                    cookies = self._window.get_cookies()
-                    if self._check_cookie_auth(cookies):
-                        from downloader import save_cookies_to_netscape_file, get_youtube_session_cookie_path
-                        save_cookies_to_netscape_file(cookies, get_youtube_session_cookie_path())
-                        logged_in = True
-                except Exception:
-                    pass
             return {'logged_in': logged_in}
         except Exception as e:
             _log.warning(f"Error checking YouTube login status: {e}")

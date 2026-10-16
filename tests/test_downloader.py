@@ -113,6 +113,26 @@ class DownloaderTests(unittest.TestCase):
         self.assertIn("تشفير", msg)
         self.assertIn("cookies.txt", msg)
 
+    def test_clean_error_message_translates_page_needs_to_be_reloaded(self):
+        msg = downloader.clean_error_message("ERROR: [youtube] Wpv-yx3Zbvk: The page needs to be reloaded.")
+        self.assertIn("تحديث الجلسة", msg)
+        self.assertNotIn("Wpv-yx3Zbvk", msg)
+
+    def test_apply_cookies_respects_no_cookies(self):
+        import tempfile
+        with tempfile.NamedTemporaryFile("w", delete=False) as tf:
+            tf.write("# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tTRUE\t2000000000\tLOGIN_INFO\tval123\n")
+            path = tf.name
+
+        try:
+            with patch("downloader.get_youtube_session_cookie_path", return_value=path):
+                opts = {}
+                downloader._apply_cookies(opts, "no_cookies")
+                self.assertNotIn("cookiefile", opts)
+        finally:
+            if os.path.exists(path):
+                os.remove(path)
+
     def test_save_cookies_to_netscape_file_creates_valid_file(self):
         import tempfile, http.cookiejar
         from http.cookies import SimpleCookie

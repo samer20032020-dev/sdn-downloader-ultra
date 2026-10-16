@@ -203,6 +203,8 @@ def clean_error_message(err: Exception | str, url: str | None = None) -> str:
 
     if isinstance(err, DownloadCancelled) or "download cancelled by user" in lowered:
         return "تم إلغاء التنزيل."
+    if "the page needs to be reloaded" in lowered or "page needs to be reloaded" in lowered:
+        return "⚠️ خوادم YouTube تطلب تحديث الجلسة. أعد المحاولة أو سجّل الدخول مجدداً من الإعدادات إذا كان المحتوى خاصاً."
     if "unviewable" in lowered or "this playlist type is unviewable" in lowered:
         return "❌ قائمة التشغيل هذه من نوع ميكس (Mix) أو خاصة وغير متاحة كقائمة كاملة."
     if "playlist does not exist" in lowered:
@@ -236,6 +238,7 @@ def clean_error_message(err: Exception | str, url: str | None = None) -> str:
 
     text = re.sub(r"\x1b\[[0-9;]*m", "", text)
     text = re.sub(r"(?i)ERROR:\s*(?:\[.*?\]\s*)?", "", text)
+    text = re.sub(r"^[a-zA-Z0-9_-]{11}:\s*", "", text)
     return text.strip() or "حدث خطأ غير متوقع أثناء معالجة الرابط."
 
 
@@ -257,6 +260,9 @@ def _common_ydl_options(proxy: str | None = None) -> dict[str, Any]:
     }
     if proxy and proxy.strip():
         options["proxy"] = proxy.strip()
+    node_path = shutil.which("node")
+    if node_path:
+        options["js_runtimes"] = {"node": {"path": node_path}}
     return options
 
 
@@ -367,7 +373,7 @@ def is_youtube_logged_in() -> bool:
     try:
         with open(path, "r", encoding="utf-8", errors="ignore") as f:
             content = f.read()
-        return any(k in content for k in ("LOGIN_INFO", "SID", "SAPISID", "SSID", "__Secure-3PSID"))
+        return "LOGIN_INFO" in content or ("SID" in content and "SAPISID" in content)
     except Exception:
         return False
 
@@ -388,7 +394,10 @@ def _apply_cookies(options: dict[str, Any], browser_cookies: str | None) -> None
     session_path = get_youtube_session_cookie_path()
     has_session = os.path.isfile(session_path) and os.path.getsize(session_path) > 20
 
-    if not cookie_source or cookie_source == "none":
+    if cookie_source in ("no_cookies", "disabled", "off"):
+        return
+
+    if not cookie_source or cookie_source in ("none", "auto"):
         if has_session:
             options["cookiefile"] = session_path
         return
@@ -746,24 +755,68 @@ class MediaDownloader:
         )
         _apply_cookies(ydl_options, browser_cookies)
 
+        used_cookies = bool(ydl_options.get("cookiefile") or ydl_options.get("cookiesfrombrowser"))
+        cookie_session_file = ydl_options.get("cookiefile")
+
         info = None
         try:
             with yt_dlp.YoutubeDL(ydl_options) as ydl:
                 info = ydl.extract_info(normalized, download=False)
         except Exception as exc:
-            if "unviewable" in str(exc).lower():
-                fallback_url = _find_youtube_video_fallback(url) or _find_youtube_video_fallback(normalized)
-                if fallback_url and fallback_url != normalized:
+            # If cookies were used and extraction failed (e.g. YouTube session invalidation/reload),
+            # automatically fallback to retry without cookies
+            if used_cookies:
+                exc_str = str(exc).lower()
+                is_cookie_block = any(p in exc_str for p in (
+                    "the page needs to be reloaded",
+                    "page needs to be reloaded",
+                    "sign in to confirm",
+                    "unplayable",
+                    "playability",
+                    "dpapi",
+                    "cookie database",
+                    "403",
+                    "forbidden",
+                )) or "youtube" in exc_str
+                if is_cookie_block:
                     try:
-                        with yt_dlp.YoutubeDL(ydl_options) as ydl:
-                            info = ydl.extract_info(fallback_url, download=False)
-                        normalized = fallback_url
+                        no_cookie_opts = dict(ydl_options)
+                        no_cookie_opts.pop("cookiefile", None)
+                        no_cookie_opts.pop("cookiesfrombrowser", None)
+                        with yt_dlp.YoutubeDL(no_cookie_opts) as ydl_clean:
+                            info = ydl_clean.extract_info(normalized, download=False)
+                        if "page needs to be reloaded" in exc_str and cookie_session_file == get_youtube_session_cookie_path():
+                            try:
+                                logout_youtube()
+                            except Exception:
+                                pass
                     except Exception:
+                        pass
+
+            if not info:
+                if "unviewable" in str(exc).lower():
+                    fallback_url = _find_youtube_video_fallback(url) or _find_youtube_video_fallback(normalized)
+                    if fallback_url and fallback_url != normalized:
+                        try:
+                            try:
+                                with yt_dlp.YoutubeDL(ydl_options) as ydl:
+                                    info = ydl.extract_info(fallback_url, download=False)
+                            except Exception:
+                                if used_cookies:
+                                    no_cookie_opts = dict(ydl_options)
+                                    no_cookie_opts.pop("cookiefile", None)
+                                    no_cookie_opts.pop("cookiesfrombrowser", None)
+                                    with yt_dlp.YoutubeDL(no_cookie_opts) as ydl_clean:
+                                        info = ydl_clean.extract_info(fallback_url, download=False)
+                                else:
+                                    raise
+                            normalized = fallback_url
+                        except Exception:
+                            raise RuntimeError(clean_error_message(exc, url=normalized)) from exc
+                    else:
                         raise RuntimeError(clean_error_message(exc, url=normalized)) from exc
                 else:
                     raise RuntimeError(clean_error_message(exc, url=normalized)) from exc
-            else:
-                raise RuntimeError(clean_error_message(exc, url=normalized)) from exc
 
         if not info:
             raise RuntimeError("تعذر جلب معلومات الرابط. تحقق من الرابط ثم أعد المحاولة.")
@@ -1080,6 +1133,9 @@ class MediaDownloader:
         ydl_logger = _YDLDownloadLogger()
         ydl_options["logger"] = ydl_logger
 
+        used_cookies = bool(ydl_options.get("cookiefile") or ydl_options.get("cookiesfrombrowser"))
+        cookie_session_file = ydl_options.get("cookiefile")
+
         try:
             with yt_dlp.YoutubeDL(ydl_options) as ydl:
                 info = ydl.extract_info(url, download=True)
@@ -1088,7 +1144,42 @@ class MediaDownloader:
         except Exception as exc:
             if self._cancel_event.is_set():
                 raise DownloadCancelled("Download cancelled by user") from exc
-            raise RuntimeError(clean_error_message(exc)) from exc
+
+            # If download failed with cookie rejection, automatically retry without cookies
+            download_recovered = False
+            if used_cookies:
+                exc_str = str(exc).lower()
+                is_cookie_block = any(p in exc_str for p in (
+                    "the page needs to be reloaded",
+                    "page needs to be reloaded",
+                    "sign in to confirm",
+                    "unplayable",
+                    "playability",
+                    "dpapi",
+                    "cookie database",
+                    "403",
+                    "forbidden",
+                )) or "youtube" in exc_str
+                if is_cookie_block:
+                    try:
+                        no_cookie_opts = dict(ydl_options)
+                        no_cookie_opts.pop("cookiefile", None)
+                        no_cookie_opts.pop("cookiesfrombrowser", None)
+                        with yt_dlp.YoutubeDL(no_cookie_opts) as ydl_clean:
+                            info = ydl_clean.extract_info(url, download=True)
+                        download_recovered = True
+                        if "page needs to be reloaded" in exc_str and cookie_session_file == get_youtube_session_cookie_path():
+                            try:
+                                logout_youtube()
+                            except Exception:
+                                pass
+                    except DownloadCancelled:
+                        raise
+                    except Exception:
+                        download_recovered = False
+
+            if not download_recovered:
+                raise RuntimeError(clean_error_message(exc, url=url)) from exc
 
         # Resolve any Windows temporary merge files locked briefly by antivirus/indexing
         for temp_file in glob.glob(os.path.join(save_dir, f"*{run_token}*.temp.*")):
