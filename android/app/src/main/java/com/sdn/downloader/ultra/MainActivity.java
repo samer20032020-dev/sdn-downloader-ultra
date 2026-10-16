@@ -803,25 +803,32 @@ public class MainActivity extends BridgeActivity {
                 final String adBlockScript =
                     "(function() {" +
                     "  var st = document.createElement('style');" +
-                    "  st.innerHTML = '.video-ads, .ytp-ad-module, .ytp-ad-overlay-container, ytd-ad-slot-renderer, ytd-in-feed-ad-layout-renderer, #player-ads, .ytp-ad-player-overlay { display: none !important; }';" +
-                    "  document.documentElement.appendChild(st);" +
+                    "  st.textContent = '.video-ads, .ytp-ad-module, .ytp-ad-overlay-container, ytd-ad-slot-renderer, ytd-in-feed-ad-layout-renderer, #player-ads, .ytp-ad-player-overlay { display: none !important; }';" +
+                    "  (document.head || document.documentElement).appendChild(st);" +
                     "  setInterval(function() {" +
                     "    var v = document.querySelector('video');" +
                     "    if (v && document.querySelector('.ad-showing, .ad-interrupting')) { v.muted = true; v.currentTime = v.duration || 999; }" +
                     "    var sk = document.querySelectorAll('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button');" +
                     "    sk.forEach(function(b) { b.click(); });" +
                     "  }, 400);" +
-                    "  var idm = document.createElement('div');" +
-                    "  idm.style.cssText = 'position:fixed; top:65px; right:16px; z-index:999999; direction:rtl; font-family:sans-serif;';" +
-                    "  idm.innerHTML = '<button id=\"sdnIdmMobileBtn\" style=\"background:linear-gradient(135deg,#0284c7,#2563eb);color:#fff;border:1px solid rgba(255,255,255,0.4);padding:9px 18px;border-radius:22px;font-weight:bold;font-size:12.5px;box-shadow:0 6px 20px rgba(0,0,0,0.6);\">⚡ تحميل بواسطة SDN</button>';" +
-                    "  (document.body || document.documentElement).appendChild(idm);" +
-                    "  document.getElementById('sdnIdmMobileBtn').onclick = function() {" +
-                    "    if (window.pywebview_api) window.pywebview_api.download_url(window.location.href, 'best');" +
-                    "  };" +
-                    "  setInterval(function() {" +
+                    "  function ensureMobileBtn() {" +
+                    "    var btn = document.getElementById('sdnIdmMobileBtn');" +
+                    "    if (!btn) {" +
+                    "      btn = document.createElement('button');" +
+                    "      btn.id = 'sdnIdmMobileBtn';" +
+                    "      btn.textContent = '⚡ تحميل بواسطة SDN';" +
+                    "      btn.style.cssText = 'position:fixed; top:65px; right:16px; z-index:2147483647; direction:rtl; font-family:sans-serif; background:linear-gradient(135deg,#0284c7,#2563eb); color:#fff; border:1px solid rgba(255,255,255,0.4); padding:9px 18px; border-radius:22px; font-weight:bold; font-size:12.5px; box-shadow:0 6px 20px rgba(0,0,0,0.6); cursor:pointer;';" +
+                    "      btn.onclick = function(e) {" +
+                    "        e.stopPropagation();" +
+                    "        if (window.pywebview_api) window.pywebview_api.download_url(window.location.href, 'best');" +
+                    "      };" +
+                    "      (document.body || document.documentElement).appendChild(btn);" +
+                    "    }" +
                     "    var u = window.location.href;" +
-                    "    idm.style.display = (u.indexOf('/watch') !== -1 || u.indexOf('/shorts/') !== -1 || u.indexOf('list=') !== -1) ? 'block' : 'none';" +
-                    "  }, 500);" +
+                    "    btn.style.display = (u.indexOf('/watch') !== -1 || u.indexOf('/shorts/') !== -1 || u.indexOf('list=') !== -1 || Boolean(document.querySelector('video'))) ? 'block' : 'none';" +
+                    "  }" +
+                    "  ensureMobileBtn();" +
+                    "  setInterval(ensureMobileBtn, 500);" +
                     "})();";
 
                 webView.setWebViewClient(new WebViewClient() {
