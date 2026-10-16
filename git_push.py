@@ -169,35 +169,44 @@ def get_or_create_release(token):
     return None
 
 
-def upload_asset(release_data, asset_name, asset_path, content_type, token):
-    """يرفع ملفاً إلى GitHub Release"""
+def upload_asset(release_data, asset_name, asset_path, content_type, token, max_retries=3):
+    """يرفع ملفاً إلى GitHub Release مع دعم إعادة المحاولة التلقائية"""
     # حذف الأصل القديم إن وجد
     for asset in release_data.get("assets", []):
         if asset.get("name") == asset_name:
             del_url = f"https://api.github.com/repos/{REPO}/releases/assets/{asset['id']}"
-            github_request(del_url, method="DELETE", token=token)
-            print(f"  🗑️  حُذف الأصل القديم: {asset_name}")
+            try:
+                github_request(del_url, method="DELETE", token=token)
+                print(f"  🗑️  حُذف الأصل القديم: {asset_name}")
+            except Exception:
+                pass
 
-    # رفع الجديد
     upload_base = release_data.get("upload_url", "").split("{")[0]
     upload_url = f"{upload_base}?name={asset_name}"
     size = os.path.getsize(asset_path)
-    print(f"  ⬆️  رفع {asset_name} ({size // 1024 // 1024:.1f} MB)...")
 
     with open(asset_path, "rb") as f:
         data = f.read()
 
-    result = github_request(
-        upload_url,
-        method="POST",
-        data=data,
-        headers={"Content-Type": content_type},
-        token=token,
-    )
-    if result and result.get("id"):
-        print(f"  ✅ تم الرفع: {result.get('browser_download_url')}")
-        return True
-    print(f"  ❌ فشل رفع: {asset_name}")
+    for attempt in range(1, max_retries + 1):
+        try:
+            print(f"  ⬆️  رفع {asset_name} ({size // 1024 // 1024:.1f} MB) - محاولة {attempt}/{max_retries}...")
+            result = github_request(
+                upload_url,
+                method="POST",
+                data=data,
+                headers={"Content-Type": content_type},
+                token=token,
+            )
+            if result and result.get("id"):
+                print(f"  ✅ تم الرفع بنجاح: {result.get('browser_download_url')}")
+                return True
+        except Exception as e:
+            print(f"  ⚠️ خطأ في المحاولة {attempt}: {e}")
+            import time
+            time.sleep(3)
+
+    print(f"  ❌ فشل رفع: {asset_name} بعد {max_retries} محاولات")
     return False
 
 
