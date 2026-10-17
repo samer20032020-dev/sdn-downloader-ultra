@@ -188,6 +188,9 @@ def clean_url(url: str) -> str:
     return value
 
 
+clean_media_url = clean_url
+
+
 def _is_web_url(url: str) -> bool:
     try:
         parsed = urllib.parse.urlsplit(url)

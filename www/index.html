@@ -524,17 +524,36 @@ body.light-theme .input-field-wrap input { background: #fff; }
 }
 .download-playlist-entry {
   display: grid;
-  grid-template-columns: auto 42px minmax(0, 1fr) auto;
+  grid-template-columns: auto 42px minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 9px;
   padding: 7px 9px;
   border-radius: 10px;
   background: rgba(255,255,255,0.035);
   cursor: pointer;
+  transition: background 0.18s ease;
+}
+.download-playlist-entry:hover {
+  background: rgba(56, 189, 248, 0.08);
 }
 .download-playlist-entry img { width: 42px; height: 30px; object-fit: cover; border-radius: 6px; }
 .download-playlist-entry span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .download-playlist-entry small { color: var(--text-sub); }
+.playlist-item-format-select {
+  background: #0f172a;
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  border-radius: 8px;
+  padding: 3px 6px;
+  font: 700 0.72rem inherit;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+}
+.playlist-item-format-select:focus, .playlist-item-format-select:hover {
+  border-color: #38bdf8;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+}
 
 .trim-section-card {
   border: 1px solid var(--card-border);
@@ -1916,7 +1935,7 @@ body.light-theme select option, body.light-theme .select-dropdown option {
       <!-- Update Header Button -->
       <button id="headerUpdateBtn" onclick="onHeaderUpdateClick()" class="update-header-btn" title="فحص التحديثات" style="display:none;">
         <i class="fas fa-cog" id="updateHeaderIcon"></i>
-        <span id="updateHeaderTxt">v1.0.14</span>
+        <span id="updateHeaderTxt">v1.0.15</span>
       </button>
     </div>
   </header>
@@ -1932,7 +1951,7 @@ body.light-theme select option, body.light-theme .select-dropdown option {
       <div style="display:flex; flex-direction:column; align-items:center; text-align:center; padding-top:16px; gap:8px;">
         <div class="clean-hero-badge">
           <span class="clean-hero-dot"></span>
-          <span>الإصدار 1.0.14 — تنزيل فائق السرعة وبدون إعلانات</span>
+          <span>الإصدار 1.0.15 — تنزيل فائق السرعة وبدون إعلانات</span>
         </div>
         <h1 class="clean-hero-title">نزّل الفيديوهات والموسيقى بأعلى جودة</h1>
         <p class="clean-hero-sub">ضع رابط أي فيديو من YouTube أو TikTok أو Instagram أو Facebook للتحميل الفوري</p>
@@ -2012,8 +2031,10 @@ body.light-theme select option, body.light-theme .select-dropdown option {
           <div class="download-playlist-toolbar">
             <strong id="downloadPlaylistSummary">قائمة التشغيل</strong>
             <div class="download-playlist-actions">
-              <button type="button" onclick="setAllPlaylistItems(true)">تحديد الكل</button>
-              <button type="button" onclick="setAllPlaylistItems(false)">إلغاء الكل</button>
+              <button type="button" onclick="setAllPlaylistItems(true)" title="تحديد جميع عناصر القائمة">✅ تحديد الكل</button>
+              <button type="button" onclick="setAllPlaylistItems(false)" title="إلغاء تحديد الكل">❌ إلغاء الكل</button>
+              <button type="button" onclick="setAllPlaylistFormats('video')" title="تحويل صيغة جميع العناصر إلى فيديو MP4">🎬 الكل فيديو</button>
+              <button type="button" onclick="setAllPlaylistFormats('audio')" title="تحويل صيغة جميع العناصر إلى صوت MP3">🎵 الكل صوت</button>
             </div>
           </div>
           <div class="download-playlist-items" id="downloadPlaylistItems"></div>
@@ -2328,7 +2349,7 @@ body.light-theme select option, body.light-theme .select-dropdown option {
         <div class="settings-item">
           <div class="settings-label">
             <span class="settings-title">إصدار التطبيق الحالي</span>
-            <span class="settings-desc" id="settingsVersionTxt">SDN v1.0.14</span>
+            <span class="settings-desc" id="settingsVersionTxt">SDN v1.0.15</span>
           </div>
           <button class="header-btn" id="checkUpdatesManualBtn" style="width:auto; padding:0 10px; font-size:0.78rem; color:var(--primary);">فحص التحديثات</button>
         </div>
@@ -2721,15 +2742,22 @@ window.onBrowserQuickDownload = function(url, quality, mode) {
   }
 };
 
-window.onBrowserSendUrl = function(url) {
+window.onBrowserSendUrl = function(url, autoPlaylistSelect = false) {
   if (!url) return;
   const urlInp = document.getElementById('urlInp');
   if (urlInp) {
     urlInp.value = url;
     if (typeof switchMainView === 'function') switchMainView('viewHome');
+    if (autoPlaylistSelect) {
+      window._idmAutoStart = {
+        mode: 'playlist_select',
+        quality: 'best',
+        created: Date.now()
+      };
+    }
     const fetchBtn = document.getElementById('fetchBtn');
     if (fetchBtn) fetchBtn.click();
-    toast('🚀 تم استلام الرابط في البرنامج الرئيسي');
+    toast(autoPlaylistSelect ? '📋 جاري استيراد عناصر قائمة التشغيل لتحديد ما تريده...' : '🚀 تم استلام الرابط في البرنامج الرئيسي');
   }
 };
 
@@ -2955,6 +2983,8 @@ function switchTab(targetId) {
         if (res && res.tracks && res.tracks.length > 0) addTracksToPlaylist(res.tracks);
       }).catch(() => {});
     }, 300);
+  } else if (targetId === 'viewHistory') {
+    if (typeof refreshHistoryUI === 'function') refreshHistoryUI();
   } else if (targetId === 'viewSettings') {
     checkYouTubeLoginStatus();
   }
@@ -4111,10 +4141,10 @@ function updateProgress(p) {
     if (eta)   eta.innerText = '';
     if (sizes) sizes.innerText = '';
 
-    // Save to history
+    // Save to history & music library
     const title = gData?.title || 'وسائط محمّلة';
     const qualLabel = gOpt?.label || gOpt?.size_str || 'جودة افتراضية';
-    const mediaType = gOpt?.type || 'video';
+    const mediaType = p.media_type || gOpt?.type || 'video';
     const firstFile = Array.isArray(p.files) && p.files.length ? p.files[0] : null;
     const summaryTitle = p.count > 1 ? `${title} (${p.count} ملفات)` : title;
     addRecentItem(
@@ -4124,8 +4154,25 @@ function updateProgress(p) {
       p.filepath || firstFile?.filepath || '',
       firstFile?.playable_url || ''
     );
-    if (mediaType === 'audio') {
-      setTimeout(refreshAudioPlaylist, 500);
+
+    // Auto-sync any downloaded audio tracks directly into Music Library
+    const downloadedFiles = Array.isArray(p.files) ? p.files : (p.filepath ? [{ filepath: p.filepath, title: title }] : []);
+    const audioFiles = downloadedFiles.filter(f => {
+      const pStr = (f.filepath || '').toLowerCase();
+      return f.is_audio || f.type === 'audio' || mediaType === 'audio' || pStr.endsWith('.mp3') || pStr.endsWith('.m4a') || pStr.endsWith('.wav') || pStr.endsWith('.flac') || pStr.endsWith('.opus');
+    });
+
+    if (audioFiles.length > 0) {
+      const newTracks = audioFiles.map(f => ({
+        title: f.title || (f.filepath ? f.filepath.split(/[\\/]/).pop().replace(/\.[^/.]+$/, "") : "مقطع صوتي"),
+        uploader: gData?.uploader || 'SDN Audio',
+        thumbnail: gData?.thumbnail || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300',
+        url: f.playable_url || getPlayableTrackUrl(f),
+        playable_url: f.playable_url || getPlayableTrackUrl(f),
+        filepath: f.filepath
+      }));
+      addTracksToPlaylist(newTracks);
+      renderPlaylistUI();
     }
 
     // Completion haptic feedback (if enabled and supported, no audio chime)
@@ -4248,19 +4295,46 @@ function renderTabOptions(optionsList) {
 
 function updateDownloadPlaylistSummary() {
   const items = Array.from(document.querySelectorAll('.download-playlist-check'));
-  const selected = items.filter(item => item.checked).length;
-  const isFullPlaylist = items.length > 0 && selected === items.length;
+  const total = items.length;
+  let selected = 0;
+  let videoCount = 0;
+  let audioCount = 0;
+
+  items.forEach(check => {
+    if (check.checked) {
+      selected++;
+      const idx = check.dataset.index;
+      const sel = document.querySelector(`.playlist-item-format-select[data-index="${idx}"]`);
+      if (sel && sel.value === 'audio') {
+        audioCount++;
+      } else {
+        videoCount++;
+      }
+    }
+  });
+
   const summary = document.getElementById('downloadPlaylistSummary');
   if (summary) {
-    summary.textContent = isFullPlaylist
-      ? `📚 القائمة كاملة: ${items.length} عنصر`
-      : `📚 تم تحديد ${selected} من ${items.length}`;
+    if (total === 0) {
+      summary.textContent = 'قائمة التشغيل';
+    } else if (selected === total) {
+      summary.textContent = `📚 القائمة كاملة (${total}): ${videoCount} فيديو 🎬 + ${audioCount} صوت 🎵`;
+    } else {
+      summary.textContent = `📚 محدد ${selected} من ${total}: ${videoCount} فيديو 🎬 + ${audioCount} صوت 🎵`;
+    }
   }
+
   const dlBtn = document.getElementById('dlBtn');
   if (dlBtn && !gDownloadActive) {
-    dlBtn.textContent = selected === 0
-      ? '⚠️ اختر عناصر للتنزيل'
-      : (isFullPlaylist ? `⚡ تنزيل القائمة كاملة (${items.length})` : `⚡ تنزيل ${selected} عنصر`);
+    if (selected === 0) {
+      dlBtn.textContent = '⚠️ اختر عناصر للتنزيل';
+    } else if (videoCount > 0 && audioCount > 0) {
+      dlBtn.textContent = `🚀 تنزيل المحدد (${videoCount} فيديو + ${audioCount} صوت)`;
+    } else if (audioCount > 0) {
+      dlBtn.textContent = (selected === total) ? `🎵 تنزيل كامل القائمة (${audioCount} صوت MP3)` : `🎵 تنزيل (${audioCount}) مقطع صوتي MP3`;
+    } else {
+      dlBtn.textContent = (selected === total) ? `🎬 تنزيل كامل القائمة (${videoCount} فيديو)` : `🎬 تنزيل (${videoCount}) مقطع فيديو MP4`;
+    }
   }
 }
 
@@ -4269,6 +4343,14 @@ function setAllPlaylistItems(checked) {
   updateDownloadPlaylistSummary();
 }
 window.setAllPlaylistItems = setAllPlaylistItems;
+
+function setAllPlaylistFormats(format) {
+  document.querySelectorAll('.playlist-item-format-select').forEach(sel => {
+    sel.value = format;
+  });
+  updateDownloadPlaylistSummary();
+}
+window.setAllPlaylistFormats = setAllPlaylistFormats;
 
 function renderDownloadPlaylist(data) {
   const picker = document.getElementById('downloadPlaylistPicker');
@@ -4300,7 +4382,19 @@ function renderDownloadPlaylist(data) {
 
     const duration = document.createElement('small');
     duration.textContent = item.duration || '';
-    row.append(check, thumb, title, duration);
+
+    const fmtSelect = document.createElement('select');
+    fmtSelect.className = 'playlist-item-format-select';
+    fmtSelect.dataset.index = String(item.index || position + 1);
+    fmtSelect.title = 'اختر صيغة هذا المقطع (فيديو MP4 أو صوت MP3)';
+    fmtSelect.innerHTML = `
+      <option value="video" selected>🎬 فيديو</option>
+      <option value="audio">🎵 صوت</option>
+    `;
+    fmtSelect.addEventListener('click', e => e.stopPropagation());
+    fmtSelect.addEventListener('change', updateDownloadPlaylistSummary);
+
+    row.append(check, thumb, title, duration, fmtSelect);
     container.appendChild(row);
   });
   updateDownloadPlaylistSummary();
@@ -4478,6 +4572,14 @@ function renderMediaCard(d) {
   const opts = d.options || [...vOpts, ...aOpts];
   renderDownloadPlaylist(d);
 
+  if (window.pywebview?.api?.check_duplicate && (d.source_url || d.cleaned_url || d.title)) {
+    window.pywebview.api.check_duplicate(d.cleaned_url || d.source_url, d.title).then(res => {
+      if (res && res.is_duplicate) {
+        toast(`⚠️ تنبيه: تم تنزيل هذا المحتوى مسبقاً (${res.matched_title || ''}) لمنع التكرار`);
+      }
+    }).catch(() => {});
+  }
+
   currentVideoOpts = opts.filter(o => o.type !== 'audio' && !o.label.includes('صوت') && !o.label.includes('MP3'));
   currentAudioOpts = opts.filter(o => o.type === 'audio' || o.label.includes('صوت') || o.label.includes('MP3'));
 
@@ -4587,20 +4689,29 @@ document.getElementById('dlBtn').addEventListener('click', async () => {
   if (sizes) sizes.innerText = '';
   if (eta) eta.innerText = '';
 
-  const playlistCheckboxes = Array.from(document.querySelectorAll('.download-playlist-check'));
-  const selectedPlaylistItems = playlistCheckboxes
-    .filter(item => item.checked)
-    .map(item => Number(item.dataset.index))
-    .filter(Number.isFinite);
-  if (gData.is_playlist && selectedPlaylistItems.length === 0) {
+  const selectedItems = [];
+  document.querySelectorAll('.download-playlist-check:checked').forEach(chk => {
+    const idx = Number(chk.dataset.index);
+    const fmt = document.querySelector(`.playlist-item-format-select[data-index="${idx}"]`)?.value || 'video';
+    selectedItems.push({ index: idx, format: fmt });
+  });
+
+  if (gData.is_playlist && selectedItems.length === 0) {
     toast('⚠️ اختر عنصرًا واحدًا على الأقل من القائمة');
     return;
   }
+
+  const playlistCheckboxes = Array.from(document.querySelectorAll('.download-playlist-check'));
   const downloadFullPlaylist = Boolean(
     gData.is_playlist
     && playlistCheckboxes.length > 0
-    && selectedPlaylistItems.length === playlistCheckboxes.length
+    && selectedItems.length === playlistCheckboxes.length
   );
+
+  const videoIndices = selectedItems.filter(i => i.format === 'video').map(i => i.index);
+  const audioIndices = selectedItems.filter(i => i.format === 'audio').map(i => i.index);
+  const isMixed = (videoIndices.length > 0 && audioIndices.length > 0);
+  const isAllAudio = (audioIndices.length > 0 && videoIndices.length === 0);
 
   const sourceUrl = gData.cleaned_url || gData.source_url || document.getElementById('urlInp').value;
   const requestOption = {
@@ -4613,11 +4724,14 @@ document.getElementById('dlBtn').addEventListener('click', async () => {
     proxy: getProxyValue(),
     cookies: getCookieSource(),
     is_playlist: Boolean(gData.is_playlist),
-    playlist_items: downloadFullPlaylist ? [] : selectedPlaylistItems,
+    playlist_items: selectedItems.map(i => i.index),
     playlist_mode: downloadFullPlaylist ? 'all' : 'selected',
-    playlist_count: downloadFullPlaylist
-      ? (gData.entry_count || playlistCheckboxes.length)
-      : (selectedPlaylistItems.length || 1),
+    playlist_count: selectedItems.length || (downloadFullPlaylist ? gData.entry_count : 1),
+    mixed_playlist: isMixed,
+    playlist_video_items: videoIndices,
+    playlist_audio_items: audioIndices,
+    type: isMixed ? 'mixed' : (isAllAudio ? 'audio' : (gOpt.type || 'video')),
+    ext: isAllAudio ? 'mp3' : (gOpt.ext || 'mp4'),
     media_title: gData.title || '',
     media_uploader: gData.uploader || '',
   };
@@ -4721,21 +4835,79 @@ function createRecentCard(title, quality, type, filepath) {
   item.appendChild(left);
 
   if (filepath) {
+    const actionsWrap = document.createElement('div');
+    actionsWrap.style.cssText = 'display:flex; align-items:center; gap:6px; margin-right:auto;';
+
+    const playButton = document.createElement('button');
+    playButton.className = 'open-folder-btn';
+    playButton.title = 'تشغيل الملف مباشرة';
+    playButton.innerHTML = (type === 'audio') ? '<i class="fas fa-play"></i> تشغيل' : '<i class="fas fa-play-circle"></i> تشغيل';
+    playButton.style.cssText = 'background:rgba(52, 211, 153, 0.15); color:#34d399; border-color:rgba(52, 211, 153, 0.4);';
+    playButton.addEventListener('click', event => {
+      event.stopPropagation();
+      if (type === 'audio') {
+        const track = {
+          title: title || 'مقطع صوتي',
+          filepath: filepath,
+          url: getPlayableTrackUrl({ filepath }),
+          playable_url: getPlayableTrackUrl({ filepath }),
+          uploader: 'SDN Player'
+        };
+        addTracksToPlaylist([track]);
+        playTrack(track);
+        toast('🎵 جاري تشغيل المقطع الصوتي...');
+      } else {
+        if (window.pywebview?.api?.play_file) {
+          window.pywebview.api.play_file(filepath);
+        } else {
+          openDownloadFolder(filepath);
+        }
+      }
+    });
+
     const openButton = document.createElement('button');
     openButton.className = 'open-folder-btn';
     openButton.title = 'فتح في المجلد';
-    openButton.innerHTML = '<i class="fas fa-folder-open"></i> فتح في المجلد';
+    openButton.innerHTML = '<i class="fas fa-folder-open"></i> المجلد';
     openButton.addEventListener('click', event => {
       event.stopPropagation();
       openDownloadFolder(filepath);
     });
-    item.appendChild(openButton);
+
+    actionsWrap.append(playButton, openButton);
+    item.appendChild(actionsWrap);
   }
   const done = document.createElement('i');
   done.className = 'fas fa-check-circle item-status-icon';
   item.appendChild(done);
   return item;
 }
+
+function refreshHistoryUI() {
+  if (window.pywebview?.api?.get_history) {
+    window.pywebview.api.get_history().then(items => {
+      const hist = document.getElementById('fullHistoryList');
+      if (!hist) return;
+      document.getElementById('emptyHistory')?.remove();
+      hist.innerHTML = '';
+      if (!items || items.length === 0) {
+        hist.innerHTML = '<div class="empty-state" id="emptyHistory" style="text-align:center; color:var(--muted); padding:30px; font-weight:700; font-size:0.9rem;">لا توجد عناصر سابقة</div>';
+        return;
+      }
+      items.forEach(item => {
+        hist.appendChild(
+          createRecentCard(
+            item.title || 'بدون عنوان',
+            item.quality || '',
+            item.type === 'audio' ? 'audio' : 'video',
+            item.filepath || ''
+          )
+        );
+      });
+    }).catch(() => {});
+  }
+}
+window.refreshHistoryUI = refreshHistoryUI;
 
 /* ── Recent Items Add & Lark Player Integration ── */
 function addRecentItem(title, quality, type, filepath, playableUrl = '') {
@@ -4801,7 +4973,7 @@ function incrementDlCounter() {
   num.style.animation = 'dlBadgeBump 0.35s ease';
 }
 
-let CURRENT_VERSION = '1.0.14';
+let CURRENT_VERSION = '1.0.15';
 let gLatestReleaseUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
 let gLatestReleasePage = gLatestReleaseUrl;
 let gLatestAssetUrl = '';

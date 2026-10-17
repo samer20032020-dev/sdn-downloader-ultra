@@ -140,11 +140,14 @@ class YouTubeBrowserBridge:
     def __init__(self, main_api):
         self.main_api = main_api
 
-    def download_url(self, url, quality="best", mode="single"):
-        return self.main_api.quick_download_from_browser(url, quality, mode)
+    def download_url(self, url, quality="best", mode="single", force=False, title=None):
+        return self.main_api.quick_download_from_browser(url, quality, mode, force, title)
 
-    def send_to_main(self, url):
-        return self.main_api.load_url_in_main(url)
+    def send_to_main(self, url, auto_playlist_select=False):
+        return self.main_api.load_url_in_main(url, auto_playlist_select)
+
+    def check_duplicate(self, url, title=None):
+        return self.main_api.check_duplicate(url, title)
 
 
 YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
@@ -188,7 +191,6 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
 
     // ================================================================
     // uBlock Origin Core: Hook JSON.parse globally
-    // Strips adPlacements and playerAds from any JSON payload parsed by YouTube
     // ================================================================
     var origJSONParse = JSON.parse;
     JSON.parse = function(text, reviver) {
@@ -319,7 +321,7 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
     } catch (e) {}
 
     // ================================================================
-    // 2. Cosmetic CSS Filtering (uBlock Origin rules - Instant & GPU-accelerated)
+    // 2. Cosmetic CSS & In-Page Buttons Styling
     // ================================================================
     if (!document.getElementById('sdn-styles')) {
         var style = document.createElement('style');
@@ -352,6 +354,34 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
             '#sdn-idm-panel:hover {',
             '   transform: translateY(-1px);',
             '   box-shadow: 0 10px 28px rgba(0,0,0,0.9), 0 0 16px rgba(56, 189, 248, 0.45);',
+            '}',
+            '#sdn-inpage-dl-container {',
+            '   display: inline-flex; align-items: center; gap: 6px;',
+            '   margin: 4px 6px; vertical-align: middle; z-index: 999;',
+            '   direction: rtl; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;',
+            '}',
+            '.sdn-inpage-pill {',
+            '   background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);',
+            '   color: #ffffff; height: 36px; border-radius: 18px; padding: 0 14px;',
+            '   display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700;',
+            '   cursor: pointer; user-select: none; border: 1px solid rgba(56, 189, 248, 0.5);',
+            '   box-shadow: 0 2px 8px rgba(0,0,0,0.4); transition: all 0.18s ease;',
+            '}',
+            '.sdn-inpage-pill:hover {',
+            '   background: linear-gradient(135deg, #0369a1 0%, #0284c7 100%);',
+            '   box-shadow: 0 4px 14px rgba(56, 189, 248, 0.45); transform: translateY(-1px);',
+            '}',
+            '.sdn-quick-chip {',
+            '   background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16);',
+            '   color: #f1f5f9; height: 34px; border-radius: 17px; padding: 0 11px; font-size: 12px;',
+            '   font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;',
+            '   user-select: none; transition: all 0.18s ease;',
+            '}',
+            '.sdn-quick-chip:hover {',
+            '   background: rgba(56, 189, 248, 0.22); border-color: #38bdf8; color: #38bdf8; transform: translateY(-1px);',
+            '}',
+            '.sdn-quick-chip.chip-audio:hover {',
+            '   background: rgba(52, 211, 153, 0.22); border-color: #34d399; color: #34d399;',
             '}',
             '.sdn-idm-menu-item:hover {',
             '   background: rgba(56, 189, 248, 0.18) !important; color: #38bdf8 !important;',
@@ -403,7 +433,7 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
         };
     }
 
-    // 2. Dropdown Menu
+    // Dropdown Menu
     var menu = document.getElementById('sdn-idm-menu');
     if (!menu) {
         menu = createEl(
@@ -420,23 +450,75 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
         });
     }
 
-    function showToast(msg) {
+    // Modern Toast Notification with action support
+    window.showSdnToast = function(msg, type, actionData) {
         var t = document.getElementById('sdn-toast');
         if (!t) {
-            t = createEl('div', 'sdn-toast', 'position:fixed; bottom:28px; left:50%; transform:translateX(-50%); z-index:2147483647; background:#0f172a; color:#38bdf8; border:1px solid #38bdf8; border-radius:30px; padding:10px 24px; font-weight:bold; font-size:13px; box-shadow:0 10px 30px rgba(0,0,0,0.8); transition:opacity 0.3s; opacity:0; pointer-events:none; font-family:sans-serif; direction:rtl;');
+            t = createEl('div', 'sdn-toast', 'position:fixed; bottom:28px; left:50%; transform:translateX(-50%); z-index:2147483647; background:rgba(15, 23, 42, 0.96); backdrop-filter:blur(12px); color:#ffffff; border-radius:30px; padding:11px 22px; font-weight:bold; font-size:13px; box-shadow:0 12px 35px rgba(0,0,0,0.85); transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); opacity:0; pointer-events:auto; font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; direction:rtl; display:flex; align-items:center; gap:12px; max-width:90vw;');
             (document.body || document.documentElement).appendChild(t);
         }
-        t.textContent = msg;
+        while (t.firstChild) t.removeChild(t.firstChild);
+
+        var borderColor = '#38bdf8';
+        if (type === 'success') borderColor = '#22c55e';
+        else if (type === 'warning') borderColor = '#f59e0b';
+        else if (type === 'error') borderColor = '#ef4444';
+        else if (type === 'info') borderColor = '#38bdf8';
+
+        t.style.border = '1.5px solid ' + borderColor;
+        t.style.boxShadow = '0 12px 35px rgba(0,0,0,0.85), 0 0 16px ' + borderColor + '40';
+
+        var textSpan = createEl('span', '', 'line-height:1.4;', msg);
+        t.appendChild(textSpan);
+
+        if (actionData && actionData.url) {
+            var actionBtn = createEl('button', '', 'background:' + borderColor + '; color:#000; border:none; border-radius:14px; padding:4px 12px; font-size:12px; font-weight:800; cursor:pointer; margin-right:6px; white-space:nowrap;', 'تنزيل على أي حال ↻');
+            actionBtn.onclick = function(e) {
+                e.stopPropagation();
+                t.style.opacity = '0';
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.download_url) {
+                    window.pywebview.api.download_url(actionData.url, actionData.quality || 'best', actionData.mode || 'single', true, actionData.title || '');
+                }
+            };
+            t.appendChild(actionBtn);
+        }
+
         t.style.opacity = '1';
-        setTimeout(function() { if (t) t.style.opacity = '0'; }, 3200);
+        t.style.transform = 'translateX(-50%) translateY(0)';
+
+        clearTimeout(window.__sdn_toast_timer);
+        window.__sdn_toast_timer = setTimeout(function() {
+            if (t) {
+                t.style.opacity = '0';
+                t.style.transform = 'translateX(-50%) translateY(10px)';
+            }
+        }, actionData ? 7000 : 4200);
+    };
+
+    function showToast(msg, type) {
+        window.showSdnToast(msg, type || 'info');
+    }
+
+    function getVideoTitle() {
+        var titleEl = document.querySelector('ytd-watch-metadata #title h1, h1.style-scope.ytd-watch-metadata, #title.ytd-watch-metadata');
+        return titleEl ? titleEl.textContent.trim() : '';
+    }
+
+    function triggerDirectDownload(url, quality, mode, label, title) {
+        var effectiveTitle = title || getVideoTitle();
+        showToast('⏳ جاري التحقق من التنزيل (' + label + ')...', 'info');
+        if (window.pywebview && window.pywebview.api && window.pywebview.api.download_url) {
+            window.pywebview.api.download_url(url, quality, mode, false, effectiveTitle);
+        }
     }
 
     function populateMenu(ctx) {
         if (!menu) return;
         while (menu.firstChild) menu.removeChild(menu.firstChild);
 
+        var curTitle = getVideoTitle();
         var header = createEl('div', '', 'display:flex; align-items:center; justify-content:space-between; padding:4px 8px; border-bottom:1px solid rgba(255,255,255,0.12); margin-bottom:6px;');
-        var hTitle = createEl('span', '', 'font-size:12.5px; font-weight:bold; color:#38bdf8;', ctx.isPlaylist ? '📚 خيارات تحميل القائمة / الفيديو (IDM)' : '⚡ خيارات تحميل الفيديو (IDM)');
+        var hTitle = createEl('span', '', 'font-size:12.5px; font-weight:bold; color:#38bdf8;', ctx.isPlaylist ? '📚 خيارات تحميل القائمة / الفيديو (SDN)' : '⚡ خيارات تنزيل المقطع (SDN)');
         var hClose = createEl('span', '', 'cursor:pointer; color:#94a3b8; font-size:14px; font-weight:bold; padding:0 4px;', '✕');
         hClose.onclick = function(e) {
             e.stopPropagation();
@@ -466,76 +548,60 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
             menu.appendChild(row);
         }
 
-        function triggerDownload(url, quality, mode, label) {
-            var panelTxt = document.getElementById('sdnPanelText');
-            if (panelTxt) panelTxt.textContent = '⏳ جاري بدء التنزيل...';
-            showToast('⚡ تم إرسال الطلب إلى SDN: ' + label);
-
-            if (window.pywebview && window.pywebview.api && window.pywebview.api.download_url) {
-                window.pywebview.api.download_url(url, quality, mode);
-            }
-            setTimeout(function() {
-                if (panelTxt) panelTxt.textContent = '⬇️ بدأ التنزيل عبر SDN!';
-            }, 1200);
-            setTimeout(function() {
-                if (panelTxt) panelTxt.textContent = ctx.isPlaylist ? 'تحميل هذا الفيديو / القائمة' : 'تحميل هذا الفيديو';
-            }, 4500);
-        }
-
         if (ctx.isPlaylist) {
             addSectionHeader('🎬 تحميل هذا الفيديو فقط:');
             addItem('🚀 تنزيل هذا الفيديو بأعلى جودة', '#38bdf8', true, function() {
-                triggerDownload(ctx.singleUrl, 'best', 'single', 'هذا الفيديو (أفضل جودة)');
+                triggerDirectDownload(ctx.singleUrl, 'best', 'single', 'هذا الفيديو (أفضل جودة)', curTitle);
             });
             addItem('📺 فيديو 1080p FHD لهذا المقطع', '#f8fafc', false, function() {
-                triggerDownload(ctx.singleUrl, '1080p', 'single', 'فيديو 1080p');
+                triggerDirectDownload(ctx.singleUrl, '1080p', 'single', 'فيديو 1080p', curTitle);
             });
             addItem('📺 فيديو 720p HD لهذا المقطع', '#f8fafc', false, function() {
-                triggerDownload(ctx.singleUrl, '720p', 'single', 'فيديو 720p');
+                triggerDirectDownload(ctx.singleUrl, '720p', 'single', 'فيديو 720p', curTitle);
             });
             addItem('🎵 استخراج صوت هذا المقطع MP3', '#34d399', true, function() {
-                triggerDownload(ctx.singleUrl, 'mp3', 'single', 'صوت MP3');
+                triggerDirectDownload(ctx.singleUrl, 'mp3', 'single', 'صوت MP3', curTitle);
             });
 
             addSectionHeader('📚 خيارات قائمة التشغيل:');
-            addItem('⚡ تحميل قائمة التشغيل كاملة (Download All)', '#fbbf24', true, function() {
-                triggerDownload(ctx.fullUrl, 'best', 'playlist_all', 'كامل قائمة التشغيل');
+            addItem('⚡ تحميل قائمة التشغيل كاملة فيديو', '#fbbf24', true, function() {
+                triggerDirectDownload(ctx.fullUrl, 'best', 'playlist_all', 'كامل قائمة التشغيل', curTitle);
             });
-            addItem('📋 اختيار عناصر من القائمة... (اختر ما تريد)', '#a78bfa', true, function() {
-                showToast('📋 جاري فتح نافذة تحديد عناصر القائمة في SDN...');
-                if (window.pywebview && window.pywebview.api && window.pywebview.api.download_url) {
-                    window.pywebview.api.download_url(ctx.fullUrl, 'best', 'playlist_select');
+            addItem('📋 اختيار فيديوهات معينة... (تحديد مخصص)', '#a78bfa', true, function() {
+                showToast('📋 جاري فتح نافذة تحديد عناصر القائمة في SDN...', 'info');
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.send_to_main) {
+                    window.pywebview.api.send_to_main(ctx.fullUrl, true);
                 }
             });
             addItem('🎵 تحميل كامل القائمة بصيغة MP3', '#34d399', true, function() {
-                triggerDownload(ctx.fullUrl, 'mp3', 'playlist_all', 'كامل القائمة MP3');
+                triggerDirectDownload(ctx.fullUrl, 'mp3', 'playlist_all', 'كامل القائمة MP3', curTitle);
             });
         } else {
-            addSectionHeader('🎬 اختر جودة الفيديو:');
-            addItem('🚀 تحميل بأفضل جودة تلقائياً (Best)', '#38bdf8', true, function() {
-                triggerDownload(ctx.fullUrl, 'best', 'single', 'أفضل جودة');
-            });
-            addItem('🎬 فيديو 1080p Full HD (MP4)', '#f8fafc', false, function() {
-                triggerDownload(ctx.fullUrl, '1080p', 'single', '1080p Full HD');
+            addSectionHeader('🎬 اختر جودة الفيديو للتنزيل المباشر:');
+            addItem('🎬 فيديو 1080p Full HD (MP4)', '#38bdf8', true, function() {
+                triggerDirectDownload(ctx.fullUrl, '1080p', 'single', '1080p Full HD', curTitle);
             });
             addItem('📺 فيديو 720p HD (MP4)', '#f8fafc', false, function() {
-                triggerDownload(ctx.fullUrl, '720p', 'single', '720p HD');
+                triggerDirectDownload(ctx.fullUrl, '720p', 'single', '720p HD', curTitle);
             });
-            addItem('📱 فيديو 480p / 360p (حجم صغير)', '#f8fafc', false, function() {
-                triggerDownload(ctx.fullUrl, '480p', 'single', '480p SD');
+            addItem('🚀 أفضل جودة تلقائياً (Best)', '#f8fafc', false, function() {
+                triggerDirectDownload(ctx.fullUrl, 'best', 'single', 'أفضل جودة', curTitle);
             });
-            addItem('🎵 استخراج الصوت فقط MP3 (عالي النقاء)', '#34d399', true, function() {
-                triggerDownload(ctx.fullUrl, 'mp3', 'single', 'صوت MP3');
+            addItem('📱 فيديو 480p / SD (حجم خفيف)', '#f8fafc', false, function() {
+                triggerDirectDownload(ctx.fullUrl, '480p', 'single', '480p SD', curTitle);
+            });
+            addItem('🎵 استخراج الصوت MP3 (عالي النقاء + إضافة للموسيقى)', '#34d399', true, function() {
+                triggerDirectDownload(ctx.fullUrl, 'mp3', 'single', 'صوت MP3', curTitle);
             });
         }
 
         var div = createEl('div', '', 'border-top:1px solid rgba(255,255,255,0.1); margin:4px 0;');
         menu.appendChild(div);
 
-        addItem('🖥️ فتح الرابط في واجهة SDN الرئيسية', '#94a3b8', false, function() {
+        addItem('🖥️ فتح وتعديل الرابط في محرك SDN الرئيسي', '#94a3b8', false, function() {
             if (window.pywebview && window.pywebview.api && window.pywebview.api.send_to_main) {
-                window.pywebview.api.send_to_main(ctx.fullUrl);
-                showToast('✅ تم فتح الرابط في شاشة SDN الرئيسية');
+                window.pywebview.api.send_to_main(ctx.fullUrl, false);
+                showToast('✅ تم فتح الرابط في شاشة SDN الرئيسية', 'success');
             }
         });
     }
@@ -552,7 +618,117 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
         menu.style.display = 'flex';
     }
 
-    // 3. IDM Floating Bar (Appears ONLY on active videos or playlists)
+    // In-Page Action Bar / Under Title Buttons
+    function ensureInPageButtons(ctx) {
+        if (!ctx.active) {
+            var old = document.getElementById('sdn-inpage-dl-container');
+            if (old) old.remove();
+            return;
+        }
+
+        var container = document.getElementById('sdn-inpage-dl-container');
+        if (!container) {
+            container = createEl('div', 'sdn-inpage-dl-container');
+        }
+
+        var curTitle = getVideoTitle();
+        var modeKey = (ctx.isPlaylist ? 'playlist' : 'single') + '_' + (ctx.singleUrl || ctx.fullUrl);
+        if (container.dataset.modeKey !== modeKey) {
+            container.dataset.modeKey = modeKey;
+            while (container.firstChild) container.removeChild(container.firstChild);
+
+            // 1. Main Pill Button
+            var mainPill = createEl('div', 'sdnInpageMainBtn', '', '⚡ تنزيل SDN ▼');
+            mainPill.className = 'sdn-inpage-pill';
+            mainPill.title = 'انقر لفتح خيارات وتنسيقات التنزيل الكاملة';
+            mainPill.onclick = function(e) {
+                e.stopPropagation();
+                openMenuAt(mainPill.getBoundingClientRect(), getMediaContext());
+            };
+            container.appendChild(mainPill);
+
+            if (ctx.isPlaylist) {
+                // Playlist Quick Chips
+                var chipAll = createEl('div', '', '', '⚡ القائمة كاملة');
+                chipAll.className = 'sdn-quick-chip';
+                chipAll.title = 'تنزيل جميع فيديوهات القائمة مباشرة بأفضل جودة إلى مجلدك';
+                chipAll.onclick = function(e) {
+                    e.stopPropagation();
+                    triggerDirectDownload(ctx.fullUrl, 'best', 'playlist_all', 'كامل القائمة فيديو', curTitle);
+                };
+                container.appendChild(chipAll);
+
+                var chipSelect = createEl('div', '', '', '📋 اختيار عناصر...');
+                chipSelect.className = 'sdn-quick-chip';
+                chipSelect.title = 'فتح واجهة SDN لاختيار وتحديد فيديوهات معينة وتحديد صيغة كل فيديو';
+                chipSelect.onclick = function(e) {
+                    e.stopPropagation();
+                    showToast('📋 جاري فتح نافذة تحديد عناصر القائمة في SDN...', 'info');
+                    if (window.pywebview && window.pywebview.api && window.pywebview.api.send_to_main) {
+                        window.pywebview.api.send_to_main(ctx.fullUrl, true);
+                    }
+                };
+                container.appendChild(chipSelect);
+
+                var chipAudioAll = createEl('div', '', '', '🎵 القائمة MP3');
+                chipAudioAll.className = 'sdn-quick-chip chip-audio';
+                chipAudioAll.title = 'تنزيل جميع مقاطع القائمة بصيغة MP3 مباشرة وإضافتها لمكتبة الموسيقى';
+                chipAudioAll.onclick = function(e) {
+                    e.stopPropagation();
+                    triggerDirectDownload(ctx.fullUrl, 'mp3', 'playlist_all', 'كامل القائمة MP3', curTitle);
+                };
+                container.appendChild(chipAudioAll);
+            } else {
+                // Single Video Quick Chips: 1080p, 720p, MP3
+                var chip1080 = createEl('div', '', '', '🎬 1080p');
+                chip1080.className = 'sdn-quick-chip';
+                chip1080.title = 'تنزيل مباشر فيديو 1080p Full HD إلى مجلد التنزيلات بدون تحويل';
+                chip1080.onclick = function(e) {
+                    e.stopPropagation();
+                    triggerDirectDownload(ctx.singleUrl, '1080p', 'single', 'فيديو 1080p', curTitle);
+                };
+                container.appendChild(chip1080);
+
+                var chip720 = createEl('div', '', '', '📺 720p');
+                chip720.className = 'sdn-quick-chip';
+                chip720.title = 'تنزيل مباشر فيديو 720p HD إلى مجلد التنزيلات بدون تحويل';
+                chip720.onclick = function(e) {
+                    e.stopPropagation();
+                    triggerDirectDownload(ctx.singleUrl, '720p', 'single', 'فيديو 720p', curTitle);
+                };
+                container.appendChild(chip720);
+
+                var chipMp3 = createEl('div', '', '', '🎵 MP3');
+                chipMp3.className = 'sdn-quick-chip chip-audio';
+                chipMp3.title = 'تنزيل مباشر صوت MP3 عالي النقاء وإضافته تلقائياً لمكتبة الموسيقى';
+                chipMp3.onclick = function(e) {
+                    e.stopPropagation();
+                    triggerDirectDownload(ctx.singleUrl, 'mp3', 'single', 'صوت MP3', curTitle);
+                };
+                container.appendChild(chipMp3);
+            }
+        }
+
+        // Attach to YouTube Action Bar or under Title
+        var target = document.querySelector('#actions-inner #top-level-buttons-computed')
+                  || document.querySelector('#top-row #actions #top-level-buttons-computed')
+                  || document.querySelector('#top-row #actions #actions-inner')
+                  || document.querySelector('ytd-watch-metadata #actions')
+                  || document.querySelector('ytd-watch-metadata #title')
+                  || document.querySelector('h1.style-scope.ytd-watch-metadata');
+
+        if (target && container.parentNode !== target) {
+            if (target.id === 'top-level-buttons-computed') {
+                target.insertBefore(container, target.firstChild);
+            } else if (target.nextSibling) {
+                target.parentNode.insertBefore(container, target.nextSibling);
+            } else {
+                target.appendChild(container);
+            }
+        }
+    }
+
+    // Secondary Floating IDM Panel at top-right
     function ensureIdmPanel() {
         var ctx = getMediaContext();
         var panel = document.getElementById('sdn-idm-panel');
@@ -566,7 +742,7 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
         if (!panel) {
             panel = createEl('div', 'sdn-idm-panel');
             var icon = createEl('span', '', 'color:#22c55e; font-size:13px; margin-left:4px;', '▶');
-            var txt = createEl('span', 'sdnPanelText', '', ctx.isPlaylist ? 'تحميل هذا الفيديو / القائمة' : 'تحميل هذا الفيديو');
+            var txt = createEl('span', 'sdnPanelText', '', ctx.isPlaylist ? 'تنزيل SDN (فيديو / قائمة)' : 'تنزيل SDN لهذا الفيديو');
             var arrow = createEl('span', '', 'color:#94a3b8; font-size:10px; margin-right:4px;', '▼');
             var sep = createEl('span', '', 'color:rgba(255,255,255,0.25); margin:0 4px;', '|');
             var dismiss = createEl('span', '', 'color:#94a3b8; font-size:12px; cursor:pointer; padding:0 2px;', '✕');
@@ -600,15 +776,14 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
 
         var txtEl = document.getElementById('sdnPanelText');
         if (txtEl && !txtEl.textContent.includes('جاري') && !txtEl.textContent.includes('بدأ')) {
-            txtEl.textContent = ctx.isPlaylist ? 'تحميل هذا الفيديو / القائمة' : 'تحميل هذا الفيديو';
+            txtEl.textContent = ctx.isPlaylist ? 'تنزيل SDN (فيديو / قائمة)' : 'تنزيل SDN لهذا الفيديو';
         }
 
         panel.style.display = 'flex';
     }
 
     // ================================================================
-    // 4. Ultra-Fast Zero-Delay Ad Defuser & Skipper (uBlock/FadBlock Architecture)
-    // Instantly mutes, accelerates (16x), and completes ads in 0.01s without breaking main video
+    // Ultra-Fast Zero-Delay Ad Defuser & Skipper
     // ================================================================
     function dismissAdsAndDialogs() {
         try {
@@ -631,13 +806,11 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
             var video = (player && player.querySelector('video')) || document.querySelector('video.html5-main-video') || document.querySelector('video');
 
             if (isAdActive && video) {
-                // 1. Instantly mute audio so the user hears zero ad noise
                 if (!video.muted) {
                     video.muted = true;
                     video.__sdn_ad_muted = true;
                 }
 
-                // 2. Click any skip or dismiss buttons immediately
                 var skipSelectors = [
                     '.ytp-ad-skip-button',
                     '.ytp-ad-skip-button-modern',
@@ -654,15 +827,12 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
                     }
                 }
 
-                // 3. Try native player skip if available
                 if (player && typeof player.skipAd === 'function') {
                     try { player.skipAd(); } catch (e) {}
                 }
 
-                // 4. Accelerate ad video to maximum speed (16x)
                 video.playbackRate = 16.0;
 
-                // 5. Complete ad cleanly with ZERO delay (no 5-second buffering stall):
                 if (video.duration && !isNaN(video.duration) && isFinite(video.duration) && video.duration < 180) {
                     var adKey = (video.currentSrc || '') + '_' + Math.floor(video.duration);
                     if (video.__sdn_last_skipped_ad !== adKey) {
@@ -673,12 +843,10 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
                     }
                 }
 
-                // 6. Ensure video is unpaused so the transition happens instantaneously
                 if (video.paused) {
                     try { video.play(); } catch (e) {}
                 }
             } else if (!isAdActive && video) {
-                // Main video is playing: restore speed & unmute safely
                 if (video.playbackRate > 2.0) {
                     video.playbackRate = 1.0;
                 }
@@ -688,7 +856,6 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
                 }
             }
 
-            // Remove YouTube anti-adblock enforcement dialogs & resume video
             var enforcement = document.querySelector('ytd-enforcement-message-view-model, tp-yt-paper-dialog:has(ytd-enforcement-message-view-model), tp-yt-iron-overlay-backdrop');
             if (enforcement) {
                 try { enforcement.remove(); } catch (e) {}
@@ -711,6 +878,8 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
     window.dismissAdsAndDialogs = dismissAdsAndDialogs;
 
     function loopTick() {
+        var ctx = getMediaContext();
+        ensureInPageButtons(ctx);
         ensureIdmPanel();
         dismissAdsAndDialogs();
     }
@@ -719,7 +888,7 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
 
     if (!window.__sdn_events_hooked) {
         window.__sdn_events_hooked = true;
-        setInterval(loopTick, 100);
+        setInterval(loopTick, 180);
 
         try {
             var observer = new MutationObserver(function() {
@@ -747,8 +916,8 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
                 e.preventDefault();
                 var ctx = getMediaContext();
                 if (ctx.active) {
-                    var panel = document.getElementById('sdn-idm-panel');
-                    openMenuAt(panel ? panel.getBoundingClientRect() : null, ctx);
+                    var mainBtn = document.getElementById('sdnInpageMainBtn') || document.getElementById('sdn-idm-panel');
+                    openMenuAt(mainBtn ? mainBtn.getBoundingClientRect() : null, ctx);
                 }
             }
         });
@@ -1609,6 +1778,81 @@ class DownloaderBridgeAPI:
             _log.warning(f"Failed to locate file: {e}")
             self.open_folder()
 
+    def play_file(self, filepath):
+        """Open or play media file using native system handler."""
+        try:
+            norm_path = os.path.normpath(str(filepath or ''))
+            if os.path.exists(norm_path):
+                if sys.platform == 'win32':
+                    os.startfile(norm_path)
+                elif sys.platform == 'darwin':
+                    subprocess.Popen(['open', norm_path])
+                else:
+                    subprocess.Popen(['xdg-open', norm_path])
+                return {'success': True}
+        except Exception as e:
+            _log.warning(f"Failed to play file: {e}")
+        return {'success': False}
+
+    def check_duplicate(self, url=None, title=None):
+        """Check if URL or title has already been downloaded into save_dir or history to prevent duplicate waste."""
+        history = self.get_history() or []
+
+        # 1. Check history by URL
+        if url:
+            from downloader import clean_url
+            try:
+                cleaned = clean_url(url)
+            except Exception:
+                cleaned = url.split('&')[0]
+
+            for h in history:
+                h_url = h.get('url', '')
+                if h_url and (h_url == url or (cleaned and cleaned in h_url)):
+                    fp = h.get('filepath', '')
+                    if not fp or os.path.exists(fp):
+                        return {
+                            'is_duplicate': True,
+                            'matched_title': h.get('title') or 'مقطع سابق',
+                            'filepath': fp,
+                            'reason': 'url'
+                        }
+
+        # 2. Check history and save_dir by title
+        if title:
+            norm_title = "".join(c for c in title if c.isalnum()).lower()
+            if len(norm_title) >= 4:
+                for h in history:
+                    h_title = h.get('title', '')
+                    norm_h = "".join(c for c in h_title if c.isalnum()).lower()
+                    if norm_h and (norm_title in norm_h or norm_h in norm_title):
+                        fp = h.get('filepath', '')
+                        if not fp or os.path.exists(fp):
+                            return {
+                                'is_duplicate': True,
+                                'matched_title': h_title,
+                                'filepath': fp,
+                                'reason': 'title'
+                            }
+                if os.path.exists(self.save_dir):
+                    try:
+                        with os.scandir(self.save_dir) as entries:
+                            for entry in entries:
+                                if entry.is_file():
+                                    stem = Path(entry.name).stem
+                                    norm_entry = "".join(c for c in stem if c.isalnum()).lower()
+                                    if norm_entry and (norm_title in norm_entry or norm_entry in norm_title):
+                                        return {
+                                            'is_duplicate': True,
+                                            'matched_title': entry.name,
+                                            'filepath': entry.path,
+                                            'reason': 'file_exists'
+                                        }
+                    except Exception:
+                        pass
+
+        return {'is_duplicate': False, 'matched_title': '', 'filepath': ''}
+
     def choose_folder(self):
         if self._window:
             result = self._window.create_file_dialog(webview.FOLDER_DIALOG, directory=self.save_dir)
@@ -1888,7 +2132,7 @@ class DownloaderBridgeAPI:
             bridge = YouTubeBrowserBridge(self)
 
             browser_win = webview.create_window(
-                title='متصفح YouTube الذكي - SDN Downloader (بدون إعلانات + تحميل IDM)',
+                title='متصفح YouTube الذكي - SDN Downloader (بدون إعلانات + تحميل فوري)',
                 url=target_url,
                 width=1180,
                 height=780,
@@ -1896,11 +2140,13 @@ class DownloaderBridgeAPI:
                 background_color='#0f0f0f',
                 js_api=bridge
             )
+            self._youtube_browser_win = browser_win
 
             is_closed = [False]
 
             def on_closed():
                 is_closed[0] = True
+                self._youtube_browser_win = None
 
             def on_loaded():
                 try:
@@ -1926,9 +2172,7 @@ class DownloaderBridgeAPI:
                         err = str(e).lower()
                         if 'destroyed' in err or 'closed' in err or 'disposed' in err:
                             break
-                        # Do not break on transient navigation errors; continue looping!
 
-                    # Periodically extract cookies if user logs in inside YouTube
                     now = time.time()
                     if now - last_cookie_sync > 5.0:
                         last_cookie_sync = now
@@ -1949,21 +2193,166 @@ class DownloaderBridgeAPI:
         except Exception as e:
             _log.error(f"Failed to open YouTube browser: {e}")
 
-    def quick_download_from_browser(self, url, quality="best", mode="single"):
-        """Called from the in-app YouTube Browser IDM widget to start download immediately."""
-        _log.info(f"IDM quick download received: {url} (quality: {quality}, mode: {mode})")
-        if self._window:
-            safe_url = json.dumps(str(url))
-            safe_q = json.dumps(str(quality))
-            safe_m = json.dumps(str(mode))
-            self._window.evaluate_js(f"if (window.onBrowserQuickDownload) window.onBrowserQuickDownload({safe_url}, {safe_q}, {safe_m});")
+    def _notify_browser_toast(self, msg, toast_type='info', is_dup=False, dup_url=None, quality='best', mode='single', title=None):
+        if getattr(self, '_youtube_browser_win', None):
+            try:
+                action_data = None
+                if is_dup and dup_url:
+                    action_data = {'url': dup_url, 'quality': quality, 'mode': mode, 'title': title or ''}
+                js_call = f"if (window.showSdnToast) window.showSdnToast({json.dumps(msg)}, {json.dumps(toast_type)}, {json.dumps(action_data)});"
+                self._youtube_browser_win.evaluate_js(js_call)
+            except Exception as e:
+                _log.debug(f"Could not notify browser toast: {e}")
+
+    def quick_download_from_browser(self, url, quality="best", mode="single", force=False, title=None):
+        """Called from the in-app YouTube Browser to download directly in background without switching windows."""
+        _log.info(f"Direct browser quick download: {url} (quality: {quality}, mode: {mode}, force: {force})")
+
+        if mode == "playlist_select":
+            self.load_url_in_main(url, auto_playlist_select=True)
+            return {'success': True, 'mode': 'playlist_select'}
+
+        # Duplicate check before downloading:
+        if not force:
+            dup_info = self.check_duplicate(url=url, title=title)
+            if dup_info.get('is_duplicate'):
+                msg = f"⚠️ تم تنزيل هذا المحتوى مسبقاً ({dup_info.get('matched_title')}) لمنع التكرار الزائد!"
+                self._notify_browser_toast(msg, 'warning', is_dup=True, dup_url=url, quality=quality, mode=mode, title=title)
+                return {'success': False, 'duplicate': True, 'msg': msg}
+
+        is_audio = (str(quality).lower() == 'mp3' or 'audio' in str(quality).lower())
+        if is_audio:
+            option = {
+                'type': 'audio',
+                'quality_tag': 'MP3',
+                'label': 'صوت MP3 (320kbps)',
+                'ext': 'mp3',
+                'format_id': 'bestaudio/best',
+                'media_title': title or 'مقطع صوتي'
+            }
+        else:
+            height = None
+            if '1080' in str(quality):
+                height = 1080
+            elif '720' in str(quality):
+                height = 720
+            elif '480' in str(quality):
+                height = 480
+
+            from downloader import _video_selector
+            option = {
+                'type': 'video',
+                'quality_tag': quality if quality != 'best' else 'Best',
+                'label': f'فيديو ({quality})',
+                'ext': 'mp4',
+                'format_id': _video_selector(height),
+                'media_title': title or 'مقطع فيديو'
+            }
+
+        if mode == 'playlist_all':
+            option['is_playlist'] = True
+            option['playlist_mode'] = 'all'
+
+        q_label = "MP3 صوتي" if is_audio else f"فيديو {quality}"
+        self._notify_browser_toast(f"🚀 بدأ التنزيل المباشر ({q_label}) إلى مجلد التنزيلات...", 'info')
+
+        start_t = time.time()
+
+        def run_direct_dl():
+            def progress_cb(p_data):
+                if self._window:
+                    try:
+                        self._window.evaluate_js(f'updateProgress({json.dumps(p_data)})')
+                    except Exception:
+                        pass
+
+            def status_cb(msg):
+                if self._window:
+                    try:
+                        self._window.evaluate_js(f'updateProgress({json.dumps({"status": "processing", "msg": msg})})')
+                    except Exception:
+                        pass
+
+            try:
+                if not self.downloader:
+                    from downloader import MediaDownloader
+                    self.downloader = MediaDownloader()
+
+                browser_cookies = getattr(self, 'last_browser_cookies', 'none') or 'none'
+
+                result = self.downloader.download(
+                    url, option, self.save_dir,
+                    progress_callback=progress_cb,
+                    status_callback=status_cb,
+                    browser_cookies=browser_cookies
+                )
+
+                downloaded_files = result.get('files') or []
+                media_type = option.get('type') or 'video'
+                media_title = option.get('media_title') or (downloaded_files[0].get('title') if downloaded_files else 'وسائط محملة')
+
+                if media_type == 'audio':
+                    for file_item in downloaded_files:
+                        filepath = file_item.get('filepath') or ''
+                        if filepath:
+                            prepared = self.prepare_media_playback(filepath)
+                            file_item['playable_url'] = (
+                                prepared.get('url')
+                                if prepared.get('ok')
+                                else self._register_media_file(filepath)
+                            )
+                            file_item['playback_ready'] = bool(prepared.get('ok'))
+                            file_item['playback_transcoded'] = bool(prepared.get('transcoded'))
+                            file_item['playback_error'] = prepared.get('error', '')
+
+                for file_item in downloaded_files:
+                    h_item = {
+                        'title': file_item.get('title') or media_title,
+                        'quality': option.get('label') or quality,
+                        'type': media_type,
+                        'filepath': file_item.get('filepath') or '',
+                        'url': url,
+                        'date': time.strftime('%Y-%m-%dT%H:%M:%S%z'),
+                    }
+                    self.add_history(h_item)
+
+                first_name = Path(downloaded_files[0]['filepath']).name if downloaded_files and downloaded_files[0].get('filepath') else media_title
+                self._notify_browser_toast(f"✅ تم اكتمال تنزيل: {first_name} بنجاح!", 'success')
+
+                if self._window:
+                    try:
+                        payload = {
+                            'status': 'complete',
+                            'filepath': result.get('filepath') or (downloaded_files[0]['filepath'] if downloaded_files else ''),
+                            'files': downloaded_files,
+                            'count': result.get('count', len(downloaded_files)),
+                            'directory': result.get('directory') or self.save_dir,
+                            'media_type': media_type,
+                            'is_playlist': bool(result.get('is_playlist')),
+                            'elapsed': round(time.time() - start_t, 1),
+                        }
+                        self._window.evaluate_js(f'updateProgress({json.dumps(payload)})')
+                    except Exception as ex:
+                        _log.debug(f"Complete evaluate_js: {ex}")
+
+            except Exception as e:
+                _log.error(f"Direct browser download failed: {e}")
+                self._notify_browser_toast(f"❌ خطأ أثناء التنزيل: {str(e)[:70]}", 'error')
+
+        threading.Thread(target=run_direct_dl, daemon=True).start()
         return {'success': True}
 
-    def load_url_in_main(self, url):
+    def load_url_in_main(self, url, auto_playlist_select=False):
         """Send URL to main window input bar and fetch info."""
         if self._window:
+            try:
+                self._window.restore()
+                self._window.show()
+            except Exception:
+                pass
             safe_url = json.dumps(str(url))
-            self._window.evaluate_js(f"if (window.onBrowserSendUrl) window.onBrowserSendUrl({safe_url});")
+            safe_auto = json.dumps(bool(auto_playlist_select))
+            self._window.evaluate_js(f"if (window.onBrowserSendUrl) window.onBrowserSendUrl({safe_url}, {safe_auto});")
         return {'success': True}
 
     def _async_download(self, url, option, browser_cookies):
@@ -1989,12 +2378,66 @@ class DownloaderBridgeAPI:
                 from downloader import MediaDownloader
                 self.downloader = MediaDownloader()
 
-            result = self.downloader.download(
-                url, option, self.save_dir,
-                progress_callback=progress_callback,
-                status_callback=status_callback,
-                browser_cookies=browser_cookies
-            )
+            if option.get('mixed_playlist'):
+                video_indices = option.get('playlist_video_items') or []
+                audio_indices = option.get('playlist_audio_items') or []
+                downloaded_files = []
+                last_result = {}
+
+                if video_indices:
+                    v_opt = dict(option)
+                    v_opt['type'] = 'video'
+                    v_opt['playlist_items'] = video_indices
+                    v_opt['playlist_count'] = len(video_indices)
+                    v_opt['mixed_playlist'] = False
+                    status_callback(f"🎬 جاري تنزيل {len(video_indices)} مقطع فيديو محدد من القائمة...")
+                    res_v = self.downloader.download(
+                        url, v_opt, self.save_dir,
+                        progress_callback=progress_callback,
+                        status_callback=status_callback,
+                        browser_cookies=browser_cookies
+                    )
+                    downloaded_files.extend(res_v.get('files') or [])
+                    last_result = res_v
+
+                if audio_indices:
+                    a_opt = dict(option)
+                    a_opt['type'] = 'audio'
+                    a_opt['ext'] = 'mp3'
+                    a_opt['quality_tag'] = 'MP3'
+                    a_opt['format_id'] = 'bestaudio/best'
+                    a_opt['label'] = 'صوت MP3'
+                    a_opt['playlist_items'] = audio_indices
+                    a_opt['playlist_count'] = len(audio_indices)
+                    a_opt['mixed_playlist'] = False
+                    status_callback(f"🎵 جاري تنزيل {len(audio_indices)} مقطع صوتي MP3 محدد من القائمة...")
+                    res_a = self.downloader.download(
+                        url, a_opt, self.save_dir,
+                        progress_callback=progress_callback,
+                        status_callback=status_callback,
+                        browser_cookies=browser_cookies
+                    )
+                    a_files = res_a.get('files') or []
+                    for f in a_files:
+                        f['is_audio'] = True
+                    downloaded_files.extend(a_files)
+                    last_result = res_a
+
+                result = {
+                    'files': downloaded_files,
+                    'count': len(downloaded_files),
+                    'directory': last_result.get('directory') or self.save_dir,
+                    'filepath': downloaded_files[0].get('filepath') if downloaded_files else '',
+                    'is_playlist': True,
+                    'media_type': 'mixed'
+                }
+            else:
+                result = self.downloader.download(
+                    url, option, self.save_dir,
+                    progress_callback=progress_callback,
+                    status_callback=status_callback,
+                    browser_cookies=browser_cookies
+                )
             
             elapsed = time.time() - start_t
             _log.info(f"Download complete: {result.get('count', 0)} file(s) ({elapsed:.1f}s)")
@@ -2003,25 +2446,30 @@ class DownloaderBridgeAPI:
             quality_label = option.get('label') or option.get('quality_tag') or 'جودة افتراضية'
             media_type = option.get('type') or 'video'
             downloaded_files = result.get('files') or []
-            if media_type == 'audio':
-                for file_item in downloaded_files:
-                    filepath = file_item.get('filepath') or ''
-                    if filepath:
-                        prepared = self.prepare_media_playback(filepath)
-                        file_item['playable_url'] = (
-                            prepared.get('url')
-                            if prepared.get('ok')
-                            else self._register_media_file(filepath)
-                        )
-                        file_item['playback_ready'] = bool(prepared.get('ok'))
-                        file_item['playback_transcoded'] = bool(prepared.get('transcoded'))
-                        file_item['playback_error'] = prepared.get('error', '')
+
             for file_item in downloaded_files:
+                filepath = file_item.get('filepath') or ''
+                is_audio_file = bool(file_item.get('is_audio')) or media_type == 'audio' or filepath.lower().endswith(('.mp3', '.m4a', '.wav', '.flac', '.opus'))
+                if is_audio_file and filepath:
+                    prepared = self.prepare_media_playback(filepath)
+                    file_item['playable_url'] = (
+                        prepared.get('url')
+                        if prepared.get('ok')
+                        else self._register_media_file(filepath)
+                    )
+                    file_item['playback_ready'] = bool(prepared.get('ok'))
+                    file_item['playback_transcoded'] = bool(prepared.get('transcoded'))
+                    file_item['playback_error'] = prepared.get('error', '')
+                    file_item['is_audio'] = True
+
+            for file_item in downloaded_files:
+                filepath = file_item.get('filepath') or ''
+                is_audio_file = bool(file_item.get('is_audio')) or media_type == 'audio' or filepath.lower().endswith(('.mp3', '.m4a', '.wav', '.flac', '.opus'))
                 self.add_history({
                     'title': file_item.get('title') or media_title,
-                    'quality': quality_label,
-                    'type': media_type,
-                    'filepath': file_item.get('filepath') or '',
+                    'quality': 'صوت MP3' if is_audio_file else quality_label,
+                    'type': 'audio' if is_audio_file else 'video',
+                    'filepath': filepath,
                     'url': url,
                     'date': time.strftime('%Y-%m-%dT%H:%M:%S%z'),
                 })
@@ -2493,6 +2941,7 @@ def main():
     
     user_data_dir = os.path.join(os.environ.get('LOCALAPPDATA', os.path.expanduser('~')), 'SDN', 'WebView2_Data')
     os.makedirs(user_data_dir, exist_ok=True)
+    os.environ['WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS'] = '--enable-gpu-rasterization --enable-zero-copy --ignore-gpu-blocklist'
     _log.info(f"App ready in {time.time() - api._startup_time:.2f}s - starting WebView with persistent storage: {user_data_dir}")
     webview.start(debug=False, private_mode=False, storage_path=user_data_dir)
 
