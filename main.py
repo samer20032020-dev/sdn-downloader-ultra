@@ -149,6 +149,9 @@ class YouTubeBrowserBridge:
     def check_duplicate(self, url, title=None):
         return self.main_api.check_duplicate(url, title)
 
+    def delete_history_item(self, filepath_or_url):
+        return self.main_api.delete_history_item(filepath_or_url)
+
 
 YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
 (function() {
@@ -342,7 +345,7 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
             '   max-height: 0 !important; opacity: 0 !important; pointer-events: none !important;',
             '}',
             '#sdn-idm-panel {',
-            '   position: fixed; top: 68px; right: 20px; z-index: 2147483646;',
+            '   position: fixed; top: 68px; left: 16px; z-index: 2147483646;',
             '   display: none; align-items: center; gap: 8px;',
             '   background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);',
             '   color: #ffffff; padding: 7px 14px; border-radius: 9px;',
@@ -355,33 +358,84 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
             '   transform: translateY(-1px);',
             '   box-shadow: 0 10px 28px rgba(0,0,0,0.9), 0 0 16px rgba(56, 189, 248, 0.45);',
             '}',
-            '#sdn-inpage-dl-container {',
-            '   display: inline-flex; align-items: center; gap: 6px;',
-            '   margin: 4px 6px; vertical-align: middle; z-index: 999;',
+            '#sdn-title-dl-bar {',
+            '   display: flex; align-items: center; flex-wrap: wrap; gap: 8px;',
+            '   background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%);',
+            '   border: 1.5px solid rgba(56, 189, 248, 0.55); border-radius: 12px; padding: 8px 14px;',
+            '   margin: 10px 0 14px 0; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7), 0 0 14px rgba(56, 189, 248, 0.2);',
             '   direction: rtl; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;',
+            '   z-index: 1000;',
             '}',
-            '.sdn-inpage-pill {',
-            '   background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);',
-            '   color: #ffffff; height: 36px; border-radius: 18px; padding: 0 14px;',
-            '   display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700;',
-            '   cursor: pointer; user-select: none; border: 1px solid rgba(56, 189, 248, 0.5);',
-            '   box-shadow: 0 2px 8px rgba(0,0,0,0.4); transition: all 0.18s ease;',
+            '.sdn-bar-label {',
+            '   display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 800;',
+            '   color: #38bdf8; margin-left: 6px; user-select: none;',
             '}',
-            '.sdn-inpage-pill:hover {',
-            '   background: linear-gradient(135deg, #0369a1 0%, #0284c7 100%);',
-            '   box-shadow: 0 4px 14px rgba(56, 189, 248, 0.45); transform: translateY(-1px);',
+            '.sdn-chip-btn {',
+            '   display: inline-flex; align-items: center; gap: 6px; height: 34px; border-radius: 17px;',
+            '   padding: 0 13px; font-size: 12.5px; font-weight: 700; cursor: pointer; user-select: none;',
+            '   border: 1px solid transparent; transition: all 0.18s ease; white-space: nowrap;',
             '}',
-            '.sdn-quick-chip {',
-            '   background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16);',
-            '   color: #f1f5f9; height: 34px; border-radius: 17px; padding: 0 11px; font-size: 12px;',
-            '   font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;',
-            '   user-select: none; transition: all 0.18s ease;',
+            '.sdn-btn-fhd {',
+            '   background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff;',
+            '   border-color: rgba(56, 189, 248, 0.6); box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35);',
             '}',
-            '.sdn-quick-chip:hover {',
+            '.sdn-btn-fhd:hover {',
+            '   background: linear-gradient(135deg, #0369a1 0%, #0284c7 100%); transform: translateY(-1px);',
+            '   box-shadow: 0 4px 14px rgba(56, 189, 248, 0.55);',
+            '}',
+            '.sdn-btn-hd {',
+            '   background: rgba(255, 255, 255, 0.08); color: #f1f5f9; border-color: rgba(255, 255, 255, 0.2);',
+            '}',
+            '.sdn-btn-hd:hover {',
             '   background: rgba(56, 189, 248, 0.22); border-color: #38bdf8; color: #38bdf8; transform: translateY(-1px);',
             '}',
-            '.sdn-quick-chip.chip-audio:hover {',
-            '   background: rgba(52, 211, 153, 0.22); border-color: #34d399; color: #34d399;',
+            '.sdn-btn-audio {',
+            '   background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.3) 100%);',
+            '   color: #34d399; border-color: rgba(52, 211, 153, 0.5); box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);',
+            '}',
+            '.sdn-btn-audio:hover {',
+            '   background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #ffffff; transform: translateY(-1px);',
+            '   box-shadow: 0 4px 14px rgba(52, 211, 153, 0.45);',
+            '}',
+            '.sdn-btn-playlist-video {',
+            '   background: linear-gradient(135deg, #d97706 0%, #b45309 100%); color: #ffffff;',
+            '   border-color: rgba(251, 191, 36, 0.6); box-shadow: 0 2px 8px rgba(217, 119, 6, 0.35);',
+            '}',
+            '.sdn-btn-playlist-video:hover {',
+            '   background: linear-gradient(135deg, #b45309 0%, #d97706 100%); transform: translateY(-1px);',
+            '   box-shadow: 0 4px 14px rgba(251, 191, 36, 0.5);',
+            '}',
+            '.sdn-btn-playlist-select {',
+            '   background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: #ffffff;',
+            '   border-color: rgba(167, 139, 250, 0.6); box-shadow: 0 2px 8px rgba(124, 58, 237, 0.35);',
+            '}',
+            '.sdn-btn-playlist-select:hover {',
+            '   background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 100%); transform: translateY(-1px);',
+            '   box-shadow: 0 4px 14px rgba(167, 139, 250, 0.5);',
+            '}',
+            '#sdn-player-badge {',
+            '   position: absolute; top: 14px; left: 14px; z-index: 2147483640;',
+            '   display: inline-flex; align-items: center; gap: 6px;',
+            '   background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(10px);',
+            '   border: 1.5px solid rgba(56, 189, 248, 0.55); border-radius: 20px;',
+            '   padding: 4px 10px; box-shadow: 0 6px 22px rgba(0,0,0,0.85); direction: rtl;',
+            '   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;',
+            '   user-select: none; transition: all 0.2s ease;',
+            '}',
+            '#sdn-player-badge:hover {',
+            '   border-color: #38bdf8; box-shadow: 0 8px 26px rgba(56, 189, 248, 0.45);',
+            '}',
+            '.sdn-player-btn {',
+            '   display: inline-flex; align-items: center; gap: 4px; height: 28px; border-radius: 14px;',
+            '   padding: 0 9px; font-size: 11.5px; font-weight: 700; cursor: pointer; user-select: none;',
+            '   border: 1px solid rgba(255, 255, 255, 0.16); background: rgba(255, 255, 255, 0.08);',
+            '   color: #f1f5f9; transition: all 0.18s ease;',
+            '}',
+            '.sdn-player-btn:hover {',
+            '   background: rgba(56, 189, 248, 0.25); border-color: #38bdf8; color: #38bdf8; transform: translateY(-1px);',
+            '}',
+            '.sdn-player-btn.btn-audio:hover {',
+            '   background: rgba(52, 211, 153, 0.25); border-color: #34d399; color: #34d399;',
             '}',
             '.sdn-idm-menu-item:hover {',
             '   background: rgba(56, 189, 248, 0.18) !important; color: #38bdf8 !important;',
@@ -454,7 +508,7 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
     window.showSdnToast = function(msg, type, actionData) {
         var t = document.getElementById('sdn-toast');
         if (!t) {
-            t = createEl('div', 'sdn-toast', 'position:fixed; bottom:28px; left:50%; transform:translateX(-50%); z-index:2147483647; background:rgba(15, 23, 42, 0.96); backdrop-filter:blur(12px); color:#ffffff; border-radius:30px; padding:11px 22px; font-weight:bold; font-size:13px; box-shadow:0 12px 35px rgba(0,0,0,0.85); transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); opacity:0; pointer-events:auto; font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; direction:rtl; display:flex; align-items:center; gap:12px; max-width:90vw;');
+            t = createEl('div', 'sdn-toast', 'position:fixed; bottom:26px; left:50%; transform:translateX(-50%); z-index:2147483647; background:rgba(15, 23, 42, 0.96); backdrop-filter:blur(12px); color:#ffffff; border-radius:30px; padding:11px 22px; font-weight:bold; font-size:13px; box-shadow:0 12px 35px rgba(0,0,0,0.85); transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); opacity:0; pointer-events:auto; font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; direction:rtl; display:flex; align-items:center; gap:12px; max-width:92vw;');
             (document.body || document.documentElement).appendChild(t);
         }
         while (t.firstChild) t.removeChild(t.firstChild);
@@ -492,7 +546,7 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
                 t.style.opacity = '0';
                 t.style.transform = 'translateX(-50%) translateY(10px)';
             }
-        }, actionData ? 7000 : 4200);
+        }, actionData ? 8000 : 4500);
     };
 
     function showToast(msg, type) {
@@ -500,13 +554,13 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
     }
 
     function getVideoTitle() {
-        var titleEl = document.querySelector('ytd-watch-metadata #title h1, h1.style-scope.ytd-watch-metadata, #title.ytd-watch-metadata');
-        return titleEl ? titleEl.textContent.trim() : '';
+        var titleEl = document.querySelector('ytd-watch-metadata #title h1, h1.style-scope.ytd-watch-metadata, #title.ytd-watch-metadata, h1.title');
+        return titleEl ? titleEl.textContent.trim() : (document.title ? document.title.replace(/ - YouTube$/, '').trim() : '');
     }
 
     function triggerDirectDownload(url, quality, mode, label, title) {
         var effectiveTitle = title || getVideoTitle();
-        showToast('⏳ جاري التحقق من التنزيل (' + label + ')...', 'info');
+        showToast('⏳ جاري التحقق من التنزيل المباشر (' + label + ')...', 'info');
         if (window.pywebview && window.pywebview.api && window.pywebview.api.download_url) {
             window.pywebview.api.download_url(url, quality, mode, false, effectiveTitle);
         }
@@ -618,119 +672,236 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
         menu.style.display = 'flex';
     }
 
-    // In-Page Action Bar / Under Title Buttons
-    function ensureInPageButtons(ctx) {
+    // 1. Direct Download Bar Under the Video Title
+    function ensureUnderTitleBar(ctx) {
         if (!ctx.active) {
-            var old = document.getElementById('sdn-inpage-dl-container');
+            var old = document.getElementById('sdn-title-dl-bar');
             if (old) old.remove();
             return;
         }
 
-        var container = document.getElementById('sdn-inpage-dl-container');
-        if (!container) {
-            container = createEl('div', 'sdn-inpage-dl-container');
+        var titleEl = document.querySelector('ytd-watch-metadata #title')
+                   || document.querySelector('#above-the-fold #title')
+                   || document.querySelector('h1.style-scope.ytd-watch-metadata')
+                   || document.querySelector('#title.ytd-watch-metadata');
+
+        if (!titleEl) return;
+
+        var bar = document.getElementById('sdn-title-dl-bar');
+        var curUrl = ctx.singleUrl || ctx.fullUrl;
+        var modeKey = (ctx.isPlaylist ? 'playlist' : 'single') + '_' + curUrl;
+
+        if (!bar) {
+            bar = createEl('div', 'sdn-title-dl-bar');
         }
 
-        var curTitle = getVideoTitle();
-        var modeKey = (ctx.isPlaylist ? 'playlist' : 'single') + '_' + (ctx.singleUrl || ctx.fullUrl);
-        if (container.dataset.modeKey !== modeKey) {
-            container.dataset.modeKey = modeKey;
-            while (container.firstChild) container.removeChild(container.firstChild);
+        if (bar.dataset.modeKey !== modeKey) {
+            bar.dataset.modeKey = modeKey;
+            while (bar.firstChild) bar.removeChild(bar.firstChild);
 
-            // 1. Main Pill Button
-            var mainPill = createEl('div', 'sdnInpageMainBtn', '', '⚡ تنزيل SDN ▼');
-            mainPill.className = 'sdn-inpage-pill';
-            mainPill.title = 'انقر لفتح خيارات وتنسيقات التنزيل الكاملة';
-            mainPill.onclick = function(e) {
-                e.stopPropagation();
-                openMenuAt(mainPill.getBoundingClientRect(), getMediaContext());
-            };
-            container.appendChild(mainPill);
+            var curTitle = getVideoTitle();
+
+            var lbl = createEl('span', '', '', '⚡ تنزيل SDN:');
+            lbl.className = 'sdn-bar-label';
+            bar.appendChild(lbl);
 
             if (ctx.isPlaylist) {
-                // Playlist Quick Chips
-                var chipAll = createEl('div', '', '', '⚡ القائمة كاملة');
-                chipAll.className = 'sdn-quick-chip';
-                chipAll.title = 'تنزيل جميع فيديوهات القائمة مباشرة بأفضل جودة إلى مجلدك';
-                chipAll.onclick = function(e) {
+                var bAllVid = createEl('div', '', '', '⚡ تحميل القائمة كاملة فيديو');
+                bAllVid.className = 'sdn-chip-btn sdn-btn-playlist-video';
+                bAllVid.title = 'تنزيل جميع فيديوهات القائمة فوراً بأفضل جودة إلى مجلد التنزيلات المختار';
+                bAllVid.onclick = function(e) {
                     e.stopPropagation();
                     triggerDirectDownload(ctx.fullUrl, 'best', 'playlist_all', 'كامل القائمة فيديو', curTitle);
                 };
-                container.appendChild(chipAll);
+                bar.appendChild(bAllVid);
 
-                var chipSelect = createEl('div', '', '', '📋 اختيار عناصر...');
-                chipSelect.className = 'sdn-quick-chip';
-                chipSelect.title = 'فتح واجهة SDN لاختيار وتحديد فيديوهات معينة وتحديد صيغة كل فيديو';
-                chipSelect.onclick = function(e) {
+                var bAllAud = createEl('div', '', '', '🎵 تحميل كامل القائمة MP3');
+                bAllAud.className = 'sdn-chip-btn sdn-btn-audio';
+                bAllAud.title = 'تنزيل جميع مقاطع القائمة بصوت MP3 وإضافتها مباشرة لمشغل الموسيقى';
+                bAllAud.onclick = function(e) {
+                    e.stopPropagation();
+                    triggerDirectDownload(ctx.fullUrl, 'mp3', 'playlist_all', 'كامل القائمة MP3', curTitle);
+                };
+                bar.appendChild(bAllAud);
+
+                var bSelect = createEl('div', '', '', '📋 اختيار فيديوهات معينة... (مخصص)');
+                bSelect.className = 'sdn-chip-btn sdn-btn-playlist-select';
+                bSelect.title = 'فتح محرك SDN تلقائياً لتحديد فيديوهات معينة واختيار صيغة كل فيديو';
+                bSelect.onclick = function(e) {
                     e.stopPropagation();
                     showToast('📋 جاري فتح نافذة تحديد عناصر القائمة في SDN...', 'info');
                     if (window.pywebview && window.pywebview.api && window.pywebview.api.send_to_main) {
                         window.pywebview.api.send_to_main(ctx.fullUrl, true);
                     }
                 };
-                container.appendChild(chipSelect);
+                bar.appendChild(bSelect);
 
-                var chipAudioAll = createEl('div', '', '', '🎵 القائمة MP3');
-                chipAudioAll.className = 'sdn-quick-chip chip-audio';
-                chipAudioAll.title = 'تنزيل جميع مقاطع القائمة بصيغة MP3 مباشرة وإضافتها لمكتبة الموسيقى';
-                chipAudioAll.onclick = function(e) {
-                    e.stopPropagation();
-                    triggerDirectDownload(ctx.fullUrl, 'mp3', 'playlist_all', 'كامل القائمة MP3', curTitle);
-                };
-                container.appendChild(chipAudioAll);
-            } else {
-                // Single Video Quick Chips: 1080p, 720p, MP3
-                var chip1080 = createEl('div', '', '', '🎬 1080p');
-                chip1080.className = 'sdn-quick-chip';
-                chip1080.title = 'تنزيل مباشر فيديو 1080p Full HD إلى مجلد التنزيلات بدون تحويل';
-                chip1080.onclick = function(e) {
+                var bThisVid = createEl('div', '', '', '🎬 هذا الفيديو (1080p)');
+                bThisVid.className = 'sdn-chip-btn sdn-btn-fhd';
+                bThisVid.title = 'تنزيل هذا الفيديو فقط بجودة 1080p FHD';
+                bThisVid.onclick = function(e) {
                     e.stopPropagation();
                     triggerDirectDownload(ctx.singleUrl, '1080p', 'single', 'فيديو 1080p', curTitle);
                 };
-                container.appendChild(chip1080);
+                bar.appendChild(bThisVid);
 
-                var chip720 = createEl('div', '', '', '📺 720p');
-                chip720.className = 'sdn-quick-chip';
-                chip720.title = 'تنزيل مباشر فيديو 720p HD إلى مجلد التنزيلات بدون تحويل';
-                chip720.onclick = function(e) {
-                    e.stopPropagation();
-                    triggerDirectDownload(ctx.singleUrl, '720p', 'single', 'فيديو 720p', curTitle);
-                };
-                container.appendChild(chip720);
-
-                var chipMp3 = createEl('div', '', '', '🎵 MP3');
-                chipMp3.className = 'sdn-quick-chip chip-audio';
-                chipMp3.title = 'تنزيل مباشر صوت MP3 عالي النقاء وإضافته تلقائياً لمكتبة الموسيقى';
-                chipMp3.onclick = function(e) {
+                var bThisAud = createEl('div', '', '', '🎵 هذا المقطع (MP3)');
+                bThisAud.className = 'sdn-chip-btn sdn-btn-hd';
+                bThisAud.title = 'استخراج صوت هذا المقطع فقط MP3';
+                bThisAud.onclick = function(e) {
                     e.stopPropagation();
                     triggerDirectDownload(ctx.singleUrl, 'mp3', 'single', 'صوت MP3', curTitle);
                 };
-                container.appendChild(chipMp3);
+                bar.appendChild(bThisAud);
+            } else {
+                var b1080 = createEl('div', '', '', '🎬 1080p FHD (MP4)');
+                b1080.className = 'sdn-chip-btn sdn-btn-fhd';
+                b1080.title = 'تنزيل مباشر فيديو 1080p Full HD إلى مجلد التنزيلات بدون تحويل';
+                b1080.onclick = function(e) {
+                    e.stopPropagation();
+                    triggerDirectDownload(ctx.singleUrl, '1080p', 'single', '1080p Full HD', curTitle);
+                };
+                bar.appendChild(b1080);
+
+                var b720 = createEl('div', '', '', '📺 720p HD (MP4)');
+                b720.className = 'sdn-chip-btn sdn-btn-hd';
+                b720.title = 'تنزيل مباشر فيديو 720p HD إلى مجلد التنزيلات بدون تحويل';
+                b720.onclick = function(e) {
+                    e.stopPropagation();
+                    triggerDirectDownload(ctx.singleUrl, '720p', 'single', '720p HD', curTitle);
+                };
+                bar.appendChild(b720);
+
+                var bBest = createEl('div', '', '', '🚀 أفضل جودة (Best)');
+                bBest.className = 'sdn-chip-btn sdn-btn-hd';
+                bBest.title = 'تنزيل بأعلى جودة متوفرة تلقائياً MP4';
+                bBest.onclick = function(e) {
+                    e.stopPropagation();
+                    triggerDirectDownload(ctx.singleUrl, 'best', 'single', 'أفضل جودة', curTitle);
+                };
+                bar.appendChild(bBest);
+
+                var bMp3 = createEl('div', '', '', '🎵 صوت MP3 عالي النقاء');
+                bMp3.className = 'sdn-chip-btn sdn-btn-audio';
+                bMp3.title = 'استخراج صوت MP3 عالي النقاء وإضافته تلقائياً لمكتبة الموسيقى بالسايد بار';
+                bMp3.onclick = function(e) {
+                    e.stopPropagation();
+                    triggerDirectDownload(ctx.singleUrl, 'mp3', 'single', 'صوت MP3', curTitle);
+                };
+                bar.appendChild(bMp3);
+
+                var bMore = createEl('div', '', '', '⚙️ خيارات أخرى ▼');
+                bMore.className = 'sdn-chip-btn sdn-btn-hd';
+                bMore.title = 'خيارات وتنسيقات التنزيل الأخرى';
+                bMore.onclick = function(e) {
+                    e.stopPropagation();
+                    openMenuAt(bMore.getBoundingClientRect(), getMediaContext());
+                };
+                bar.appendChild(bMore);
             }
         }
 
-        // Attach to YouTube Action Bar or under Title
-        var target = document.querySelector('#actions-inner #top-level-buttons-computed')
-                  || document.querySelector('#top-row #actions #top-level-buttons-computed')
-                  || document.querySelector('#top-row #actions #actions-inner')
-                  || document.querySelector('ytd-watch-metadata #actions')
-                  || document.querySelector('ytd-watch-metadata #title')
-                  || document.querySelector('h1.style-scope.ytd-watch-metadata');
-
-        if (target && container.parentNode !== target) {
-            if (target.id === 'top-level-buttons-computed') {
-                target.insertBefore(container, target.firstChild);
-            } else if (target.nextSibling) {
-                target.parentNode.insertBefore(container, target.nextSibling);
-            } else {
-                target.appendChild(container);
-            }
+        if (bar.previousElementSibling !== titleEl) {
+            titleEl.parentNode.insertBefore(bar, titleEl.nextSibling);
         }
     }
 
-    // Secondary Floating IDM Panel at top-right
-    function ensureIdmPanel() {
-        var ctx = getMediaContext();
+    // 2. Direct Download Badge on the Video Player ("علامة هو")
+    function ensurePlayerBadge(ctx) {
+        if (!ctx.active) {
+            var existing = document.getElementById('sdn-player-badge');
+            if (existing) existing.remove();
+            return;
+        }
+
+        var player = document.getElementById('movie_player')
+                  || document.querySelector('.html5-video-player')
+                  || document.querySelector('#player-container');
+
+        if (!player) return;
+
+        var badge = document.getElementById('sdn-player-badge');
+        var curUrl = ctx.singleUrl || ctx.fullUrl;
+        var modeKey = (ctx.isPlaylist ? 'playlist' : 'single') + '_' + curUrl;
+
+        if (!badge) {
+            badge = createEl('div', 'sdn-player-badge');
+        }
+
+        if (badge.dataset.modeKey !== modeKey) {
+            badge.dataset.modeKey = modeKey;
+            while (badge.firstChild) badge.removeChild(badge.firstChild);
+
+            var curTitle = getVideoTitle();
+
+            var mainBadge = createEl('span', '', 'color:#38bdf8; font-weight:800; font-size:12px; cursor:pointer;', '⚡ تنزيل SDN ▼');
+            mainBadge.onclick = function(e) {
+                e.stopPropagation();
+                openMenuAt(badge.getBoundingClientRect(), getMediaContext());
+            };
+            badge.appendChild(mainBadge);
+
+            if (ctx.isPlaylist) {
+                var pVid = createEl('button', '', '', '🎬 القائمة فيديو');
+                pVid.className = 'sdn-player-btn';
+                pVid.onclick = function(e) {
+                    e.stopPropagation();
+                    triggerDirectDownload(ctx.fullUrl, 'best', 'playlist_all', 'كامل القائمة فيديو', curTitle);
+                };
+                badge.appendChild(pVid);
+
+                var pAud = createEl('button', '', '', '🎵 القائمة MP3');
+                pAud.className = 'sdn-player-btn btn-audio';
+                pAud.onclick = function(e) {
+                    e.stopPropagation();
+                    triggerDirectDownload(ctx.fullUrl, 'mp3', 'playlist_all', 'كامل القائمة MP3', curTitle);
+                };
+                badge.appendChild(pAud);
+
+                var pSel = createEl('button', '', '', '📋 اختيار...');
+                pSel.className = 'sdn-player-btn';
+                pSel.onclick = function(e) {
+                    e.stopPropagation();
+                    showToast('📋 جاري فتح نافذة تحديد عناصر القائمة في SDN...', 'info');
+                    if (window.pywebview && window.pywebview.api && window.pywebview.api.send_to_main) {
+                        window.pywebview.api.send_to_main(ctx.fullUrl, true);
+                    }
+                };
+                badge.appendChild(pSel);
+            } else {
+                var b1080 = createEl('button', '', '', '🎬 1080p');
+                b1080.className = 'sdn-player-btn';
+                b1080.onclick = function(e) {
+                    e.stopPropagation();
+                    triggerDirectDownload(ctx.singleUrl, '1080p', 'single', '1080p Full HD', curTitle);
+                };
+                badge.appendChild(b1080);
+
+                var b720 = createEl('button', '', '', '📺 720p');
+                b720.className = 'sdn-player-btn';
+                b720.onclick = function(e) {
+                    e.stopPropagation();
+                    triggerDirectDownload(ctx.singleUrl, '720p', 'single', '720p HD', curTitle);
+                };
+                badge.appendChild(b720);
+
+                var bMp3 = createEl('button', '', '', '🎵 MP3');
+                bMp3.className = 'sdn-player-btn btn-audio';
+                bMp3.onclick = function(e) {
+                    e.stopPropagation();
+                    triggerDirectDownload(ctx.singleUrl, 'mp3', 'single', 'صوت MP3', curTitle);
+                };
+                badge.appendChild(bMp3);
+            }
+        }
+
+        if (badge.parentNode !== player) {
+            player.appendChild(badge);
+        }
+    }
+
+    // 3. Secondary Floating IDM Panel
+    function ensureIdmPanel(ctx) {
         var panel = document.getElementById('sdn-idm-panel');
 
         if (!ctx.active) {
@@ -878,21 +1049,24 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
     window.dismissAdsAndDialogs = dismissAdsAndDialogs;
 
     function loopTick() {
-        var ctx = getMediaContext();
-        ensureInPageButtons(ctx);
-        ensureIdmPanel();
-        dismissAdsAndDialogs();
+        try {
+            var ctx = getMediaContext();
+            ensureUnderTitleBar(ctx);
+            ensurePlayerBadge(ctx);
+            ensureIdmPanel(ctx);
+            dismissAdsAndDialogs();
+        } catch (e) {}
     }
 
     loopTick();
 
     if (!window.__sdn_events_hooked) {
         window.__sdn_events_hooked = true;
-        setInterval(loopTick, 180);
+        setInterval(loopTick, 200);
 
         try {
             var observer = new MutationObserver(function() {
-                dismissAdsAndDialogs();
+                loopTick();
             });
             observer.observe(document.documentElement || document.body, {
                 childList: true,
@@ -916,7 +1090,7 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
                 e.preventDefault();
                 var ctx = getMediaContext();
                 if (ctx.active) {
-                    var mainBtn = document.getElementById('sdnInpageMainBtn') || document.getElementById('sdn-idm-panel');
+                    var mainBtn = document.getElementById('sdn-title-dl-bar') || document.getElementById('sdn-player-badge') || document.getElementById('sdn-idm-panel');
                     openMenuAt(mainBtn ? mainBtn.getBoundingClientRect() : null, ctx);
                 }
             }
@@ -1736,6 +1910,32 @@ class DownloaderBridgeAPI:
             _log.warning(f"Failed to clear history: {e}")
             return False
 
+    def delete_history_item(self, filepath_or_url):
+        """Remove a single item from history by filepath, url, or title."""
+        if not filepath_or_url:
+            return {'success': False}
+        history = self.get_history()
+        norm_target = os.path.normcase(os.path.normpath(str(filepath_or_url)))
+        new_history = []
+        removed = False
+        for item in history:
+            fp = os.path.normcase(os.path.normpath(str(item.get('filepath') or '')))
+            u = str(item.get('url') or '')
+            t = str(item.get('title') or '')
+            if fp == norm_target or u == str(filepath_or_url) or t == str(filepath_or_url):
+                removed = True
+                continue
+            new_history.append(item)
+        if removed:
+            config_path = os.path.join(os.path.expanduser("~"), ".sdn_history.json")
+            try:
+                with open(config_path, 'w', encoding='utf-8') as f:
+                    json.dump(new_history, f, ensure_ascii=False, indent=2)
+                return {'success': True}
+            except Exception as e:
+                _log.warning(f"Failed to delete history item: {e}")
+        return {'success': False}
+
     # ================================================================
     # Window & File system utilities
     # ================================================================
@@ -2253,8 +2453,9 @@ class DownloaderBridgeAPI:
             option['is_playlist'] = True
             option['playlist_mode'] = 'all'
 
-        q_label = "MP3 صوتي" if is_audio else f"فيديو {quality}"
-        self._notify_browser_toast(f"🚀 بدأ التنزيل المباشر ({q_label}) إلى مجلد التنزيلات...", 'info')
+        folder_name = Path(self.save_dir).name or self.save_dir
+        q_label = option.get('label') or str(quality)
+        self._notify_browser_toast(f"🚀 بدأ التنزيل المباشر ({q_label}) إلى: {folder_name}...", 'info')
 
         start_t = time.time()
 
@@ -2293,6 +2494,7 @@ class DownloaderBridgeAPI:
 
                 if media_type == 'audio':
                     for file_item in downloaded_files:
+                        file_item['is_audio'] = True
                         filepath = file_item.get('filepath') or ''
                         if filepath:
                             prepared = self.prepare_media_playback(filepath)
@@ -2323,6 +2525,8 @@ class DownloaderBridgeAPI:
                     try:
                         payload = {
                             'status': 'complete',
+                            'title': media_title,
+                            'quality': option.get('label') or quality,
                             'filepath': result.get('filepath') or (downloaded_files[0]['filepath'] if downloaded_files else ''),
                             'files': downloaded_files,
                             'count': result.get('count', len(downloaded_files)),

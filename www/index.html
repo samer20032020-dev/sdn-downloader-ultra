@@ -1935,7 +1935,7 @@ body.light-theme select option, body.light-theme .select-dropdown option {
       <!-- Update Header Button -->
       <button id="headerUpdateBtn" onclick="onHeaderUpdateClick()" class="update-header-btn" title="فحص التحديثات" style="display:none;">
         <i class="fas fa-cog" id="updateHeaderIcon"></i>
-        <span id="updateHeaderTxt">v1.0.15</span>
+        <span id="updateHeaderTxt">v1.0.16</span>
       </button>
     </div>
   </header>
@@ -1951,7 +1951,7 @@ body.light-theme select option, body.light-theme .select-dropdown option {
       <div style="display:flex; flex-direction:column; align-items:center; text-align:center; padding-top:16px; gap:8px;">
         <div class="clean-hero-badge">
           <span class="clean-hero-dot"></span>
-          <span>الإصدار 1.0.15 — تنزيل فائق السرعة وبدون إعلانات</span>
+          <span>الإصدار 1.0.16 — تنزيل فائق السرعة وبدون إعلانات</span>
         </div>
         <h1 class="clean-hero-title">نزّل الفيديوهات والموسيقى بأعلى جودة</h1>
         <p class="clean-hero-sub">ضع رابط أي فيديو من YouTube أو TikTok أو Instagram أو Facebook للتحميل الفوري</p>
@@ -2349,7 +2349,7 @@ body.light-theme select option, body.light-theme .select-dropdown option {
         <div class="settings-item">
           <div class="settings-label">
             <span class="settings-title">إصدار التطبيق الحالي</span>
-            <span class="settings-desc" id="settingsVersionTxt">SDN v1.0.15</span>
+            <span class="settings-desc" id="settingsVersionTxt">SDN v1.0.16</span>
           </div>
           <button class="header-btn" id="checkUpdatesManualBtn" style="width:auto; padding:0 10px; font-size:0.78rem; color:var(--primary);">فحص التحديثات</button>
         </div>
@@ -3832,11 +3832,7 @@ document.getElementById('clearHistoryBtn')?.addEventListener('click', () => {
   if (window.pywebview?.api?.clear_history) {
     window.pywebview.api.clear_history();
   }
-  // Clear localStorage music history
-  localStorage.removeItem('sdn_music_history');
-  gPlaylist = [];
-  refreshAudioPlaylist();
-  toast('🧹 تم مسح السجل بنجاح');
+  toast('🧹 تم مسح سجل التنزيلات بنجاح');
 });
 
 /* ── Clear Input Button ── */
@@ -4142,8 +4138,8 @@ function updateProgress(p) {
     if (sizes) sizes.innerText = '';
 
     // Save to history & music library
-    const title = gData?.title || 'وسائط محمّلة';
-    const qualLabel = gOpt?.label || gOpt?.size_str || 'جودة افتراضية';
+    const title = p.title || p.media_title || (Array.isArray(p.files) && p.files[0]?.title) || gData?.title || 'وسائط محمّلة';
+    const qualLabel = p.quality || gOpt?.label || gOpt?.size_str || 'جودة افتراضية';
     const mediaType = p.media_type || gOpt?.type || 'video';
     const firstFile = Array.isArray(p.files) && p.files.length ? p.files[0] : null;
     const summaryTitle = p.count > 1 ? `${title} (${p.count} ملفات)` : title;
@@ -4152,7 +4148,8 @@ function updateProgress(p) {
       qualLabel,
       mediaType === 'audio' ? 'audio' : 'yt',
       p.filepath || firstFile?.filepath || '',
-      firstFile?.playable_url || ''
+      firstFile?.playable_url || '',
+      new Date().toISOString()
     );
 
     // Auto-sync any downloaded audio tracks directly into Music Library
@@ -4165,8 +4162,8 @@ function updateProgress(p) {
     if (audioFiles.length > 0) {
       const newTracks = audioFiles.map(f => ({
         title: f.title || (f.filepath ? f.filepath.split(/[\\/]/).pop().replace(/\.[^/.]+$/, "") : "مقطع صوتي"),
-        uploader: gData?.uploader || 'SDN Audio',
-        thumbnail: gData?.thumbnail || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300',
+        uploader: f.uploader || gData?.uploader || 'SDN Audio',
+        thumbnail: f.thumbnail || gData?.thumbnail || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300',
         url: f.playable_url || getPlayableTrackUrl(f),
         playable_url: f.playable_url || getPlayableTrackUrl(f),
         filepath: f.filepath
@@ -4810,7 +4807,22 @@ document.getElementById('cancelDlBtn')?.addEventListener('click', () => {
   }
 });
 
-function createRecentCard(title, quality, type, filepath) {
+function formatHistoryDate(dateStr) {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    const now = new Date();
+    const isToday = d.toDateString() === now.toDateString();
+    const timeStr = d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+    if (isToday) return `اليوم ${timeStr}`;
+    return d.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' }) + ' ' + timeStr;
+  } catch (_) {
+    return '';
+  }
+}
+
+function createRecentCard(title, quality, type, filepath, date = '') {
   const item = document.createElement('div');
   item.className = 'recent-card-item';
 
@@ -4827,17 +4839,23 @@ function createRecentCard(title, quality, type, filepath) {
   const titleEl = document.createElement('span');
   titleEl.className = 'item-title';
   titleEl.textContent = title || 'بدون عنوان';
+  titleEl.title = title || '';
+
   const meta = document.createElement('span');
   meta.className = 'item-meta';
-  meta.textContent = quality || '';
+  const qText = quality || (type === 'audio' ? 'صوت MP3' : 'فيديو MP4');
+  const dateFormatted = formatHistoryDate(date);
+  meta.innerHTML = `<span style="font-weight:700;">${escapeHtml(qText)}</span>` +
+    (dateFormatted ? ` • <span style="opacity:0.75; font-size:0.75rem;"><i class="far fa-clock" style="margin-left:3px;"></i>${escapeHtml(dateFormatted)}</span>` : '');
+
   details.append(titleEl, meta);
   left.append(iconWrap, details);
   item.appendChild(left);
 
-  if (filepath) {
-    const actionsWrap = document.createElement('div');
-    actionsWrap.style.cssText = 'display:flex; align-items:center; gap:6px; margin-right:auto;';
+  const actionsWrap = document.createElement('div');
+  actionsWrap.style.cssText = 'display:flex; align-items:center; gap:6px; margin-right:auto; flex-shrink:0;';
 
+  if (filepath) {
     const playButton = document.createElement('button');
     playButton.className = 'open-folder-btn';
     playButton.title = 'تشغيل الملف مباشرة';
@@ -4854,7 +4872,8 @@ function createRecentCard(title, quality, type, filepath) {
           uploader: 'SDN Player'
         };
         addTracksToPlaylist([track]);
-        playTrack(track);
+        const trackIdx = gPlaylist.findIndex(t => t.filepath === filepath);
+        if (trackIdx >= 0) playTrackAtIndex(trackIdx);
         toast('🎵 جاري تشغيل المقطع الصوتي...');
       } else {
         if (window.pywebview?.api?.play_file) {
@@ -4875,8 +4894,29 @@ function createRecentCard(title, quality, type, filepath) {
     });
 
     actionsWrap.append(playButton, openButton);
-    item.appendChild(actionsWrap);
   }
+
+  const deleteBtn = document.createElement('button');
+  deleteBtn.className = 'open-folder-btn';
+  deleteBtn.title = 'حذف هذا العنصر من السجل';
+  deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
+  deleteBtn.style.cssText = 'background:rgba(239, 68, 68, 0.12); color:#f87171; border-color:rgba(239, 68, 68, 0.3); padding:0 8px;';
+  deleteBtn.addEventListener('click', event => {
+    event.stopPropagation();
+    if (window.pywebview?.api?.delete_history_item) {
+      window.pywebview.api.delete_history_item(filepath || title).then(() => {
+        refreshHistoryUI();
+        toast('🗑️ تم حذف العنصر من السجل');
+      });
+    } else {
+      item.remove();
+      toast('🗑️ تم إزالة العنصر من العرض');
+    }
+  });
+  actionsWrap.appendChild(deleteBtn);
+
+  item.appendChild(actionsWrap);
+
   const done = document.createElement('i');
   done.className = 'fas fa-check-circle item-status-icon';
   item.appendChild(done);
@@ -4900,7 +4940,8 @@ function refreshHistoryUI() {
             item.title || 'بدون عنوان',
             item.quality || '',
             item.type === 'audio' ? 'audio' : 'video',
-            item.filepath || ''
+            item.filepath || '',
+            item.date || ''
           )
         );
       });
@@ -4910,21 +4951,22 @@ function refreshHistoryUI() {
 window.refreshHistoryUI = refreshHistoryUI;
 
 /* ── Recent Items Add & Lark Player Integration ── */
-function addRecentItem(title, quality, type, filepath, playableUrl = '') {
+function addRecentItem(title, quality, type, filepath, playableUrl = '', date = '') {
   document.getElementById('emptyRecent')?.remove();
   document.getElementById('emptyHistory')?.remove();
 
   const list = document.getElementById('recentList');
   const hist = document.getElementById('fullHistoryList');
   const isAudio = type === 'audio' || String(quality || '').toLowerCase().includes('mp3');
-  if (list) list.insertBefore(createRecentCard(title, quality, isAudio ? 'audio' : type, filepath), list.firstChild);
-  if (hist) hist.insertBefore(createRecentCard(title, quality, isAudio ? 'audio' : type, filepath), hist.firstChild);
+  const effectiveDate = date || new Date().toISOString();
+  if (list) list.insertBefore(createRecentCard(title, quality, isAudio ? 'audio' : type, filepath, effectiveDate), list.firstChild);
+  if (hist) hist.insertBefore(createRecentCard(title, quality, isAudio ? 'audio' : type, filepath, effectiveDate), hist.firstChild);
 
-  if (gData && gOpt && isAudio && filepath) {
+  if (isAudio && filepath) {
     saveHistoryAudioTrack({
       title: title,
-      uploader: gData.uploader || 'SDN Audio',
-      thumbnail: gData.thumbnail || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300',
+      uploader: gData?.uploader || 'SDN Audio',
+      thumbnail: gData?.thumbnail || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300',
       url: playableUrl || getPlayableTrackUrl({ filepath }),
       playable_url: playableUrl || getPlayableTrackUrl({ filepath }),
       filepath: filepath
@@ -4973,7 +5015,7 @@ function incrementDlCounter() {
   num.style.animation = 'dlBadgeBump 0.35s ease';
 }
 
-let CURRENT_VERSION = '1.0.15';
+let CURRENT_VERSION = '1.0.16';
 let gLatestReleaseUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
 let gLatestReleasePage = gLatestReleaseUrl;
 let gLatestAssetUrl = '';
