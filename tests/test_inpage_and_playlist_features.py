@@ -53,6 +53,15 @@ class TestInPageAndPlaylistFeatures(unittest.TestCase):
         dup3 = self.api.check_duplicate(title='MySong')
         self.assertTrue(dup3['is_duplicate'])
 
+        # Regression test: non-media files like 1.jpg or unrelated titles must NOT trigger duplicate
+        sample_img = os.path.join(self.temp_dir, "1.jpg")
+        Path(sample_img).write_text("dummy")
+        dup_img = self.api.check_duplicate(title='فيديو جديد رقم 1')
+        self.assertFalse(dup_img['is_duplicate'])
+
+        dup_diff = self.api.check_duplicate(title='Episode 2')
+        self.assertFalse(dup_diff['is_duplicate'])
+
     def test_play_file_nonexistent(self):
         res = self.api.play_file(os.path.join(self.temp_dir, "nonexistent.mp4"))
         self.assertFalse(res['success'])

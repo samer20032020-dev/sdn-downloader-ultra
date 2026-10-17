@@ -1919,6 +1919,38 @@ class DownloaderBridgeAPI:
     def check_duplicate(self, url=None, title=None):
         """Check if URL or title has already been downloaded into save_dir or history to prevent duplicate waste."""
         history = self.get_history() or []
+        import re
+
+        VALID_MEDIA_EXTS = {
+            '.mp4', '.mkv', '.webm', '.avi', '.mov', '.flv', '.wmv', '.m4v',
+            '.mp3', '.m4a', '.flac', '.wav', '.opus', '.ogg', '.wma', '.aac'
+        }
+
+        def _norm_title(t):
+            if not t:
+                return ""
+            t = re.sub(r'\.(?:mp4|mkv|webm|avi|mov|flv|wmv|m4v|mp3|m4a|flac|wav|opus|ogg|wma|aac)$', '', t, flags=re.IGNORECASE)
+            t = re.sub(r'[\(\[\{].*?[\)\]\}]', '', t)
+            t = re.sub(r'(?:official\s*(?:music\s*)?video|official\s*audio|lyrics?|full\s*album|4k|hd|1080p|720p|480p|360p)', '', t, flags=re.IGNORECASE)
+            return "".join(c for c in t if c.isalnum()).lower()
+
+        def _is_match(t1, t2):
+            if not t1 or not t2:
+                return False
+            r1 = "".join(c for c in t1 if c.isalnum()).lower()
+            r2 = "".join(c for c in t2 if c.isalnum()).lower()
+            if r1 and r2 and r1 == r2:
+                return True
+            c1 = _norm_title(t1)
+            c2 = _norm_title(t2)
+            if c1 and c2 and c1 == c2:
+                return True
+            for a, b in ((c1, c2), (r1, r2)):
+                if a and b:
+                    shorter, longer = min(len(a), len(b)), max(len(a), len(b))
+                    if shorter >= 8 and (a in b or b in a) and (shorter / longer >= 0.80):
+                        return True
+            return False
 
         # 1. Check history by URL
         if url:
@@ -1928,9 +1960,29 @@ class DownloaderBridgeAPI:
             except Exception:
                 cleaned = url.split('&')[0]
 
+            v_id = None
+            m = re.search(r'(?:v=|\/shorts\/|youtu\.be\/)([a-zA-Z0-9_-]{11})', url)
+            if m:
+                v_id = m.group(1)
+
             for h in history:
                 h_url = h.get('url', '')
-                if h_url and (h_url == url or (cleaned and cleaned in h_url)):
+                if not h_url:
+                    continue
+                is_url_match = False
+                if v_id:
+                    hm = re.search(r'(?:v=|\/shorts\/|youtu\.be\/)([a-zA-Z0-9_-]{11})', h_url)
+                    if hm and hm.group(1) == v_id:
+                        is_url_match = True
+                if not is_url_match:
+                    try:
+                        clean_h = clean_url(h_url)
+                    except Exception:
+                        clean_h = h_url.split('&')[0]
+                    if h_url == url or (cleaned and clean_h and cleaned == clean_h):
+                        is_url_match = True
+
+                if is_url_match:
                     fp = h.get('filepath', '')
                     if not fp or os.path.exists(fp):
                         return {
@@ -1942,36 +1994,38 @@ class DownloaderBridgeAPI:
 
         # 2. Check history and save_dir by title
         if title:
-            norm_title = "".join(c for c in title if c.isalnum()).lower()
-            if len(norm_title) >= 4:
-                for h in history:
-                    h_title = h.get('title', '')
-                    norm_h = "".join(c for c in h_title if c.isalnum()).lower()
-                    if norm_h and (norm_title in norm_h or norm_h in norm_title):
-                        fp = h.get('filepath', '')
-                        if not fp or os.path.exists(fp):
-                            return {
-                                'is_duplicate': True,
-                                'matched_title': h_title,
-                                'filepath': fp,
-                                'reason': 'title'
-                            }
-                if os.path.exists(self.save_dir):
-                    try:
-                        with os.scandir(self.save_dir) as entries:
-                            for entry in entries:
-                                if entry.is_file():
-                                    stem = Path(entry.name).stem
-                                    norm_entry = "".join(c for c in stem if c.isalnum()).lower()
-                                    if norm_entry and (norm_title in norm_entry or norm_entry in norm_title):
-                                        return {
-                                            'is_duplicate': True,
-                                            'matched_title': entry.name,
-                                            'filepath': entry.path,
-                                            'reason': 'file_exists'
-                                        }
-                    except Exception:
-                        pass
+            # Check history
+            for h in history:
+                h_title = h.get('title', '')
+                if h_title and _is_match(title, h_title):
+                    fp = h.get('filepath', '')
+                    if not fp or os.path.exists(fp):
+                        return {
+                            'is_duplicate': True,
+                            'matched_title': h_title,
+                            'filepath': fp,
+                            'reason': 'title'
+                        }
+
+            # Check save_dir files (only valid media formats)
+            if os.path.exists(self.save_dir):
+                try:
+                    with os.scandir(self.save_dir) as entries:
+                        for entry in entries:
+                            if entry.is_file():
+                                ext = Path(entry.name).suffix.lower()
+                                if ext not in VALID_MEDIA_EXTS:
+                                    continue
+                                stem = Path(entry.name).stem
+                                if _is_match(title, stem):
+                                    return {
+                                        'is_duplicate': True,
+                                        'matched_title': entry.name,
+                                        'filepath': entry.path,
+                                        'reason': 'file_exists'
+                                    }
+                except Exception:
+                    pass
 
         return {'is_duplicate': False, 'matched_title': '', 'filepath': ''}
 

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SDN Downloader Ultra",
-  "version": "1.0.20",
+  "version": "1.0.21",
   "description": "Send the current page or any link straight to SDN Downloader Ultra running on your PC.",
   "minimum_chrome_version": "102",
   "permissions": [
