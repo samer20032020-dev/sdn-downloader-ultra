@@ -152,6 +152,9 @@ class YouTubeBrowserBridge:
     def delete_history_item(self, filepath_or_url):
         return self.main_api.delete_history_item(filepath_or_url)
 
+    def get_history_file_states(self):
+        return self.main_api.get_history_file_states()
+
 
 YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
 (function() {
@@ -1422,6 +1425,7 @@ class DownloaderBridgeAPI:
         self._start_local_extension_server()
         self._trigger_bg_auto_updates()
         self._start_auto_cache_cleaner()
+        self._start_history_file_watcher()
         
         # Diagnostic dump on first run
         try:
@@ -1787,6 +1791,9 @@ class DownloaderBridgeAPI:
                 with open(config_path, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     if isinstance(data, list):
+                        for item in data:
+                            if isinstance(item, dict) and item.get('filepath'):
+                                item['file_exists'] = os.path.exists(item['filepath'])
                         return data
         except (json.JSONDecodeError, IOError) as e:
             _log.warning(f"History file corrupted, resetting: {e}")
@@ -1797,6 +1804,61 @@ class DownloaderBridgeAPI:
         except Exception as e:
             _log.debug(f"History load skipped: {e}")
         return []
+
+    def get_history_file_states(self):
+        """Return a mapping of normalized {filepath: exists} for all history items."""
+        history = self.get_history()
+        states = {}
+        for item in history:
+            fp = item.get('filepath')
+            if fp:
+                norm = os.path.normcase(os.path.normpath(str(fp)))
+                exists = bool(item.get('file_exists', os.path.exists(fp)))
+                states[norm] = exists
+                states[str(fp)] = exists
+        return states
+
+    def _start_history_file_watcher(self):
+        """Monitors download history file paths in real time.
+        If a file is deleted from disk (e.g. desktop/downloads), notifies the UI to hide it.
+        If restored (e.g. Ctrl+Z), notifies the UI to bring it back."""
+        def _watcher_loop():
+            last_states = {}
+            while True:
+                time.sleep(0.8)
+                win = getattr(self, '_window', None)
+                if not win:
+                    continue
+                history = self.get_history()
+                if not history:
+                    continue
+
+                current_states = {}
+                state_changed = False
+                for item in history:
+                    fp = item.get('filepath')
+                    if fp:
+                        norm = os.path.normcase(os.path.normpath(str(fp)))
+                        exists = os.path.exists(fp)
+                        current_states[norm] = exists
+                        current_states[str(fp)] = exists
+                        if norm in last_states:
+                            if last_states[norm] != exists:
+                                state_changed = True
+                        else:
+                            last_states[norm] = exists
+
+                if state_changed:
+                    last_states = current_states
+                    try:
+                        js = f"if (window.onHistoryFileStateChange) window.onHistoryFileStateChange({json.dumps(current_states)});"
+                        win.evaluate_js(js)
+                    except Exception:
+                        pass
+                else:
+                    last_states = current_states
+
+        threading.Thread(target=_watcher_loop, daemon=True, name="HistoryFileWatcher").start()
 
     def add_history(self, item):
         history = self.get_history()

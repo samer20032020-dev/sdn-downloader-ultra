@@ -392,6 +392,20 @@ body.light-theme .input-field-wrap input { background: #fff; }
 .recent-card-item {
   background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px;
   padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), max-height 0.4s ease, margin 0.35s ease, padding 0.35s ease, border-width 0.35s ease;
+  max-height: 140px;
+}
+.recent-card-item.file-missing {
+  opacity: 0;
+  transform: scale(0.96) translateY(-8px);
+  max-height: 0;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  border-width: 0 !important;
+  pointer-events: none;
+  overflow: hidden;
 }
 .recent-card-left { display: flex; align-items: center; gap: 12px; overflow: hidden; }
 .platform-icon {
@@ -1935,7 +1949,7 @@ body.light-theme select option, body.light-theme .select-dropdown option {
       <!-- Update Header Button -->
       <button id="headerUpdateBtn" onclick="onHeaderUpdateClick()" class="update-header-btn" title="فحص التحديثات" style="display:none;">
         <i class="fas fa-cog" id="updateHeaderIcon"></i>
-        <span id="updateHeaderTxt">v1.0.21</span>
+        <span id="updateHeaderTxt">v1.0.22</span>
       </button>
     </div>
   </header>
@@ -1951,7 +1965,7 @@ body.light-theme select option, body.light-theme .select-dropdown option {
       <div style="display:flex; flex-direction:column; align-items:center; text-align:center; padding-top:16px; gap:8px;">
         <div class="clean-hero-badge">
           <span class="clean-hero-dot"></span>
-          <span>الإصدار 1.0.21 — تنزيل فائق السرعة وبدون إعلانات</span>
+          <span>الإصدار 1.0.22 — تنزيل فائق السرعة وبدون إعلانات</span>
         </div>
         <h1 class="clean-hero-title">نزّل الفيديوهات والموسيقى بأعلى جودة</h1>
         <p class="clean-hero-sub">ضع رابط أي فيديو من YouTube أو TikTok أو Instagram أو Facebook للتحميل الفوري</p>
@@ -2349,7 +2363,7 @@ body.light-theme select option, body.light-theme .select-dropdown option {
         <div class="settings-item">
           <div class="settings-label">
             <span class="settings-title">إصدار التطبيق الحالي</span>
-            <span class="settings-desc" id="settingsVersionTxt">SDN v1.0.21</span>
+            <span class="settings-desc" id="settingsVersionTxt">SDN v1.0.22</span>
           </div>
           <button class="header-btn" id="checkUpdatesManualBtn" style="width:auto; padding:0 10px; font-size:0.78rem; color:var(--primary);">فحص التحديثات</button>
         </div>
@@ -4822,9 +4836,16 @@ function formatHistoryDate(dateStr) {
   }
 }
 
-function createRecentCard(title, quality, type, filepath, date = '') {
+function createRecentCard(title, quality, type, filepath, date = '', fileExists = true) {
   const item = document.createElement('div');
-  item.className = 'recent-card-item';
+  item.className = 'recent-card-item' + (!fileExists ? ' file-missing' : '');
+  if (filepath) {
+    item.setAttribute('data-filepath', filepath);
+    item.setAttribute('data-normpath', (filepath || '').replace(/\\/g, '/').toLowerCase());
+  }
+  if (!fileExists) {
+    item.style.display = 'none';
+  }
 
   const left = document.createElement('div');
   left.className = 'recent-card-left';
@@ -4910,6 +4931,7 @@ function createRecentCard(title, quality, type, filepath, date = '') {
       });
     } else {
       item.remove();
+      updateEmptyStates();
       toast('🗑️ تم إزالة العنصر من العرض');
     }
   });
@@ -4923,44 +4945,172 @@ function createRecentCard(title, quality, type, filepath, date = '') {
   return item;
 }
 
+function updateEmptyStates() {
+  const recentList = document.getElementById('recentList');
+  if (recentList) {
+    const visibleRecent = recentList.querySelectorAll('.recent-card-item:not(.file-missing)');
+    const emptyRecent = document.getElementById('emptyRecent');
+    if (visibleRecent.length === 0) {
+      if (emptyRecent) emptyRecent.style.display = 'block';
+    } else {
+      if (emptyRecent) emptyRecent.style.display = 'none';
+    }
+  }
+
+  const hist = document.getElementById('fullHistoryList');
+  if (hist) {
+    const visibleHist = hist.querySelectorAll('.recent-card-item:not(.file-missing)');
+    const emptyHist = document.getElementById('emptyHistory');
+    if (visibleHist.length === 0) {
+      if (emptyHist) emptyHist.style.display = 'block';
+    } else {
+      if (emptyHist) emptyHist.style.display = 'none';
+    }
+  }
+}
+window.updateEmptyStates = updateEmptyStates;
+
+function renderRecentAndHistory(items) {
+  const recentList = document.getElementById('recentList');
+  const hist = document.getElementById('fullHistoryList');
+
+  if (!items || items.length === 0) {
+    if (recentList) {
+      recentList.querySelectorAll('.recent-card-item').forEach(c => c.remove());
+    }
+    if (hist) {
+      hist.querySelectorAll('.recent-card-item').forEach(c => c.remove());
+    }
+    updateEmptyStates();
+    return;
+  }
+
+  // Populate recentList on Home view (up to 8 items)
+  if (recentList) {
+    recentList.querySelectorAll('.recent-card-item').forEach(c => c.remove());
+    const recents = items.slice(0, 8);
+    recents.forEach(item => {
+      const exists = item.file_exists !== false;
+      const card = createRecentCard(
+        item.title || 'بدون عنوان',
+        item.quality || '',
+        item.type === 'audio' ? 'audio' : 'video',
+        item.filepath || '',
+        item.date || '',
+        exists
+      );
+      recentList.appendChild(card);
+    });
+  }
+
+  // Populate fullHistoryList on History view (all items)
+  if (hist) {
+    hist.querySelectorAll('.recent-card-item').forEach(c => c.remove());
+    items.forEach(item => {
+      const exists = item.file_exists !== false;
+      const card = createRecentCard(
+        item.title || 'بدون عنوان',
+        item.quality || '',
+        item.type === 'audio' ? 'audio' : 'video',
+        item.filepath || '',
+        item.date || '',
+        exists
+      );
+      hist.appendChild(card);
+    });
+  }
+
+  updateEmptyStates();
+}
+
 function refreshHistoryUI() {
   if (window.pywebview?.api?.get_history) {
     window.pywebview.api.get_history().then(items => {
-      const hist = document.getElementById('fullHistoryList');
-      if (!hist) return;
-      document.getElementById('emptyHistory')?.remove();
-      hist.innerHTML = '';
-      if (!items || items.length === 0) {
-        hist.innerHTML = '<div class="empty-state" id="emptyHistory" style="text-align:center; color:var(--muted); padding:30px; font-weight:700; font-size:0.9rem;">لا توجد عناصر سابقة</div>';
-        return;
-      }
-      items.forEach(item => {
-        hist.appendChild(
-          createRecentCard(
-            item.title || 'بدون عنوان',
-            item.quality || '',
-            item.type === 'audio' ? 'audio' : 'video',
-            item.filepath || '',
-            item.date || ''
-          )
-        );
-      });
+      renderRecentAndHistory(items);
     }).catch(() => {});
   }
 }
 window.refreshHistoryUI = refreshHistoryUI;
 
+window.onHistoryFileStateChange = function(states) {
+  if (!states || typeof states !== 'object') return;
+
+  const norm = p => (p || '').replace(/\\/g, '/').toLowerCase();
+  const normStates = {};
+  for (const k of Object.keys(states)) {
+    normStates[norm(k)] = states[k];
+  }
+
+  const allCards = document.querySelectorAll('.recent-card-item[data-normpath]');
+  let unrenderedRestored = false;
+
+  for (const [normPath, exists] of Object.entries(normStates)) {
+    if (exists) {
+      let found = false;
+      allCards.forEach(card => {
+        if (card.getAttribute('data-normpath') === normPath) found = true;
+      });
+      if (!found) {
+        unrenderedRestored = true;
+        break;
+      }
+    }
+  }
+
+  if (unrenderedRestored) {
+    refreshHistoryUI();
+    return;
+  }
+
+  allCards.forEach(card => {
+    const cardPath = card.getAttribute('data-normpath');
+    if (cardPath && cardPath in normStates) {
+      const exists = !!normStates[cardPath];
+      if (exists) {
+        if (card.classList.contains('file-missing')) {
+          card.style.display = '';
+          requestAnimationFrame(() => {
+            card.classList.remove('file-missing');
+            updateEmptyStates();
+          });
+        }
+      } else {
+        if (!card.classList.contains('file-missing')) {
+          card.classList.add('file-missing');
+          setTimeout(() => {
+            if (card.classList.contains('file-missing')) {
+              card.style.display = 'none';
+              updateEmptyStates();
+            }
+          }, 350);
+        }
+      }
+    }
+  });
+
+  updateEmptyStates();
+};
+
+window.addEventListener('focus', () => {
+  if (window.pywebview?.api?.get_history_file_states) {
+    window.pywebview.api.get_history_file_states().then(states => {
+      if (window.onHistoryFileStateChange && states) {
+        window.onHistoryFileStateChange(states);
+      }
+    }).catch(() => {});
+  }
+});
+
 /* ── Recent Items Add & Lark Player Integration ── */
 function addRecentItem(title, quality, type, filepath, playableUrl = '', date = '') {
-  document.getElementById('emptyRecent')?.remove();
-  document.getElementById('emptyHistory')?.remove();
-
   const list = document.getElementById('recentList');
   const hist = document.getElementById('fullHistoryList');
   const isAudio = type === 'audio' || String(quality || '').toLowerCase().includes('mp3');
   const effectiveDate = date || new Date().toISOString();
-  if (list) list.insertBefore(createRecentCard(title, quality, isAudio ? 'audio' : type, filepath, effectiveDate), list.firstChild);
-  if (hist) hist.insertBefore(createRecentCard(title, quality, isAudio ? 'audio' : type, filepath, effectiveDate), hist.firstChild);
+  if (list) list.insertBefore(createRecentCard(title, quality, isAudio ? 'audio' : type, filepath, effectiveDate, true), list.firstChild);
+  if (hist) hist.insertBefore(createRecentCard(title, quality, isAudio ? 'audio' : type, filepath, effectiveDate, true), hist.firstChild);
+
+  updateEmptyStates();
 
   if (isAudio && filepath) {
     saveHistoryAudioTrack({
@@ -5015,7 +5165,7 @@ function incrementDlCounter() {
   num.style.animation = 'dlBadgeBump 0.35s ease';
 }
 
-let CURRENT_VERSION = '1.0.21';
+let CURRENT_VERSION = '1.0.22';
 let gLatestReleaseUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
 let gLatestReleasePage = gLatestReleaseUrl;
 let gLatestAssetUrl = '';
@@ -5363,25 +5513,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Load history from Python backend
-  if (window.pywebview?.api?.get_history) {
-    window.pywebview.api.get_history().then(items => {
-      if (!items || items.length === 0) return;
-      const hist = document.getElementById('fullHistoryList');
-      document.getElementById('emptyHistory')?.remove();
-      if (!hist) return;
-      hist.innerHTML = '';
-      items.forEach(item => {
-        hist.appendChild(
-          createRecentCard(
-            item.title || 'بدون عنوان',
-            item.quality || '',
-            item.type === 'audio' ? 'audio' : 'video',
-            item.filepath || ''
-          )
-        );
-      });
-    }).catch(() => {});
-  }
+  refreshHistoryUI();
 
   if (getPref('autoUpdate', true)) {
     checkForAppUpdates();
