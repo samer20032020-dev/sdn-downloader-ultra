@@ -348,106 +348,44 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
             '   max-height: 0 !important; opacity: 0 !important; pointer-events: none !important;',
             '}',
             '#sdn-idm-panel {',
-            '   position: fixed; top: 66px; right: 24px; z-index: 2147483647;',
-            '   display: none; align-items: center; gap: 8px;',
-            '   background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%);',
-            '   color: #ffffff; padding: 6px 14px; border-radius: 20px;',
-            '   border: 1.5px solid #38bdf8; box-shadow: 0 8px 30px rgba(0,0,0,0.95), 0 0 16px rgba(56, 189, 248, 0.4);',
+            '   position: fixed; z-index: 2147483647;',
+            '   display: none; align-items: center; gap: 6px;',
+            '   background: linear-gradient(135deg, rgba(15, 23, 42, 0.96) 0%, rgba(30, 41, 59, 0.96) 100%);',
+            '   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);',
+            '   color: #ffffff; padding: 4px 10px; border-radius: 20px;',
+            '   border: 1.5px solid rgba(56, 189, 248, 0.75);',
+            '   box-shadow: 0 8px 25px rgba(0,0,0,0.85), 0 0 14px rgba(56, 189, 248, 0.35);',
             '   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;',
-            '   font-size: 13px; font-weight: 700; direction: rtl; cursor: default; user-select: none;',
-            '   transition: transform 0.18s, box-shadow 0.18s;',
+            '   font-size: 12.5px; font-weight: 700; direction: rtl; user-select: none;',
+            '   cursor: grab; transition: border-color 0.2s, box-shadow 0.2s;',
             '}',
             '#sdn-idm-panel:hover {',
-            '   box-shadow: 0 10px 32px rgba(0,0,0,0.98), 0 0 22px rgba(56, 189, 248, 0.6);',
+            '   border-color: #38bdf8;',
+            '   box-shadow: 0 10px 28px rgba(0,0,0,0.95), 0 0 20px rgba(56, 189, 248, 0.55);',
             '}',
-            '#sdn-player-badge {',
-            '   position: absolute; top: 16px; right: 20px; z-index: 2147483640;',
-            '   display: inline-flex; align-items: center; gap: 6px;',
-            '   background: rgba(15, 23, 42, 0.92); backdrop-filter: blur(12px);',
-            '   border: 1.5px solid rgba(56, 189, 248, 0.65); border-radius: 20px;',
-            '   padding: 5px 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.9), 0 0 14px rgba(56, 189, 248, 0.35); direction: rtl;',
-            '   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;',
-            '   user-select: none; transition: all 0.2s ease;',
+            '#sdn-idm-panel.sdn-dragging {',
+            '   cursor: grabbing !important;',
+            '   box-shadow: 0 14px 35px rgba(0,0,0,0.98), 0 0 24px rgba(56, 189, 248, 0.75) !important;',
+            '   opacity: 0.94;',
             '}',
-            '#sdn-player-badge:hover {',
-            '   border-color: #38bdf8; box-shadow: 0 8px 26px rgba(56, 189, 248, 0.55);',
+            '.sdn-drag-handle {',
+            '   cursor: grab; color: #94a3b8; font-size: 14px; padding: 0 3px;',
+            '   user-select: none; display: inline-flex; align-items: center;',
             '}',
-            '.sdn-player-btn {',
-            '   display: inline-flex; align-items: center; gap: 4px; height: 28px; border-radius: 14px;',
-            '   padding: 0 10px; font-size: 11.5px; font-weight: 700; cursor: pointer; user-select: none;',
-            '   border: 1px solid rgba(255, 255, 255, 0.18); background: rgba(255, 255, 255, 0.08);',
-            '   color: #f1f5f9; transition: all 0.18s ease; font-family: inherit;',
+            '.sdn-dragging .sdn-drag-handle { cursor: grabbing !important; }',
+            '.sdn-panel-btn {',
+            '   display: inline-flex; align-items: center; gap: 5px; cursor: pointer;',
+            '   padding: 3px 6px; border-radius: 12px; transition: background 0.15s;',
             '}',
-            '.sdn-player-btn:hover {',
-            '   background: rgba(56, 189, 248, 0.28); border-color: #38bdf8; color: #38bdf8; transform: translateY(-1px);',
+            '.sdn-panel-btn:hover {',
+            '   background: rgba(56, 189, 248, 0.2);',
             '}',
-            '.sdn-player-btn.btn-audio:hover {',
-            '   background: rgba(52, 211, 153, 0.28); border-color: #34d399; color: #34d399;',
+            '.sdn-panel-close {',
+            '   cursor: pointer; color: #64748b; font-size: 11px; padding: 2px 4px;',
+            '   border-radius: 50%; transition: all 0.15s; line-height: 1;',
             '}',
-            '.sdn-action-pill {',
-            '   display: inline-flex; align-items: center; gap: 6px; height: 36px; border-radius: 18px;',
-            '   padding: 0 14px; font-size: 12.5px; font-weight: 800; cursor: pointer; user-select: none;',
-            '   background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff;',
-            '   border: 1px solid rgba(56, 189, 248, 0.7); box-shadow: 0 2px 10px rgba(2, 132, 199, 0.4);',
-            '   margin: 0 6px; transition: all 0.18s ease; font-family: inherit; direction: rtl;',
-            '}',
-            '.sdn-action-pill:hover {',
-            '   background: linear-gradient(135deg, #0369a1 0%, #0284c7 100%); transform: translateY(-1px);',
-            '   box-shadow: 0 4px 16px rgba(56, 189, 248, 0.65);',
-            '}',
-            '#sdn-title-dl-bar {',
-            '   display: flex; align-items: center; flex-wrap: wrap; gap: 8px;',
-            '   background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%);',
-            '   border: 1.5px solid rgba(56, 189, 248, 0.55); border-radius: 12px; padding: 8px 14px;',
-            '   margin: 10px 0 14px 0; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7), 0 0 14px rgba(56, 189, 248, 0.2);',
-            '   direction: rtl; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;',
-            '   z-index: 1000;',
-            '}',
-            '.sdn-bar-label {',
-            '   display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 800;',
-            '   color: #38bdf8; margin-left: 6px; user-select: none;',
-            '}',
-            '.sdn-chip-btn {',
-            '   display: inline-flex; align-items: center; gap: 6px; height: 34px; border-radius: 17px;',
-            '   padding: 0 13px; font-size: 12.5px; font-weight: 700; cursor: pointer; user-select: none;',
-            '   border: 1px solid transparent; transition: all 0.18s ease; white-space: nowrap;',
-            '}',
-            '.sdn-btn-fhd {',
-            '   background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff;',
-            '   border-color: rgba(56, 189, 248, 0.6); box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35);',
-            '}',
-            '.sdn-btn-fhd:hover {',
-            '   background: linear-gradient(135deg, #0369a1 0%, #0284c7 100%); transform: translateY(-1px);',
-            '   box-shadow: 0 4px 14px rgba(56, 189, 248, 0.55);',
-            '}',
-            '.sdn-btn-hd {',
-            '   background: rgba(255, 255, 255, 0.08); color: #f1f5f9; border-color: rgba(255, 255, 255, 0.2);',
-            '}',
-            '.sdn-btn-hd:hover {',
-            '   background: rgba(56, 189, 248, 0.22); border-color: #38bdf8; color: #38bdf8; transform: translateY(-1px);',
-            '}',
-            '.sdn-btn-audio {',
-            '   background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.3) 100%);',
-            '   color: #34d399; border-color: rgba(52, 211, 153, 0.5); box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);',
-            '}',
-            '.sdn-btn-audio:hover {',
-            '   background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #ffffff; transform: translateY(-1px);',
-            '}',
-            '.sdn-btn-playlist-video {',
-            '   background: linear-gradient(135deg, #d97706 0%, #b45309 100%); color: #ffffff;',
-            '   border-color: rgba(251, 191, 36, 0.6); box-shadow: 0 2px 8px rgba(217, 119, 6, 0.35);',
-            '}',
-            '.sdn-btn-playlist-video:hover {',
-            '   background: linear-gradient(135deg, #b45309 0%, #d97706 100%); transform: translateY(-1px);',
-            '   box-shadow: 0 4px 14px rgba(251, 191, 36, 0.5);',
-            '}',
-            '.sdn-btn-playlist-select {',
-            '   background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: #ffffff;',
-            '   border-color: rgba(167, 139, 250, 0.6); box-shadow: 0 2px 8px rgba(124, 58, 237, 0.35);',
-            '}',
-            '.sdn-btn-playlist-select:hover {',
-            '   background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 100%); transform: translateY(-1px);',
-            '   box-shadow: 0 4px 14px rgba(167, 139, 250, 0.5);',
+            '.sdn-panel-close:hover {',
+            '   color: #ef4444; background: rgba(239, 68, 68, 0.2);',
             '}',
             '.sdn-idm-menu-item:hover {',
             '   background: rgba(56, 189, 248, 0.18) !important; color: #38bdf8 !important;',
@@ -680,276 +618,160 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
     function openMenuAt(rect, ctx) {
         var menu = getMenu();
         if (!menu) return;
+        if (menu.style.display === 'flex') {
+            menu.style.display = 'none';
+            return;
+        }
         populateMenu(ctx);
-        var top = (rect ? rect.bottom : 70) + 6;
-        var left = rect ? (rect.right - 310) : (window.innerWidth - 330);
-        if (left < 10) left = 10;
-        if (left + 310 > window.innerWidth) left = window.innerWidth - 320;
+        menu.style.display = 'flex';
+
+        var menuW = 310;
+        var menuH = menu.offsetHeight || 280;
+
+        var top = 70;
+        var left = window.innerWidth - 330;
+
+        if (rect) {
+            if (rect.bottom + menuH + 10 <= window.innerHeight) {
+                top = rect.bottom + 6;
+            } else if (rect.top - menuH - 6 >= 10) {
+                top = rect.top - menuH - 6;
+            } else {
+                top = Math.max(10, window.innerHeight - menuH - 10);
+            }
+
+            left = rect.right - menuW;
+            if (left < 10) left = 10;
+            if (left + menuW > window.innerWidth - 10) left = window.innerWidth - menuW - 10;
+        }
+
         menu.style.top = top + 'px';
         menu.style.left = left + 'px';
-        menu.style.display = 'flex';
     }
 
-    // 1. Direct Download Bar Under the Video Title
-    function ensureUnderTitleBar(ctx) {
-        if (!ctx.active) {
-            var old = document.getElementById('sdn-title-dl-bar');
-            if (old) old.remove();
-            return;
-        }
+    // Draggable Floating IDM Widget Controller
+    function makeDraggable(el) {
+        if (el.__sdn_drag_attached) return;
+        el.__sdn_drag_attached = true;
 
-        var titleEl = document.querySelector('ytd-watch-metadata #title')
-                   || document.querySelector('#above-the-fold #title')
-                   || document.querySelector('h1.style-scope.ytd-watch-metadata')
-                   || document.querySelector('#title.ytd-watch-metadata');
+        var isDragging = false;
+        var startX = 0, startY = 0;
+        var initialLeft = 0, initialTop = 0;
+        var hasMoved = false;
 
-        if (!titleEl) return;
-
-        var bar = document.getElementById('sdn-title-dl-bar');
-        var curUrl = ctx.singleUrl || ctx.fullUrl;
-        var modeKey = (ctx.isPlaylist ? 'playlist' : 'single') + '_' + curUrl;
-
-        if (!bar) {
-            bar = createEl('div', 'sdn-title-dl-bar');
-        }
-
-        if (bar.dataset.modeKey !== modeKey) {
-            bar.dataset.modeKey = modeKey;
-            while (bar.firstChild) bar.removeChild(bar.firstChild);
-
-            var curTitle = getVideoTitle();
-
-            var lbl = createEl('span', '', '', '⚡ تنزيل SDN:');
-            lbl.className = 'sdn-bar-label';
-            bar.appendChild(lbl);
-
-            if (ctx.isPlaylist) {
-                var bAllVid = createEl('div', '', '', '⚡ تحميل القائمة كاملة فيديو');
-                bAllVid.className = 'sdn-chip-btn sdn-btn-playlist-video';
-                bAllVid.title = 'تنزيل جميع فيديوهات القائمة فوراً بأفضل جودة إلى مجلد التنزيلات المختار';
-                bAllVid.onclick = function(e) {
-                    e.stopPropagation();
-                    triggerDirectDownload(ctx.fullUrl, 'best', 'playlist_all', 'كامل القائمة فيديو', curTitle);
-                };
-                bar.appendChild(bAllVid);
-
-                var bAllAud = createEl('div', '', '', '🎵 تحميل كامل القائمة MP3');
-                bAllAud.className = 'sdn-chip-btn sdn-btn-audio';
-                bAllAud.title = 'تنزيل جميع مقاطع القائمة بصوت MP3 وإضافتها مباشرة لمشغل الموسيقى';
-                bAllAud.onclick = function(e) {
-                    e.stopPropagation();
-                    triggerDirectDownload(ctx.fullUrl, 'mp3', 'playlist_all', 'كامل القائمة MP3', curTitle);
-                };
-                bar.appendChild(bAllAud);
-
-                var bSelect = createEl('div', '', '', '📋 اختيار فيديوهات معينة... (مخصص)');
-                bSelect.className = 'sdn-chip-btn sdn-btn-playlist-select';
-                bSelect.title = 'فتح محرك SDN تلقائياً لتحديد فيديوهات معينة واختيار صيغة كل فيديو';
-                bSelect.onclick = function(e) {
-                    e.stopPropagation();
-                    showToast('📋 جاري فتح نافذة تحديد عناصر القائمة في SDN...', 'info');
-                    if (window.pywebview && window.pywebview.api && window.pywebview.api.send_to_main) {
-                        window.pywebview.api.send_to_main(ctx.fullUrl, true);
-                    }
-                };
-                bar.appendChild(bSelect);
-
-                var bThisVid = createEl('div', '', '', '🎬 هذا الفيديو (1080p)');
-                bThisVid.className = 'sdn-chip-btn sdn-btn-fhd';
-                bThisVid.title = 'تنزيل هذا الفيديو فقط بجودة 1080p FHD';
-                bThisVid.onclick = function(e) {
-                    e.stopPropagation();
-                    triggerDirectDownload(ctx.singleUrl, '1080p', 'single', 'فيديو 1080p', curTitle);
-                };
-                bar.appendChild(bThisVid);
-
-                var bThisAud = createEl('div', '', '', '🎵 هذا المقطع (MP3)');
-                bThisAud.className = 'sdn-chip-btn sdn-btn-hd';
-                bThisAud.title = 'استخراج صوت هذا المقطع فقط MP3';
-                bThisAud.onclick = function(e) {
-                    e.stopPropagation();
-                    triggerDirectDownload(ctx.singleUrl, 'mp3', 'single', 'صوت MP3', curTitle);
-                };
-                bar.appendChild(bThisAud);
+        // Apply saved position or default to top-right
+        try {
+            var saved = localStorage.getItem('sdn_idm_pos');
+            if (saved) {
+                var p = JSON.parse(saved);
+                var maxL = Math.max(10, window.innerWidth - 180);
+                var maxT = Math.max(10, window.innerHeight - 50);
+                var l = Math.min(Math.max(10, p.left), maxL);
+                var t = Math.min(Math.max(10, p.top), maxT);
+                el.style.left = l + 'px';
+                el.style.top = t + 'px';
+                el.style.right = 'auto';
             } else {
-                var b1080 = createEl('div', '', '', '🎬 1080p FHD (MP4)');
-                b1080.className = 'sdn-chip-btn sdn-btn-fhd';
-                b1080.title = 'تنزيل مباشر فيديو 1080p Full HD إلى مجلد التنزيلات بدون تحويل';
-                b1080.onclick = function(e) {
-                    e.stopPropagation();
-                    triggerDirectDownload(ctx.singleUrl, '1080p', 'single', '1080p Full HD', curTitle);
-                };
-                bar.appendChild(b1080);
+                el.style.top = '66px';
+                el.style.left = Math.max(10, window.innerWidth - 180) + 'px';
+                el.style.right = 'auto';
+            }
+        } catch (e) {
+            el.style.top = '66px';
+            el.style.right = '24px';
+        }
 
-                var b720 = createEl('div', '', '', '📺 720p HD (MP4)');
-                b720.className = 'sdn-chip-btn sdn-btn-hd';
-                b720.title = 'تنزيل مباشر فيديو 720p HD إلى مجلد التنزيلات بدون تحويل';
-                b720.onclick = function(e) {
-                    e.stopPropagation();
-                    triggerDirectDownload(ctx.singleUrl, '720p', 'single', '720p HD', curTitle);
-                };
-                bar.appendChild(b720);
+        function onPointerDown(e) {
+            if (e.target && e.target.classList && e.target.classList.contains('sdn-panel-close')) {
+                return;
+            }
+            isDragging = true;
+            hasMoved = false;
+            startX = (e.touches && e.touches[0] ? e.touches[0].clientX : e.clientX) || 0;
+            startY = (e.touches && e.touches[0] ? e.touches[0].clientY : e.clientY) || 0;
 
-                var bBest = createEl('div', '', '', '🚀 أفضل جودة (Best)');
-                bBest.className = 'sdn-chip-btn sdn-btn-hd';
-                bBest.title = 'تنزيل بأعلى جودة متوفرة تلقائياً MP4';
-                bBest.onclick = function(e) {
-                    e.stopPropagation();
-                    triggerDirectDownload(ctx.singleUrl, 'best', 'single', 'أفضل جودة', curTitle);
-                };
-                bar.appendChild(bBest);
+            var r = el.getBoundingClientRect();
+            initialLeft = r.left;
+            initialTop = r.top;
 
-                var bMp3 = createEl('div', '', '', '🎵 صوت MP3 عالي النقاء');
-                bMp3.className = 'sdn-chip-btn sdn-btn-audio';
-                bMp3.title = 'استخراج صوت MP3 عالي النقاء وإضافته تلقائياً لمكتبة الموسيقى بالسايد بار';
-                bMp3.onclick = function(e) {
-                    e.stopPropagation();
-                    triggerDirectDownload(ctx.singleUrl, 'mp3', 'single', 'صوت MP3', curTitle);
-                };
-                bar.appendChild(bMp3);
+            el.style.left = initialLeft + 'px';
+            el.style.top = initialTop + 'px';
+            el.style.right = 'auto';
 
-                var bMore = createEl('div', '', '', '⚙️ خيارات أخرى ▼');
-                bMore.className = 'sdn-chip-btn sdn-btn-hd';
-                bMore.title = 'خيارات وتنسيقات التنزيل الأخرى';
-                bMore.onclick = function(e) {
-                    e.stopPropagation();
-                    openMenuAt(bMore.getBoundingClientRect(), getMediaContext());
-                };
-                bar.appendChild(bMore);
+            document.addEventListener('mousemove', onPointerMove, { passive: false });
+            document.addEventListener('mouseup', onPointerUp, { passive: false });
+            document.addEventListener('touchmove', onPointerMove, { passive: false });
+            document.addEventListener('touchend', onPointerUp, { passive: false });
+        }
+
+        function onPointerMove(e) {
+            if (!isDragging) return;
+            var cx = (e.touches && e.touches[0] ? e.touches[0].clientX : e.clientX) || 0;
+            var cy = (e.touches && e.touches[0] ? e.touches[0].clientY : e.clientY) || 0;
+            var dx = cx - startX;
+            var dy = cy - startY;
+
+            if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+                hasMoved = true;
+                el.classList.add('sdn-dragging');
+            }
+
+            if (hasMoved) {
+                if (e.cancelable) e.preventDefault();
+                var newL = initialLeft + dx;
+                var newT = initialTop + dy;
+
+                var maxL = Math.max(10, window.innerWidth - el.offsetWidth - 10);
+                var maxT = Math.max(10, window.innerHeight - el.offsetHeight - 10);
+
+                newL = Math.max(10, Math.min(newL, maxL));
+                newT = Math.max(10, Math.min(newT, maxT));
+
+                el.style.left = newL + 'px';
+                el.style.top = newT + 'px';
             }
         }
 
-        if (bar.previousElementSibling !== titleEl) {
-            titleEl.parentNode.insertBefore(bar, titleEl.nextSibling);
-        }
-    }
+        function onPointerUp(e) {
+            if (!isDragging) return;
+            isDragging = false;
+            el.classList.remove('sdn-dragging');
 
-    // 2. Direct Download Badge on the Video Player ("علامة هو")
-    function ensurePlayerBadge(ctx) {
-        if (!ctx.active) {
-            var existing = document.getElementById('sdn-player-badge');
-            if (existing) existing.remove();
-            return;
-        }
+            document.removeEventListener('mousemove', onPointerMove);
+            document.removeEventListener('mouseup', onPointerUp);
+            document.removeEventListener('touchmove', onPointerMove);
+            document.removeEventListener('touchend', onPointerUp);
 
-        var player = document.getElementById('movie_player')
-                  || document.querySelector('.html5-video-player')
-                  || document.querySelector('#player-container');
-
-        if (!player) return;
-
-        var badge = document.getElementById('sdn-player-badge');
-        var curUrl = ctx.singleUrl || ctx.fullUrl;
-        var modeKey = (ctx.isPlaylist ? 'playlist' : 'single') + '_' + curUrl;
-
-        if (!badge) {
-            badge = createEl('div', 'sdn-player-badge');
-        }
-
-        if (badge.dataset.modeKey !== modeKey) {
-            badge.dataset.modeKey = modeKey;
-            while (badge.firstChild) badge.removeChild(badge.firstChild);
-
-            var curTitle = getVideoTitle();
-
-            var mainBadge = createEl('span', '', 'color:#38bdf8; font-weight:800; font-size:12px; cursor:pointer;', '⚡ تنزيل SDN ▼');
-            mainBadge.onclick = function(e) {
-                e.stopPropagation();
-                openMenuAt(badge.getBoundingClientRect(), getMediaContext());
-            };
-            badge.appendChild(mainBadge);
-
-            if (ctx.isPlaylist) {
-                var pVid = createEl('button', '', '', '🎬 القائمة فيديو');
-                pVid.className = 'sdn-player-btn';
-                pVid.onclick = function(e) {
-                    e.stopPropagation();
-                    triggerDirectDownload(ctx.fullUrl, 'best', 'playlist_all', 'كامل القائمة فيديو', curTitle);
-                };
-                badge.appendChild(pVid);
-
-                var pAud = createEl('button', '', '', '🎵 القائمة MP3');
-                pAud.className = 'sdn-player-btn btn-audio';
-                pAud.onclick = function(e) {
-                    e.stopPropagation();
-                    triggerDirectDownload(ctx.fullUrl, 'mp3', 'playlist_all', 'كامل القائمة MP3', curTitle);
-                };
-                badge.appendChild(pAud);
-
-                var pSel = createEl('button', '', '', '📋 اختيار...');
-                pSel.className = 'sdn-player-btn';
-                pSel.onclick = function(e) {
-                    e.stopPropagation();
-                    showToast('📋 جاري فتح نافذة تحديد عناصر القائمة في SDN...', 'info');
-                    if (window.pywebview && window.pywebview.api && window.pywebview.api.send_to_main) {
-                        window.pywebview.api.send_to_main(ctx.fullUrl, true);
-                    }
-                };
-                badge.appendChild(pSel);
-            } else {
-                var b1080 = createEl('button', '', '', '🎬 1080p');
-                b1080.className = 'sdn-player-btn';
-                b1080.onclick = function(e) {
-                    e.stopPropagation();
-                    triggerDirectDownload(ctx.singleUrl, '1080p', 'single', '1080p Full HD', curTitle);
-                };
-                badge.appendChild(b1080);
-
-                var b720 = createEl('button', '', '', '📺 720p');
-                b720.className = 'sdn-player-btn';
-                b720.onclick = function(e) {
-                    e.stopPropagation();
-                    triggerDirectDownload(ctx.singleUrl, '720p', 'single', '720p HD', curTitle);
-                };
-                badge.appendChild(b720);
-
-                var bMp3 = createEl('button', '', '', '🎵 MP3');
-                bMp3.className = 'sdn-player-btn btn-audio';
-                bMp3.onclick = function(e) {
-                    e.stopPropagation();
-                    triggerDirectDownload(ctx.singleUrl, 'mp3', 'single', 'صوت MP3', curTitle);
-                };
-                badge.appendChild(bMp3);
+            if (hasMoved) {
+                try {
+                    var r = el.getBoundingClientRect();
+                    localStorage.setItem('sdn_idm_pos', JSON.stringify({
+                        left: Math.round(r.left),
+                        top: Math.round(r.top)
+                    }));
+                } catch (err) {}
             }
         }
 
-        if (badge.parentNode !== player) {
-            player.appendChild(badge);
-        }
-    }
+        el.addEventListener('mousedown', onPointerDown);
+        el.addEventListener('touchstart', onPointerDown, { passive: true });
 
-    // 3. Prominent Action Row Button next to Like/Share buttons
-    function ensureActionRowBtn(ctx) {
-        if (!ctx.active) {
-            var old = document.getElementById('sdn-action-pill-btn');
-            if (old) old.remove();
-            return;
-        }
-
-        var actionsBar = document.querySelector('ytd-watch-metadata #actions #top-level-buttons-computed')
-                      || document.querySelector('#actions-inner #top-level-buttons-computed')
-                      || document.querySelector('#actions #top-level-buttons-computed')
-                      || document.querySelector('#top-row #actions')
-                      || document.querySelector('#actions');
-        if (!actionsBar) return;
-
-        var btn = document.getElementById('sdn-action-pill-btn');
-        if (!btn) {
-            btn = createEl('button', 'sdn-action-pill-btn', '', '⚡ تنزيل SDN ▼');
-            btn.className = 'sdn-action-pill';
-            btn.title = 'تنزيل هذا الفيديو أو استخراج الصوت بجودات مختلفة عبر SDN';
-            btn.onclick = function(e) {
+        el.addEventListener('click', function(e) {
+            if (hasMoved) {
                 e.stopPropagation();
-                openMenuAt(btn.getBoundingClientRect(), getMediaContext());
-            };
-        }
-
-        if (btn.parentNode !== actionsBar) {
-            actionsBar.insertBefore(btn, actionsBar.firstChild);
-        }
+                e.preventDefault();
+                hasMoved = false;
+                return;
+            }
+            if (e.target && e.target.classList && e.target.classList.contains('sdn-panel-close')) {
+                return;
+            }
+            e.stopPropagation();
+            openMenuAt(el.getBoundingClientRect(), getMediaContext());
+        });
     }
 
-    // 4. Floating IDM Panel with Direct Quick-Download Buttons
+    // Single Compact Draggable Floating IDM Widget
     function ensureIdmPanel(ctx) {
         var panel = document.getElementById('sdn-idm-panel');
 
@@ -965,7 +787,9 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
 
         if (!panel) {
             panel = createEl('div', 'sdn-idm-panel');
+            panel.title = 'اسحب لتغيير المكان، أو انقر لاختيار الجودة والتنزيل';
             parent.appendChild(panel);
+            makeDraggable(panel);
         }
 
         var curUrl = ctx.singleUrl || ctx.fullUrl;
@@ -975,85 +799,24 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
             panel.dataset.modeKey = modeKey;
             while (panel.firstChild) panel.removeChild(panel.firstChild);
 
-            var curTitle = getVideoTitle();
+            var handle = createEl('span', '', '', '⠿');
+            handle.className = 'sdn-drag-handle';
+            handle.title = 'اسحب لوضع الزر في أي مكان تريده على الشاشة';
+            panel.appendChild(handle);
 
-            var mainBtn = createEl('div', '', 'display:flex; align-items:center; gap:6px; cursor:pointer;');
-            var icon = createEl('span', '', 'color:#22c55e; font-size:14px;', '📥');
-            var txt = createEl('span', 'sdnPanelText', 'color:#38bdf8; font-weight:800; font-size:13px;', ctx.isPlaylist ? 'تنزيل SDN (فيديو / قائمة) ▼' : 'تنزيل SDN لهذا الفيديو ▼');
+            var mainBtn = createEl('span', '', '');
+            mainBtn.className = 'sdn-panel-btn';
+            mainBtn.title = 'انقر لاختيار صيغة وجودة التنزيل المباشر';
+
+            var icon = createEl('span', '', 'color:#22c55e; font-size:13px; line-height:1;', '📥');
+            var txt = createEl('span', 'sdnPanelText', 'color:#38bdf8; font-weight:800; font-size:12px;', ctx.isPlaylist ? 'تنزيل SDN (قائمة) ▼' : 'تنزيل SDN ▼');
+
             mainBtn.appendChild(icon);
             mainBtn.appendChild(txt);
-            mainBtn.onclick = function(e) {
-                e.stopPropagation();
-                openMenuAt(panel.getBoundingClientRect(), getMediaContext());
-            };
             panel.appendChild(mainBtn);
 
-            var sep1 = createEl('span', '', 'color:rgba(255,255,255,0.25); margin:0 3px;', '|');
-            panel.appendChild(sep1);
-
-            if (ctx.isPlaylist) {
-                var pVid = createEl('button', '', '', '🎬 القائمة');
-                pVid.className = 'sdn-player-btn';
-                pVid.title = 'تحميل كامل القائمة فيديو';
-                pVid.onclick = function(e) {
-                    e.stopPropagation();
-                    triggerDirectDownload(ctx.fullUrl, 'best', 'playlist_all', 'كامل القائمة فيديو', curTitle);
-                };
-                panel.appendChild(pVid);
-
-                var pAud = createEl('button', '', '', '🎵 MP3');
-                pAud.className = 'sdn-player-btn btn-audio';
-                pAud.title = 'تحميل كامل القائمة MP3';
-                pAud.onclick = function(e) {
-                    e.stopPropagation();
-                    triggerDirectDownload(ctx.fullUrl, 'mp3', 'playlist_all', 'كامل القائمة MP3', curTitle);
-                };
-                panel.appendChild(pAud);
-
-                var pSel = createEl('button', '', '', '📋 مخصص');
-                pSel.className = 'sdn-player-btn';
-                pSel.title = 'اختيار فيديوهات معينة وتحديد صيغتها';
-                pSel.onclick = function(e) {
-                    e.stopPropagation();
-                    showToast('📋 جاري فتح نافذة تحديد عناصر القائمة في SDN...', 'info');
-                    if (window.pywebview && window.pywebview.api && window.pywebview.api.send_to_main) {
-                        window.pywebview.api.send_to_main(ctx.fullUrl, true);
-                    }
-                };
-                panel.appendChild(pSel);
-            } else {
-                var b1080 = createEl('button', '', '', '🎬 1080p');
-                b1080.className = 'sdn-player-btn';
-                b1080.title = 'تنزيل 1080p Full HD مباشر';
-                b1080.onclick = function(e) {
-                    e.stopPropagation();
-                    triggerDirectDownload(ctx.singleUrl, '1080p', 'single', '1080p Full HD', curTitle);
-                };
-                panel.appendChild(b1080);
-
-                var b720 = createEl('button', '', '', '📺 720p');
-                b720.className = 'sdn-player-btn';
-                b720.title = 'تنزيل 720p HD مباشر';
-                b720.onclick = function(e) {
-                    e.stopPropagation();
-                    triggerDirectDownload(ctx.singleUrl, '720p', 'single', '720p HD', curTitle);
-                };
-                panel.appendChild(b720);
-
-                var bMp3 = createEl('button', '', '', '🎵 MP3');
-                bMp3.className = 'sdn-player-btn btn-audio';
-                bMp3.title = 'استخراج صوت MP3 عالي النقاء';
-                bMp3.onclick = function(e) {
-                    e.stopPropagation();
-                    triggerDirectDownload(ctx.singleUrl, 'mp3', 'single', 'صوت MP3', curTitle);
-                };
-                panel.appendChild(bMp3);
-            }
-
-            var sep2 = createEl('span', '', 'color:rgba(255,255,255,0.25); margin:0 3px;', '|');
-            panel.appendChild(sep2);
-
-            var dismiss = createEl('span', '', 'color:#94a3b8; font-size:12px; cursor:pointer; padding:0 3px;', '✕');
+            var dismiss = createEl('span', '', '', '✕');
+            dismiss.className = 'sdn-panel-close';
             dismiss.title = 'إخفاء مؤقت لهذا الفيديو';
             dismiss.onclick = function(e) {
                 e.stopPropagation();
@@ -1070,7 +833,7 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
             return;
         }
 
-        panel.style.display = 'flex';
+        panel.style.display = 'inline-flex';
     }
 
     // ================================================================
@@ -1173,9 +936,14 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
             ensureStyles();
             var ctx = getMediaContext();
             ensureIdmPanel(ctx);
-            ensurePlayerBadge(ctx);
-            ensureActionRowBtn(ctx);
-            ensureUnderTitleBar(ctx);
+
+            var old1 = document.getElementById('sdn-title-dl-bar');
+            if (old1) old1.remove();
+            var old2 = document.getElementById('sdn-player-badge');
+            if (old2) old2.remove();
+            var old3 = document.getElementById('sdn-action-pill-btn');
+            if (old3) old3.remove();
+
             dismissAdsAndDialogs();
         } catch (e) {}
     }
@@ -1208,13 +976,25 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
             });
         });
 
+        window.addEventListener('resize', function() {
+            var p = document.getElementById('sdn-idm-panel');
+            if (p && p.style.left && p.style.left !== 'auto') {
+                var curL = parseInt(p.style.left, 10);
+                var curT = parseInt(p.style.top, 10);
+                var maxL = Math.max(10, window.innerWidth - (p.offsetWidth || 150) - 10);
+                var maxT = Math.max(10, window.innerHeight - (p.offsetHeight || 36) - 10);
+                if (curL > maxL) p.style.left = maxL + 'px';
+                if (curT > maxT) p.style.top = maxT + 'px';
+            }
+        });
+
         window.addEventListener('keydown', function(e) {
             if ((e.ctrlKey || e.altKey) && (e.key === 'd' || e.key === 'D' || e.key === 'ي')) {
                 e.preventDefault();
                 var ctx = getMediaContext();
                 if (ctx.active) {
-                    var mainBtn = document.getElementById('sdn-title-dl-bar') || document.getElementById('sdn-player-badge') || document.getElementById('sdn-idm-panel');
-                    openMenuAt(mainBtn ? mainBtn.getBoundingClientRect() : null, ctx);
+                    var p = document.getElementById('sdn-idm-panel');
+                    openMenuAt(p ? p.getBoundingClientRect() : null, ctx);
                 }
             }
         });
