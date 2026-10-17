@@ -397,14 +397,16 @@ class TestAllSDNFeatures(unittest.TestCase):
         received_urls = []
         api.handle_extension_url = lambda u: received_urls.append(u)
         main.ExtensionHTTPHandler.bridge_api = api
+        main.ExtensionHTTPHandler.auth_token = None
 
-        server = main.HTTPServer(("127.0.0.1", 4567), main.ExtensionHTTPHandler)
+        server = main.HTTPServer(("127.0.0.1", 0), main.ExtensionHTTPHandler)
+        server_port = server.server_address[1]
         server_thread = threading.Thread(target=server.serve_forever, daemon=True)
         server_thread.start()
 
         try:
             # 1. Test unauthorized origin rejection (security check)
-            bad_opt_req = urllib.request.Request("http://127.0.0.1:4567/", method="OPTIONS")
+            bad_opt_req = urllib.request.Request(f"http://127.0.0.1:{server_port}/", method="OPTIONS")
             bad_opt_req.add_header("Origin", "https://malicious-website.com")
             try:
                 urllib.request.urlopen(bad_opt_req, timeout=3)
@@ -415,7 +417,7 @@ class TestAllSDNFeatures(unittest.TestCase):
 
             # 2. Test allowed browser extension origin (CORS preflight)
             ext_origin = "chrome-extension://abcdefghijklmnopqrstuvwxyz123456"
-            opt_req = urllib.request.Request("http://127.0.0.1:4567/", method="OPTIONS")
+            opt_req = urllib.request.Request(f"http://127.0.0.1:{server_port}/", method="OPTIONS")
             opt_req.add_header("Origin", ext_origin)
             with urllib.request.urlopen(opt_req, timeout=3) as resp:
                 self.assertEqual(resp.status, 204)
@@ -424,7 +426,7 @@ class TestAllSDNFeatures(unittest.TestCase):
             # 3. Test POST valid URL from browser extension
             post_data = json.dumps({"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"}).encode("utf-8")
             post_req = urllib.request.Request(
-                "http://127.0.0.1:4567/",
+                f"http://127.0.0.1:{server_port}/",
                 data=post_data,
                 headers={"Content-Type": "application/json", "Origin": ext_origin}
             )

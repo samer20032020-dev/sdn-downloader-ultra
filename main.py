@@ -349,46 +349,59 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
             '}',
             '#sdn-idm-panel {',
             '   position: fixed; z-index: 2147483647;',
-            '   display: none; align-items: center; gap: 6px;',
-            '   background: linear-gradient(135deg, rgba(15, 23, 42, 0.96) 0%, rgba(30, 41, 59, 0.96) 100%);',
-            '   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);',
-            '   color: #ffffff; padding: 4px 10px; border-radius: 20px;',
-            '   border: 1.5px solid rgba(56, 189, 248, 0.75);',
-            '   box-shadow: 0 8px 25px rgba(0,0,0,0.85), 0 0 14px rgba(56, 189, 248, 0.35);',
+            '   display: none; align-items: center; gap: 7px;',
+            '   background: rgba(18, 18, 22, 0.88);',
+            '   backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);',
+            '   color: #ffffff; padding: 4px 11px; border-radius: 20px;',
+            '   border: 1px solid rgba(255, 255, 255, 0.16);',
+            '   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.3);',
             '   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;',
-            '   font-size: 12.5px; font-weight: 700; direction: rtl; user-select: none;',
-            '   cursor: grab; transition: border-color 0.2s, box-shadow 0.2s;',
+            '   font-size: 12px; font-weight: 600; direction: rtl; user-select: none;',
+            '   cursor: grab; transition: background 0.18s, border-color 0.18s, box-shadow 0.18s;',
             '}',
             '#sdn-idm-panel:hover {',
-            '   border-color: #38bdf8;',
-            '   box-shadow: 0 10px 28px rgba(0,0,0,0.95), 0 0 20px rgba(56, 189, 248, 0.55);',
+            '   background: rgba(28, 28, 34, 0.96);',
+            '   border-color: rgba(255, 255, 255, 0.3);',
+            '   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.65);',
             '}',
             '#sdn-idm-panel.sdn-dragging {',
             '   cursor: grabbing !important;',
-            '   box-shadow: 0 14px 35px rgba(0,0,0,0.98), 0 0 24px rgba(56, 189, 248, 0.75) !important;',
-            '   opacity: 0.94;',
+            '   opacity: 0.95;',
+            '   transform: scale(1.02);',
+            '   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.8) !important;',
             '}',
             '.sdn-drag-handle {',
-            '   cursor: grab; color: #94a3b8; font-size: 14px; padding: 0 3px;',
-            '   user-select: none; display: inline-flex; align-items: center;',
+            '   cursor: grab; color: rgba(255, 255, 255, 0.4); font-size: 13px; padding: 0 2px;',
+            '   user-select: none; display: inline-flex; align-items: center; transition: color 0.15s;',
             '}',
-            '.sdn-dragging .sdn-drag-handle { cursor: grabbing !important; }',
+            '#sdn-idm-panel:hover .sdn-drag-handle { color: rgba(255, 255, 255, 0.75); }',
             '.sdn-panel-btn {',
             '   display: inline-flex; align-items: center; gap: 5px; cursor: pointer;',
-            '   padding: 3px 6px; border-radius: 12px; transition: background 0.15s;',
+            '   padding: 2px 4px; border-radius: 8px; transition: opacity 0.15s;',
             '}',
-            '.sdn-panel-btn:hover {',
-            '   background: rgba(56, 189, 248, 0.2);',
-            '}',
+            '.sdn-panel-btn:hover { opacity: 0.85; }',
             '.sdn-panel-close {',
-            '   cursor: pointer; color: #64748b; font-size: 11px; padding: 2px 4px;',
+            '   cursor: pointer; color: rgba(255, 255, 255, 0.35); font-size: 11px; padding: 2px 4px;',
             '   border-radius: 50%; transition: all 0.15s; line-height: 1;',
             '}',
             '.sdn-panel-close:hover {',
-            '   color: #ef4444; background: rgba(239, 68, 68, 0.2);',
+            '   color: #ffffff; background: rgba(255, 255, 255, 0.12);',
+            '}',
+            '.sdn-idm-menu-item {',
+            '   padding: 8px 12px; border-radius: 8px; font-size: 12.5px; font-weight: 500;',
+            '   cursor: pointer; display: flex; align-items: center; justify-content: space-between;',
+            '   gap: 8px; color: #f4f4f5 !important; transition: background 0.15s ease, color 0.15s ease;',
             '}',
             '.sdn-idm-menu-item:hover {',
-            '   background: rgba(56, 189, 248, 0.18) !important; color: #38bdf8 !important;',
+            '   background: rgba(255, 255, 255, 0.08) !important; color: #ffffff !important;',
+            '}',
+            '.sdn-menu-badge {',
+            '   font-size: 10.5px; font-weight: 600; padding: 2px 7px; border-radius: 6px;',
+            '   background: rgba(255, 255, 255, 0.08); color: rgba(255, 255, 255, 0.7);',
+            '   letter-spacing: 0.3px; direction: ltr;',
+            '}',
+            '.sdn-idm-menu-item:hover .sdn-menu-badge {',
+            '   background: rgba(255, 255, 255, 0.15); color: #ffffff;',
             '}'
         ].join(' ');
         parent.appendChild(style);
@@ -445,12 +458,13 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
             m = createEl(
                 'div',
                 'sdn-idm-menu',
-                'display:none; position:fixed; z-index:2147483647; width:310px; background:#0f172a; border:1.5px solid #38bdf8; border-radius:12px; padding:10px; box-shadow:0 24px 50px rgba(0,0,0,0.95); direction:rtl; font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; flex-direction:column; gap:4px;'
+                'display:none; position:fixed; z-index:2147483647; width:295px; background:rgba(22, 22, 26, 0.95); backdrop-filter:blur(24px) saturate(180%); -webkit-backdrop-filter:blur(24px) saturate(180%); border:1px solid rgba(255, 255, 255, 0.13); border-radius:14px; padding:8px; box-shadow:0 18px 45px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04); direction:rtl; font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; flex-direction:column; gap:2px;'
             );
             parent.appendChild(m);
 
             document.addEventListener('click', function(e) {
-                if (m && !m.contains(e.target)) {
+                var p = document.getElementById('sdn-idm-panel');
+                if (m && !m.contains(e.target) && (!p || !p.contains(e.target))) {
                     m.style.display = 'none';
                 }
             });
@@ -467,20 +481,19 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
         }
         while (t.firstChild) t.removeChild(t.firstChild);
 
-        var borderColor = '#38bdf8';
-        if (type === 'success') borderColor = '#22c55e';
-        else if (type === 'warning') borderColor = '#f59e0b';
-        else if (type === 'error') borderColor = '#ef4444';
-        else if (type === 'info') borderColor = '#38bdf8';
+        var borderColor = 'rgba(255, 255, 255, 0.2)';
+        if (type === 'success') borderColor = 'rgba(52, 211, 153, 0.6)';
+        else if (type === 'warning') borderColor = 'rgba(245, 158, 11, 0.6)';
+        else if (type === 'error') borderColor = 'rgba(239, 68, 68, 0.6)';
 
-        t.style.border = '1.5px solid ' + borderColor;
-        t.style.boxShadow = '0 12px 35px rgba(0,0,0,0.85), 0 0 16px ' + borderColor + '40';
+        t.style.border = '1px solid ' + borderColor;
+        t.style.boxShadow = '0 12px 35px rgba(0,0,0,0.85)';
 
         var textSpan = createEl('span', '', 'line-height:1.4;', msg);
         t.appendChild(textSpan);
 
         if (actionData && actionData.url) {
-            var actionBtn = createEl('button', '', 'background:' + borderColor + '; color:#000; border:none; border-radius:14px; padding:4px 12px; font-size:12px; font-weight:800; cursor:pointer; margin-right:6px; white-space:nowrap;', 'تنزيل على أي حال ↻');
+            var actionBtn = createEl('button', '', 'background:#ffffff; color:#0f172a; border:none; border-radius:14px; padding:4px 12px; font-size:12px; font-weight:700; cursor:pointer; margin-right:6px; white-space:nowrap;', 'تنزيل على أي حال ↻');
             actionBtn.onclick = function(e) {
                 e.stopPropagation();
                 t.style.opacity = '0';
@@ -526,9 +539,11 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
         while (menu.firstChild) menu.removeChild(menu.firstChild);
 
         var curTitle = getVideoTitle();
-        var header = createEl('div', '', 'display:flex; align-items:center; justify-content:space-between; padding:4px 8px; border-bottom:1px solid rgba(255,255,255,0.12); margin-bottom:6px;');
-        var hTitle = createEl('span', '', 'font-size:12.5px; font-weight:bold; color:#38bdf8;', ctx.isPlaylist ? '📚 خيارات تحميل القائمة / الفيديو (SDN)' : '⚡ خيارات تنزيل المقطع (SDN)');
-        var hClose = createEl('span', '', 'cursor:pointer; color:#94a3b8; font-size:14px; font-weight:bold; padding:0 4px;', '✕');
+        var header = createEl('div', '', 'display:flex; align-items:center; justify-content:space-between; padding:4px 8px 8px 8px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:4px;');
+        var hTitle = createEl('span', '', 'font-size:12.5px; font-weight:600; color:#ffffff;', ctx.isPlaylist ? 'خيارات تحميل القائمة (SDN)' : 'خيارات تنزيل الفيديو (SDN)');
+        var hClose = createEl('span', '', 'cursor:pointer; color:rgba(255,255,255,0.45); font-size:13px; padding:2px 6px; border-radius:6px; transition:all 0.15s;', '✕');
+        hClose.onmouseenter = function() { hClose.style.color = '#ffffff'; hClose.style.background = 'rgba(255,255,255,0.1)'; };
+        hClose.onmouseleave = function() { hClose.style.color = 'rgba(255,255,255,0.45)'; hClose.style.background = 'transparent'; };
         hClose.onclick = function(e) {
             e.stopPropagation();
             menu.style.display = 'none';
@@ -538,17 +553,21 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
         menu.appendChild(header);
 
         function addSectionHeader(title) {
-            var s = createEl('div', '', 'font-size:11px; font-weight:bold; color:#94a3b8; padding:5px 8px 2px 8px;');
+            var s = createEl('div', '', 'font-size:11px; font-weight:500; color:rgba(255,255,255,0.42); padding:6px 10px 2px 10px;');
             s.textContent = title;
             menu.appendChild(s);
         }
 
-        function addItem(text, color, isBold, callback) {
-            var row = createEl('div', '', 'padding:8px 12px; border-radius:7px; font-size:12.5px; cursor:pointer; display:flex; align-items:center; gap:8px;');
+        function addItem(text, badgeText, callback) {
+            var row = createEl('div', '', '');
             row.className = 'sdn-idm-menu-item';
-            row.textContent = text;
-            row.style.color = color || '#f8fafc';
-            if (isBold) row.style.fontWeight = 'bold';
+            var label = createEl('span', '', 'color:#f4f4f5;', text);
+            row.appendChild(label);
+            if (badgeText) {
+                var badge = createEl('span', '', '', badgeText);
+                badge.className = 'sdn-menu-badge';
+                row.appendChild(badge);
+            }
             row.onclick = function(e) {
                 e.stopPropagation();
                 menu.style.display = 'none';
@@ -558,56 +577,56 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
         }
 
         if (ctx.isPlaylist) {
-            addSectionHeader('🎬 تحميل هذا الفيديو فقط:');
-            addItem('🚀 تنزيل هذا الفيديو بأعلى جودة', '#38bdf8', true, function() {
+            addSectionHeader('تحميل هذا الفيديو فقط:');
+            addItem('فيديو بأعلى جودة متوفرة', 'Best', function() {
                 triggerDirectDownload(ctx.singleUrl, 'best', 'single', 'هذا الفيديو (أفضل جودة)', curTitle);
             });
-            addItem('📺 فيديو 1080p FHD لهذا المقطع', '#f8fafc', false, function() {
+            addItem('فيديو 1080p FHD لهذا المقطع', '1080p', function() {
                 triggerDirectDownload(ctx.singleUrl, '1080p', 'single', 'فيديو 1080p', curTitle);
             });
-            addItem('📺 فيديو 720p HD لهذا المقطع', '#f8fafc', false, function() {
+            addItem('فيديو 720p HD لهذا المقطع', '720p', function() {
                 triggerDirectDownload(ctx.singleUrl, '720p', 'single', 'فيديو 720p', curTitle);
             });
-            addItem('🎵 استخراج صوت هذا المقطع MP3', '#34d399', true, function() {
+            addItem('استخراج صوت المقطع MP3', 'MP3', function() {
                 triggerDirectDownload(ctx.singleUrl, 'mp3', 'single', 'صوت MP3', curTitle);
             });
 
-            addSectionHeader('📚 خيارات قائمة التشغيل:');
-            addItem('⚡ تحميل قائمة التشغيل كاملة فيديو', '#fbbf24', true, function() {
+            addSectionHeader('قائمة التشغيل كاملة:');
+            addItem('تحميل كامل القائمة فيديو', 'All Video', function() {
                 triggerDirectDownload(ctx.fullUrl, 'best', 'playlist_all', 'كامل قائمة التشغيل', curTitle);
             });
-            addItem('📋 اختيار فيديوهات معينة... (تحديد مخصص)', '#a78bfa', true, function() {
+            addItem('تحميل كامل القائمة MP3', 'All MP3', function() {
+                triggerDirectDownload(ctx.fullUrl, 'mp3', 'playlist_all', 'كامل القائمة MP3', curTitle);
+            });
+            addItem('تحديد عناصر معينة مخصصة...', 'مخصص', function() {
                 showToast('📋 جاري فتح نافذة تحديد عناصر القائمة في SDN...', 'info');
                 if (window.pywebview && window.pywebview.api && window.pywebview.api.send_to_main) {
                     window.pywebview.api.send_to_main(ctx.fullUrl, true);
                 }
             });
-            addItem('🎵 تحميل كامل القائمة بصيغة MP3', '#34d399', true, function() {
-                triggerDirectDownload(ctx.fullUrl, 'mp3', 'playlist_all', 'كامل القائمة MP3', curTitle);
-            });
         } else {
-            addSectionHeader('🎬 اختر جودة الفيديو للتنزيل المباشر:');
-            addItem('🎬 فيديو 1080p Full HD (MP4)', '#38bdf8', true, function() {
+            addSectionHeader('اختر الجودة للتنزيل المباشر:');
+            addItem('فيديو 1080p Full HD (MP4)', '1080p', function() {
                 triggerDirectDownload(ctx.fullUrl, '1080p', 'single', '1080p Full HD', curTitle);
             });
-            addItem('📺 فيديو 720p HD (MP4)', '#f8fafc', false, function() {
+            addItem('فيديو 720p HD (MP4)', '720p', function() {
                 triggerDirectDownload(ctx.fullUrl, '720p', 'single', '720p HD', curTitle);
             });
-            addItem('🚀 أفضل جودة تلقائياً (Best)', '#f8fafc', false, function() {
+            addItem('أفضل جودة تلقائياً (Best)', 'Best', function() {
                 triggerDirectDownload(ctx.fullUrl, 'best', 'single', 'أفضل جودة', curTitle);
             });
-            addItem('📱 فيديو 480p / SD (حجم خفيف)', '#f8fafc', false, function() {
+            addItem('فيديو 480p SD (حجم خفيف)', '480p', function() {
                 triggerDirectDownload(ctx.fullUrl, '480p', 'single', '480p SD', curTitle);
             });
-            addItem('🎵 استخراج الصوت MP3 (عالي النقاء + إضافة للموسيقى)', '#34d399', true, function() {
+            addItem('استخراج الصوت MP3 (عالي النقاء)', 'MP3', function() {
                 triggerDirectDownload(ctx.fullUrl, 'mp3', 'single', 'صوت MP3', curTitle);
             });
         }
 
-        var div = createEl('div', '', 'border-top:1px solid rgba(255,255,255,0.1); margin:4px 0;');
+        var div = createEl('div', '', 'border-top:1px solid rgba(255,255,255,0.08); margin:4px 2px;');
         menu.appendChild(div);
 
-        addItem('🖥️ فتح وتعديل الرابط في محرك SDN الرئيسي', '#94a3b8', false, function() {
+        addItem('فتح وتعديل الرابط في محرك SDN', '↗', function() {
             if (window.pywebview && window.pywebview.api && window.pywebview.api.send_to_main) {
                 window.pywebview.api.send_to_main(ctx.fullUrl, false);
                 showToast('✅ تم فتح الرابط في شاشة SDN الرئيسية', 'success');
@@ -625,11 +644,11 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
         populateMenu(ctx);
         menu.style.display = 'flex';
 
-        var menuW = 310;
+        var menuW = 295;
         var menuH = menu.offsetHeight || 280;
 
         var top = 70;
-        var left = window.innerWidth - 330;
+        var left = window.innerWidth - 315;
 
         if (rect) {
             if (rect.bottom + menuH + 10 <= window.innerHeight) {
@@ -801,15 +820,15 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
 
             var handle = createEl('span', '', '', '⠿');
             handle.className = 'sdn-drag-handle';
-            handle.title = 'اسحب لوضع الزر في أي مكان تريده على الشاشة';
+            handle.title = 'اسحب لتغيير مكان الزر في أي زاوية تفضلها';
             panel.appendChild(handle);
 
             var mainBtn = createEl('span', '', '');
             mainBtn.className = 'sdn-panel-btn';
-            mainBtn.title = 'انقر لاختيار صيغة وجودة التنزيل المباشر';
+            mainBtn.title = 'انقر لاختيار صيغة وجودة التنزيل';
 
-            var icon = createEl('span', '', 'color:#22c55e; font-size:13px; line-height:1;', '📥');
-            var txt = createEl('span', 'sdnPanelText', 'color:#38bdf8; font-weight:800; font-size:12px;', ctx.isPlaylist ? 'تنزيل SDN (قائمة) ▼' : 'تنزيل SDN ▼');
+            var icon = createEl('span', '', 'color:rgba(255,255,255,0.85); font-size:12px; margin-left:2px;', '↓');
+            var txt = createEl('span', 'sdnPanelText', 'color:#ffffff; font-weight:600; font-size:12px; letter-spacing:0.2px;', ctx.isPlaylist ? 'تنزيل SDN (قائمة) ▾' : 'تنزيل SDN ▾');
 
             mainBtn.appendChild(icon);
             mainBtn.appendChild(txt);
