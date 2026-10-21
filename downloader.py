@@ -130,7 +130,7 @@ def _find_youtube_video_fallback(url: str) -> str | None:
     return None
 
 
-def clean_url(url: str) -> str:
+def clean_url(url: str, keep_mix_playlist: bool = False) -> str:
     """Normalize common YouTube links without breaking mixes or unviewable playlists."""
     value = (url or "").strip()
     if not value:
@@ -154,18 +154,35 @@ def clean_url(url: str) -> str:
             elif parsed.path.startswith("/embed/"):
                 video_id = parsed.path.split("/embed/", 1)[1].split("/", 1)[0]
 
-        if not video_id and playlist_id and is_unviewable_playlist_id(playlist_id):
+        if not video_id and playlist_id:
             video_id = extract_video_id_from_mix(playlist_id) or ""
 
         if playlist_id:
-            if is_unviewable_playlist_id(playlist_id):
+            upper_list = playlist_id.upper()
+            # YouTube Mixes & special radio lists (RD, UL, PU) must be accessed via /watch?v=...&list=...
+            # because YouTube has no /playlist page for them and returns 'unviewable'.
+            if upper_list.startswith(("RD", "UL", "PU")):
                 if video_id:
                     clean_query: dict[str, Any] = {"v": video_id}
+                    if keep_mix_playlist:
+                        clean_query["list"] = playlist_id
                     if "t" in query:
                         clean_query["t"] = query["t"][0]
                     return f"https://www.youtube.com/watch?{urllib.parse.urlencode(clean_query)}"
                 return value
 
+            # Account private lists like Watch Later (WL) and Liked Videos (LL/LM):
+            if upper_list in {"WL", "LL", "LM"}:
+                if video_id:
+                    clean_query = {"v": video_id}
+                    if keep_mix_playlist:
+                        clean_query["list"] = playlist_id
+                    if "t" in query:
+                        clean_query["t"] = query["t"][0]
+                    return f"https://www.youtube.com/watch?{urllib.parse.urlencode(clean_query)}"
+                return f"https://www.youtube.com/playlist?{urllib.parse.urlencode({'list': playlist_id})}"
+
+            # Standard playlists (PL..., OLAK..., etc.)
             return urllib.parse.urlunsplit(
                 (
                     "https",
@@ -417,7 +434,7 @@ def _apply_cookies(options: dict[str, Any], browser_cookies: str | None) -> None
 
 
 def validate_link(url: str, proxy: str | None = None) -> dict[str, Any]:
-    normalized = clean_url(url)
+    normalized = clean_url(url, keep_mix_playlist=True)
     if not _is_web_url(normalized):
         return {"valid": False, "reason": "أدخل رابطًا يبدأ بـ http:// أو https://"}
 
@@ -745,7 +762,7 @@ class MediaDownloader:
         browser_cookies: str = "none",
         proxy: str | None = None,
     ) -> dict[str, Any]:
-        normalized = clean_url(url)
+        normalized = clean_url(url, keep_mix_playlist=True)
         if not _is_web_url(normalized):
             raise ValueError("أدخل رابطًا صالحًا يبدأ بـ http:// أو https://")
 
@@ -756,6 +773,12 @@ class MediaDownloader:
                 "ffmpeg_location": self.ffmpeg_path,
             }
         )
+        parsed_norm = urllib.parse.urlsplit(normalized)
+        norm_query = urllib.parse.parse_qs(parsed_norm.query)
+        norm_list = (norm_query.get("list") or [""])[0].upper()
+        if norm_list.startswith(("RD", "UL", "PU")):
+            ydl_options["playlistend"] = 50
+
         _apply_cookies(ydl_options, browser_cookies)
 
         used_cookies = bool(ydl_options.get("cookiefile") or ydl_options.get("cookiesfrombrowser"))
@@ -895,7 +918,7 @@ class MediaDownloader:
         status_callback: StatusCallback | None = None,
         browser_cookies: str = "none",
     ) -> dict[str, Any]:
-        normalized = clean_url(url)
+        normalized = clean_url(url, keep_mix_playlist=bool(option.get("is_playlist")))
         if not _is_web_url(normalized):
             raise ValueError("الرابط غير صالح.")
         if not os.path.isdir(save_dir):
@@ -1072,6 +1095,12 @@ class MediaDownloader:
         )
         if selected_indices:
             ydl_options["playlist_items"] = ",".join(str(index) for index in selected_indices)
+        elif is_playlist:
+            parsed_dl = urllib.parse.urlsplit(url)
+            dl_query = urllib.parse.parse_qs(parsed_dl.query)
+            dl_list = (dl_query.get("list") or [""])[0].upper()
+            if dl_list.startswith(("RD", "UL", "PU")):
+                ydl_options["playlistend"] = int(option.get("playlist_count") or 50)
 
         if option.get("download_subtitles"):
             ydl_options["writesubtitles"] = True
@@ -1185,7 +1214,7 @@ class MediaDownloader:
                 raise RuntimeError(clean_error_message(exc, url=url)) from exc
 
         # Resolve any Windows temporary merge files locked briefly by antivirus/indexing
-        for temp_file in glob.glob(os.path.join(save_dir, f"*{run_token}*.temp.*")):
+        for temp_file in glob.glob(os.path.join(save_dir, "**", f"*{run_token}*.temp.*"), recursive=True):
             target = temp_file.replace(".temp.", ".")
             for _ in range(5):
                 try:

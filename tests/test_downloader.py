@@ -85,14 +85,21 @@ class DownloaderTests(unittest.TestCase):
     def test_clean_url_extracts_video_from_mix_playlist(self):
         cleaned = downloader.clean_url("https://www.youtube.com/watch?v=97AHPDXsSEY&list=RD97AHPDXsSEY&start_radio=1")
         self.assertEqual(cleaned, "https://www.youtube.com/watch?v=97AHPDXsSEY")
+        # When explicitly requesting full playlist mode:
+        cleaned_pl = downloader.clean_url("https://www.youtube.com/watch?v=97AHPDXsSEY&list=RD97AHPDXsSEY&start_radio=1", keep_mix_playlist=True)
+        self.assertEqual(cleaned_pl, "https://www.youtube.com/watch?v=97AHPDXsSEY&list=RD97AHPDXsSEY")
 
     def test_clean_url_extracts_video_from_direct_mix_playlist_url(self):
         cleaned = downloader.clean_url("https://www.youtube.com/playlist?list=RD97AHPDXsSEY")
         self.assertEqual(cleaned, "https://www.youtube.com/watch?v=97AHPDXsSEY")
+        cleaned_pl = downloader.clean_url("https://www.youtube.com/playlist?list=RD97AHPDXsSEY", keep_mix_playlist=True)
+        self.assertEqual(cleaned_pl, "https://www.youtube.com/watch?v=97AHPDXsSEY&list=RD97AHPDXsSEY")
 
     def test_clean_url_extracts_video_from_watch_later_or_liked(self):
         cleaned = downloader.clean_url("https://www.youtube.com/watch?v=97AHPDXsSEY&list=WL")
         self.assertEqual(cleaned, "https://www.youtube.com/watch?v=97AHPDXsSEY")
+        cleaned_pl = downloader.clean_url("https://www.youtube.com/watch?v=97AHPDXsSEY&list=WL", keep_mix_playlist=True)
+        self.assertEqual(cleaned_pl, "https://www.youtube.com/watch?v=97AHPDXsSEY&list=WL")
 
     def test_clean_error_message_translates_unviewable_playlist(self):
         msg = downloader.clean_error_message("ERROR: [youtube:tab] RD97AHPDXsSEY: YouTube said: This playlist type is unviewable.")

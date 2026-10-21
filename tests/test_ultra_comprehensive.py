@@ -1241,6 +1241,15 @@ class Test21_IntegrationChecks(unittest.TestCase):
         res4 = bridge.send_to_main("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
         self.assertTrue(res4.get("success"))
 
+    def test_mix_playlist_preserved_in_full_mode(self):
+        url = "https://www.youtube.com/watch?v=ndCI8DIM86w&list=RDndCI8DIM86w"
+        # In single/default mode, mix is stripped to single video
+        cleaned_single = downloader.clean_url(url, keep_mix_playlist=False)
+        self.assertEqual(cleaned_single, "https://www.youtube.com/watch?v=ndCI8DIM86w")
+        # In playlist mode, mix is preserved with both v and list
+        cleaned_pl = downloader.clean_url(url, keep_mix_playlist=True)
+        self.assertEqual(cleaned_pl, "https://www.youtube.com/watch?v=ndCI8DIM86w&list=RDndCI8DIM86w")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

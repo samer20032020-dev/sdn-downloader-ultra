@@ -589,19 +589,21 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
         }
 
         if (ctx.isPlaylist) {
-            addSectionHeader('تحميل هذا الفيديو فقط:');
-            addItem('فيديو بأعلى جودة متوفرة', 'Best', function() {
-                triggerDirectDownload(ctx.singleUrl, 'best', 'single', 'هذا الفيديو (أفضل جودة)', curTitle);
-            });
-            addItem('فيديو 1080p FHD لهذا المقطع', '1080p', function() {
-                triggerDirectDownload(ctx.singleUrl, '1080p', 'single', 'فيديو 1080p', curTitle);
-            });
-            addItem('فيديو 720p HD لهذا المقطع', '720p', function() {
-                triggerDirectDownload(ctx.singleUrl, '720p', 'single', 'فيديو 720p', curTitle);
-            });
-            addItem('استخراج صوت المقطع MP3', 'MP3', function() {
-                triggerDirectDownload(ctx.singleUrl, 'mp3', 'single', 'صوت MP3', curTitle);
-            });
+            if (ctx.isWatch) {
+                addSectionHeader('تحميل هذا الفيديو فقط:');
+                addItem('فيديو بأعلى جودة متوفرة', 'Best', function() {
+                    triggerDirectDownload(ctx.singleUrl, 'best', 'single', 'هذا الفيديو (أفضل جودة)', curTitle);
+                });
+                addItem('فيديو 1080p FHD لهذا المقطع', '1080p', function() {
+                    triggerDirectDownload(ctx.singleUrl, '1080p', 'single', 'فيديو 1080p', curTitle);
+                });
+                addItem('فيديو 720p HD لهذا المقطع', '720p', function() {
+                    triggerDirectDownload(ctx.singleUrl, '720p', 'single', 'فيديو 720p', curTitle);
+                });
+                addItem('استخراج صوت المقطع MP3', 'MP3', function() {
+                    triggerDirectDownload(ctx.singleUrl, 'mp3', 'single', 'صوت MP3', curTitle);
+                });
+            }
 
             addSectionHeader('قائمة التشغيل كاملة:');
             addItem('تحميل كامل القائمة فيديو', 'All Video', function() {
@@ -2459,8 +2461,8 @@ class DownloaderBridgeAPI:
             self.load_url_in_main(url, auto_playlist_select=True)
             return {'success': True, 'mode': 'playlist_select'}
 
-        # Duplicate check before downloading:
-        if not force:
+        # Duplicate check before downloading (bypass for full playlist mode):
+        if not force and mode != 'playlist_all':
             dup_info = self.check_duplicate(url=url, title=title)
             if dup_info.get('is_duplicate'):
                 msg = f"⚠️ تم تنزيل هذا المحتوى مسبقاً ({dup_info.get('matched_title')}) لمنع التكرار الزائد!"
@@ -2502,9 +2504,13 @@ class DownloaderBridgeAPI:
 
         folder_name = Path(self.save_dir).name or self.save_dir
         q_label = option.get('label') or str(quality)
-        self._notify_browser_toast(f"🚀 بدأ التنزيل المباشر ({q_label}) إلى: {folder_name}...", 'info')
+        if mode == 'playlist_all':
+            self._notify_browser_toast(f"🚀 بدأ تنزيل كامل قائمة التشغيل ({q_label}) إلى مجلد: {folder_name}...", 'info')
+        else:
+            self._notify_browser_toast(f"🚀 بدأ التنزيل المباشر ({q_label}) إلى: {folder_name}...", 'info')
 
         start_t = time.time()
+        last_item_idx = [0]
 
         def run_direct_dl():
             def progress_cb(p_data):
@@ -2513,6 +2519,13 @@ class DownloaderBridgeAPI:
                         self._window.evaluate_js(f'updateProgress({json.dumps(p_data)})')
                     except Exception:
                         pass
+                if mode == 'playlist_all':
+                    p_idx = p_data.get('playlist_index')
+                    p_cnt = p_data.get('playlist_count')
+                    if p_idx and p_cnt and p_idx != last_item_idx[0]:
+                        last_item_idx[0] = p_idx
+                        it_title = p_data.get('item_title') or f"مقطع {p_idx}"
+                        self._notify_browser_toast(f"📥 جاري تنزيل ({p_idx}/{p_cnt}): {it_title[:32]}...", 'info')
 
             def status_cb(msg):
                 if self._window:
@@ -2565,8 +2578,11 @@ class DownloaderBridgeAPI:
                     }
                     self.add_history(h_item)
 
-                first_name = Path(downloaded_files[0]['filepath']).name if downloaded_files and downloaded_files[0].get('filepath') else media_title
-                self._notify_browser_toast(f"✅ تم اكتمال تنزيل: {first_name} بنجاح!", 'success')
+                if len(downloaded_files) > 1 or option.get('is_playlist'):
+                    self._notify_browser_toast(f"✅ تم اكتمال تنزيل كامل القائمة ({len(downloaded_files)} عنصر) بنجاح!", 'success')
+                else:
+                    first_name = Path(downloaded_files[0]['filepath']).name if downloaded_files and downloaded_files[0].get('filepath') else media_title
+                    self._notify_browser_toast(f"✅ تم اكتمال تنزيل: {first_name} بنجاح!", 'success')
 
                 if self._window:
                     try:

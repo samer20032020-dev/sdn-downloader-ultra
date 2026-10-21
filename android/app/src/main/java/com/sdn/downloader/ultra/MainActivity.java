@@ -437,7 +437,7 @@ public class MainActivity extends BridgeActivity {
                         if (m.find()) videoId = m.group(1);
                     }
                     if (videoId != null && !videoId.isEmpty()) {
-                        return "https://www.youtube.com/watch?v=" + videoId;
+                        return "https://www.youtube.com/watch?v=" + videoId + "&list=" + playlistId;
                     }
                 }
             }
@@ -456,6 +456,9 @@ public class MainActivity extends BridgeActivity {
             request.addOption("--flat-playlist");
             request.addOption("--skip-download");
             request.addOption("--no-warnings");
+            if (targetUrl.matches("(?i).*([?&]list=(?:RD|UL|PU)[^&]*).*")) {
+                request.addOption("--playlist-end", 50);
+            }
             JSONObject probeOptions = new JSONObject();
             probeOptions.put("cookies", cookies == null ? "none" : cookies);
             probeOptions.put("proxy", proxy == null ? "" : proxy);
@@ -495,7 +498,8 @@ public class MainActivity extends BridgeActivity {
                 throw new Exception("تعذر إنشاء مجلد العمل المؤقت.");
             }
 
-            YoutubeDLRequest request = new YoutubeDLRequest(cleanMediaUrl(url));
+            String targetUrl = cleanMediaUrl(url);
+            YoutubeDLRequest request = new YoutubeDLRequest(targetUrl);
             request.addOption("--no-mtime");
             request.addOption("--continue");
             request.addOption("--retries", 15);
@@ -550,6 +554,8 @@ public class MainActivity extends BridgeActivity {
                         if (index > 0) indices.add(String.valueOf(index));
                     }
                     if (!indices.isEmpty()) request.addOption("--playlist-items", String.join(",", indices));
+                } else if (targetUrl.matches("(?i).*([?&]list=(?:RD|UL|PU)[^&]*).*")) {
+                    request.addOption("--playlist-end", 50);
                 }
             } else {
                 request.addOption("--no-playlist");
