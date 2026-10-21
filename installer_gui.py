@@ -249,16 +249,13 @@ class InstallerAPI:
             if os.path.exists(src_exe):
                 shutil.copy2(src_exe, dest_exe)
 
-            # 2. Runtime DLLs (python314.dll, vcruntime140.dll, msvcp140.dll, WebView2Loader.dll)
-            for dll_name in ('python314.dll', 'vcruntime140.dll', 'msvcp140.dll', 'WebView2Loader.dll'):
-                src_dll = os.path.join(bundle_dir, 'dlls', dll_name)
-                if not os.path.exists(src_dll):
-                    src_dll = os.path.join(bundle_dir, 'assets', 'dlls', dll_name)
-                if not os.path.exists(src_dll):
-                    src_dll = os.path.join(os.path.dirname(bundle_dir), 'assets', 'dlls', dll_name)
-                if os.path.exists(src_dll):
+            # 2. Clean up any conflicting loose runtime DLLs in the installation folder
+            # because SDN_Downloader.exe is a self-contained onefile executable bundling its own runtime.
+            import glob
+            for pattern in ('python3*.dll', 'vcruntime140*.dll', 'msvcp140*.dll', 'WebView2Loader*.dll', '*.old', '*.bak'):
+                for loose_f in glob.glob(os.path.join(self.install_dir, pattern)):
                     try:
-                        shutil.copy2(src_dll, os.path.join(self.install_dir, dll_name))
+                        os.remove(loose_f)
                     except Exception:
                         pass
 

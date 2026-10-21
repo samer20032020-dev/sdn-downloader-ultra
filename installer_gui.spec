@@ -7,8 +7,6 @@ datas = [
 ]
 if os.path.exists('locales'):
     datas.append(('locales', 'locales'))
-if os.path.exists('assets/dlls'):
-    datas.append(('assets/dlls', 'dlls'))
 if os.path.exists('assets/config'):
     datas.append(('assets/config', 'config'))
 if os.path.exists('assets/_internal'):

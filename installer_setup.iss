@@ -1,6 +1,6 @@
 ; Script generated for Inno Setup - SDN Downloader Setup
 #define MyAppName "SDN"
-#define MyAppVersion "1.0.22"
+#define MyAppVersion "1.0.23"
 #define MyAppPublisher "SDN"
 #define MyAppExeName "SDN_Downloader_Standalone.exe"
 
@@ -34,6 +34,14 @@ Source: "dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+
+[InstallDelete]
+Type: files; Name: "{app}\python3*.dll"
+Type: files; Name: "{app}\vcruntime140*.dll"
+Type: files; Name: "{app}\msvcp140*.dll"
+Type: files; Name: "{app}\WebView2Loader*.dll"
+Type: files; Name: "{app}\*.old"
+Type: files; Name: "{app}\*.bak"
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait

@@ -105,8 +105,17 @@ try {
         throw 'Timed out while replacing the running application'
     }
 
+    $parentDir = Split-Path -Parent $TargetPath
+    try {
+        Get-ChildItem -LiteralPath $parentDir -File -Filter "python3*.dll" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+        Get-ChildItem -LiteralPath $parentDir -File -Filter "vcruntime140*.dll" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+        Get-ChildItem -LiteralPath $parentDir -File -Filter "msvcp140*.dll" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+        Get-ChildItem -LiteralPath $parentDir -File -Filter "WebView2Loader*.dll" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+    } catch {}
+
+    Start-Sleep -Milliseconds 600
     Write-UpdateLog "Update installed at $TargetPath"
-    Start-Process -FilePath $TargetPath -WorkingDirectory (Split-Path -Parent $TargetPath)
+    Start-Process -FilePath $TargetPath -WorkingDirectory $parentDir
     Start-Sleep -Seconds 2
     if (Test-Path -LiteralPath $BackupPath) {
         Remove-Item -LiteralPath $BackupPath -Force
@@ -2830,8 +2839,32 @@ class DownloaderBridgeAPI:
             _log.info(f"Direct in-place update unavailable for {target.parent}: {exc}")
             return False
 
+    def _is_installed_instance(self):
+        """Check whether the running app was installed via installer or is a standalone portable binary."""
+        if not getattr(sys, 'frozen', False):
+            return False
+        target = self._current_application_path()
+        parent = target.parent
+        if (
+            (parent / 'Uninstall.exe').is_file()
+            or (parent / 'unins000.exe').is_file()
+            or (parent / '_internal').is_dir()
+            or (parent / 'version.json').is_file()
+            or target.name.lower() == 'sdn_downloader.exe'
+        ):
+            return True
+        return False
+
     def _select_update_package(self, update_info):
-        """Prefer zero-window portable replacement, then a silent installer."""
+        """Prefer silent installer for installed app directories, and zero-window portable replacement for standalone exes."""
+        is_installed = self._is_installed_instance()
+        if is_installed and update_info.get('installer_url'):
+            return {
+                'kind': 'installer',
+                'url': update_info.get('installer_url'),
+                'sha256': update_info.get('installer_sha256'),
+                'size': update_info.get('installer_size'),
+            }
         if self._can_replace_current_executable() and update_info.get('portable_url'):
             return {
                 'kind': 'portable',
