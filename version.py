@@ -1,5 +1,5 @@
 """Single source of truth for SDN release metadata."""
 
-APP_VERSION = "1.0.29"
+APP_VERSION = "1.0.30"
 GITHUB_REPO = "samer20032020-dev/sdn-downloader-ultra"
 RELEASE_TAG = f"v{APP_VERSION}"

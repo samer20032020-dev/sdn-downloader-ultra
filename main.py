@@ -155,8 +155,8 @@ class YouTubeBrowserBridge:
     def send_to_main(self, url, auto_playlist_select=False):
         return self.main_api.load_url_in_main(url, auto_playlist_select)
 
-    def check_duplicate(self, url, title=None):
-        return self.main_api.check_duplicate(url, title)
+    def check_duplicate(self, url, title=None, target_type=None):
+        return self.main_api.check_duplicate(url, title, target_type=target_type)
 
     def delete_history_item(self, filepath_or_url):
         return self.main_api.delete_history_item(filepath_or_url)
@@ -1989,15 +1989,47 @@ class DownloaderBridgeAPI:
             _log.warning(f"Failed to play file: {e}")
         return {'success': False}
 
-    def check_duplicate(self, url=None, title=None):
-        """Check if URL or title has already been downloaded into save_dir or history to prevent duplicate waste."""
+    def check_duplicate(self, url=None, title=None, target_type=None):
+        """Check if URL or title has already been downloaded into save_dir or history to prevent duplicate waste.
+        Respects format: downloading MP3 when video exists (or vice versa) is allowed!
+        Only flags duplicate if the SAME format (video vs video, or audio vs audio) already exists."""
         history = self.get_history() or []
         import re
 
-        VALID_MEDIA_EXTS = {
-            '.mp4', '.mkv', '.webm', '.avi', '.mov', '.flv', '.wmv', '.m4v',
-            '.mp3', '.m4a', '.flac', '.wav', '.opus', '.ogg', '.wma', '.aac'
-        }
+        AUDIO_EXTS = {'.mp3', '.m4a', '.flac', '.wav', '.opus', '.ogg', '.wma', '.aac'}
+        VIDEO_EXTS = {'.mp4', '.mkv', '.webm', '.avi', '.mov', '.flv', '.wmv', '.m4v'}
+        VALID_MEDIA_EXTS = AUDIO_EXTS | VIDEO_EXTS
+
+        # Normalize target_type: 'audio', 'video', or None (check both)
+        norm_target = None
+        if target_type:
+            tt_str = str(target_type).strip().lower()
+            if tt_str in ('audio', 'mp3', 'm4a', 'flac', 'opus', 'wav', 'aac') or 'audio' in tt_str or 'صوت' in tt_str:
+                norm_target = 'audio'
+            elif tt_str in ('video', 'mp4', 'mkv', 'webm', 'avi', 'mov', 'فيديو') or 'video' in tt_str:
+                norm_target = 'video'
+
+        def _get_entry_type(entry_name_or_ext, hist_item=None):
+            if hist_item:
+                h_type = str(hist_item.get('type') or '').lower()
+                if h_type == 'audio':
+                    return 'audio'
+                if h_type == 'video':
+                    return 'video'
+                h_quality = str(hist_item.get('quality') or '').lower()
+                if 'mp3' in h_quality or 'صوت' in h_quality:
+                    return 'audio'
+                if 'video' in h_quality or 'فيديو' in h_quality:
+                    return 'video'
+            if entry_name_or_ext:
+                s = str(entry_name_or_ext).strip().lower()
+                if not s.startswith('.'):
+                    s = Path(s).suffix.lower()
+                if s in AUDIO_EXTS:
+                    return 'audio'
+                if s in VIDEO_EXTS:
+                    return 'video'
+            return None
 
         def _norm_title(t):
             if not t:
@@ -2058,11 +2090,16 @@ class DownloaderBridgeAPI:
                 if is_url_match:
                     fp = h.get('filepath', '')
                     if not fp or os.path.exists(fp):
+                        h_entry_type = _get_entry_type(fp, hist_item=h)
+                        if norm_target and h_entry_type and h_entry_type != norm_target:
+                            # Different format: e.g. existing is audio, user wants video -> ALLOWED!
+                            continue
                         return {
                             'is_duplicate': True,
                             'matched_title': h.get('title') or 'مقطع سابق',
                             'filepath': fp,
-                            'reason': 'url'
+                            'reason': 'url',
+                            'format': h_entry_type or norm_target or 'media'
                         }
 
         # 2. Check history and save_dir by title
@@ -2073,32 +2110,53 @@ class DownloaderBridgeAPI:
                 if h_title and _is_match(title, h_title):
                     fp = h.get('filepath', '')
                     if not fp or os.path.exists(fp):
+                        h_entry_type = _get_entry_type(fp, hist_item=h)
+                        if norm_target and h_entry_type and h_entry_type != norm_target:
+                            # Different format: e.g. existing is audio, user wants video -> ALLOWED!
+                            continue
                         return {
                             'is_duplicate': True,
                             'matched_title': h_title,
                             'filepath': fp,
-                            'reason': 'title'
+                            'reason': 'title',
+                            'format': h_entry_type or norm_target or 'media'
                         }
 
-            # Check save_dir files (only valid media formats)
+            # Check save_dir files (and subfolders for playlists)
             if os.path.exists(self.save_dir):
-                try:
-                    with os.scandir(self.save_dir) as entries:
-                        for entry in entries:
-                            if entry.is_file():
-                                ext = Path(entry.name).suffix.lower()
-                                if ext not in VALID_MEDIA_EXTS:
-                                    continue
-                                stem = Path(entry.name).stem
-                                if _is_match(title, stem):
-                                    return {
-                                        'is_duplicate': True,
-                                        'matched_title': entry.name,
-                                        'filepath': entry.path,
-                                        'reason': 'file_exists'
-                                    }
-                except Exception:
-                    pass
+                def _scan_folder(folder_path, depth=0):
+                    if depth > 1:
+                        return None
+                    try:
+                        with os.scandir(folder_path) as entries:
+                            for entry in entries:
+                                if entry.is_file():
+                                    ext = Path(entry.name).suffix.lower()
+                                    if ext not in VALID_MEDIA_EXTS:
+                                        continue
+                                    stem = Path(entry.name).stem
+                                    if _is_match(title, stem):
+                                        entry_type = _get_entry_type(ext)
+                                        if norm_target and entry_type and entry_type != norm_target:
+                                            continue
+                                        return {
+                                            'is_duplicate': True,
+                                            'matched_title': entry.name,
+                                            'filepath': entry.path,
+                                            'reason': 'file_exists',
+                                            'format': entry_type or norm_target or 'media'
+                                        }
+                                elif entry.is_dir() and depth == 0:
+                                    res_sub = _scan_folder(entry.path, depth=depth + 1)
+                                    if res_sub:
+                                        return res_sub
+                    except Exception:
+                        pass
+                    return None
+
+                disk_match = _scan_folder(self.save_dir)
+                if disk_match:
+                    return disk_match
 
         return {'is_duplicate': False, 'matched_title': '', 'filepath': ''}
 
@@ -2224,6 +2282,21 @@ class DownloaderBridgeAPI:
             return {'started': False, 'error': 'يوجد تنزيل آخر قيد التنفيذ.'}
         if not isinstance(option, dict):
             return {'started': False, 'error': 'خيار التنزيل غير صالح.'}
+
+        # Format-aware duplicate check for single item downloads
+        if not option.get('is_playlist') and not option.get('allow_duplicate'):
+            target_type = option.get('type', 'video')
+            if target_type not in ('audio', 'video'):
+                target_type = 'audio' if 'mp3' in str(option.get('ext', '')).lower() else 'video'
+            title = option.get('media_title') or option.get('title')
+            dup = self.check_duplicate(url, title, target_type=target_type)
+            if dup and dup.get('is_duplicate'):
+                type_name = "صوت (Audio)" if target_type == 'audio' else "فيديو (Video)"
+                return {
+                    'started': False,
+                    'error': f"⚠️ هذا المقطع موجود بالفعل بنفس الصيغة ({type_name}) في مجلد التنزيلات!"
+                }
+
         _log.info(f"Download queued: {url[:80]}... (type: {option.get('type', 'video')})")
         self._download_thread = threading.Thread(
             target=self._async_download,
@@ -2240,6 +2313,106 @@ class DownloaderBridgeAPI:
             _log.info("Download cancellation requested")
             return {'cancelled': True}
         return {'cancelled': False}
+
+    # ================================================================
+    # Playlist Session Persistence & Automatic Resumption System
+    # ================================================================
+    @staticmethod
+    def _get_playlist_session_file():
+        return os.path.join(os.path.expanduser("~"), ".sdn_playlist_session.json")
+
+    def _save_playlist_session(self, session_data):
+        session_file = self._get_playlist_session_file()
+        try:
+            temp_file = session_file + f".tmp.{os.getpid()}"
+            with open(temp_file, 'w', encoding='utf-8') as f:
+                json.dump(session_data, f, ensure_ascii=False, indent=2)
+            if os.path.exists(session_file):
+                try:
+                    os.remove(session_file)
+                except Exception:
+                    pass
+            os.replace(temp_file, session_file)
+            _log.debug(f"Saved playlist session: {session_data.get('completed_count')}/{session_data.get('total_count')}")
+        except Exception as e:
+            _log.warning(f"Failed to save playlist session: {e}")
+
+    def _load_playlist_session(self):
+        session_file = self._get_playlist_session_file()
+        if not os.path.exists(session_file):
+            return None
+        try:
+            with open(session_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+        except Exception as e:
+            _log.warning(f"Failed to load playlist session: {e}")
+        return None
+
+    def get_unfinished_playlist_session(self):
+        """Returns any active/interrupted playlist session so the user can resume remaining videos."""
+        session = self._load_playlist_session()
+        if session:
+            rem = session.get('remaining_indices') or []
+            status = session.get('status', 'in_progress')
+            if len(rem) > 0 and status in ('in_progress', 'paused', 'interrupted'):
+                total = session.get('total_count') or session.get('playlist_count') or (session.get('completed_count', 0) + len(rem))
+                session['total_count'] = total
+                session['remaining_count'] = len(rem)
+                session['playlist_title'] = session.get('playlist_title') or session.get('title') or 'قائمة تشغيل'
+                return {
+                    'has_session': True,
+                    'session': session
+                }
+        return {'has_session': False}
+
+    def discard_unfinished_playlist_session(self):
+        """Discards any saved playlist session when user cancels or when completed."""
+        session_file = self._get_playlist_session_file()
+        try:
+            if os.path.exists(session_file):
+                os.remove(session_file)
+            _log.info("Discarded active playlist session")
+            return {'success': True, 'discarded': True}
+        except Exception as e:
+            _log.warning(f"Error removing playlist session: {e}")
+            return {'success': False, 'discarded': False, 'error': str(e)}
+
+    def resume_playlist_download(self):
+        """Resumes downloading the remaining items from an interrupted playlist session."""
+        session_info = self.get_unfinished_playlist_session()
+        if not session_info.get('has_session'):
+            return {'success': False, 'error': 'لا توجد جلسة قائمة تشغيل محفوظة للاستئناف.'}
+
+        session = session_info['session']
+        url = session.get('url')
+        option = session.get('option') or {}
+        remaining = session.get('remaining_indices') or []
+
+        if not url or not remaining:
+            self.discard_unfinished_playlist_session()
+            return {'success': False, 'error': 'بيانات الجلسة غير مكتملة.'}
+
+        # Configure download option to target ONLY remaining indices
+        resume_opt = dict(option)
+        resume_opt['is_playlist'] = True
+        resume_opt['playlist_items'] = remaining
+        resume_opt['playlist_count'] = len(remaining)
+        resume_opt['is_resumed_session'] = True
+        resume_opt['resumed_from_total'] = session.get('total_count', len(remaining))
+        resume_opt['previously_completed'] = session.get('completed_count', 0)
+
+        _log.info(f"Resuming playlist '{session.get('title')}' with {len(remaining)} remaining items: {remaining}")
+        res = self.start_download(url, resume_opt, browser_cookies=resume_opt.get('cookies', 'none'))
+        return {
+            'success': bool(res.get('started')),
+            'remaining_count': len(remaining),
+            'total_count': session.get('total_count'),
+            'completed_count': session.get('completed_count'),
+            'title': session.get('title'),
+            'error': res.get('error')
+        }
 
     def set_auto_update_enabled(self, enabled=True):
         """Respect the user's auto-update preference from the settings screen."""
@@ -2461,15 +2634,18 @@ class DownloaderBridgeAPI:
             self.load_url_in_main(url, auto_playlist_select=True)
             return {'success': True, 'mode': 'playlist_select'}
 
+        is_audio = (str(quality).lower() == 'mp3' or 'audio' in str(quality).lower())
+        target_type = 'audio' if is_audio else 'video'
+
         # Duplicate check before downloading (bypass for full playlist mode):
         if not force and mode != 'playlist_all':
-            dup_info = self.check_duplicate(url=url, title=title)
+            dup_info = self.check_duplicate(url=url, title=title, target_type=target_type)
             if dup_info.get('is_duplicate'):
-                msg = f"⚠️ تم تنزيل هذا المحتوى مسبقاً ({dup_info.get('matched_title')}) لمنع التكرار الزائد!"
+                format_name = 'صوت MP3' if is_audio else 'فيديو'
+                msg = f"⚠️ هذا المقطع تم تنزيله مسبقاً بصيغة ({format_name}) وهو موجود بالفعل في جهازك!"
                 self._notify_browser_toast(msg, 'warning', is_dup=True, dup_url=url, quality=quality, mode=mode, title=title)
                 return {'success': False, 'duplicate': True, 'msg': msg}
 
-        is_audio = (str(quality).lower() == 'mp3' or 'audio' in str(quality).lower())
         if is_audio:
             option = {
                 'type': 'audio',
@@ -2624,8 +2800,61 @@ class DownloaderBridgeAPI:
 
     def _async_download(self, url, option, browser_cookies):
         start_t = time.time()
-        
+        is_playlist = bool(option.get('is_playlist') or option.get('mixed_playlist'))
+        playlist_session = None
+
+        if is_playlist:
+            existing_sess = self._load_playlist_session()
+            if option.get('is_resumed_session') and existing_sess and existing_sess.get('url') == url:
+                playlist_session = existing_sess
+                playlist_session['status'] = 'in_progress'
+                playlist_session['timestamp'] = time.time()
+                self._save_playlist_session(playlist_session)
+            else:
+                p_items = list(option.get('playlist_items') or [])
+                total_cnt = int(option.get('playlist_count') or len(p_items) or 1)
+                if not p_items and total_cnt > 0:
+                    p_items = list(range(1, total_cnt + 1))
+                playlist_session = {
+                    'url': url,
+                    'title': option.get('media_title') or 'قائمة تشغيل',
+                    'total_count': total_cnt,
+                    'completed_count': 0,
+                    'completed_indices': [],
+                    'remaining_indices': p_items,
+                    'option': option,
+                    'status': 'in_progress',
+                    'save_dir': self.save_dir,
+                    'timestamp': time.time()
+                }
+                self._save_playlist_session(playlist_session)
+
+        def on_playlist_item_complete(p_idx, item_title, file_path):
+            if playlist_session and p_idx is not None:
+                try:
+                    idx = int(p_idx)
+                    if idx not in playlist_session['completed_indices']:
+                        playlist_session['completed_indices'].append(idx)
+                    if idx in playlist_session['remaining_indices']:
+                        playlist_session['remaining_indices'].remove(idx)
+                    playlist_session['completed_count'] = len(playlist_session['completed_indices'])
+                    playlist_session['remaining_count'] = len(playlist_session['remaining_indices'])
+                    playlist_session['timestamp'] = time.time()
+                    self._save_playlist_session(playlist_session)
+                except Exception as ex:
+                    _log.debug(f"Session item update exception: {ex}")
+
         def progress_callback(p_data):
+            if playlist_session and p_data.get('playlist_count'):
+                p_count = int(p_data['playlist_count'])
+                if p_count > playlist_session.get('total_count', 0):
+                    playlist_session['total_count'] = p_count
+                    if not playlist_session.get('remaining_indices'):
+                        playlist_session['remaining_indices'] = [
+                            i for i in range(1, p_count + 1)
+                            if i not in playlist_session.get('completed_indices', [])
+                        ]
+                    self._save_playlist_session(playlist_session)
             if self._window:
                 try:
                     self._window.evaluate_js(f'updateProgress({json.dumps(p_data)})')
@@ -2662,7 +2891,8 @@ class DownloaderBridgeAPI:
                         url, v_opt, self.save_dir,
                         progress_callback=progress_callback,
                         status_callback=status_callback,
-                        browser_cookies=browser_cookies
+                        browser_cookies=browser_cookies,
+                        item_complete_callback=on_playlist_item_complete
                     )
                     downloaded_files.extend(res_v.get('files') or [])
                     last_result = res_v
@@ -2682,7 +2912,8 @@ class DownloaderBridgeAPI:
                         url, a_opt, self.save_dir,
                         progress_callback=progress_callback,
                         status_callback=status_callback,
-                        browser_cookies=browser_cookies
+                        browser_cookies=browser_cookies,
+                        item_complete_callback=on_playlist_item_complete
                     )
                     a_files = res_a.get('files') or []
                     for f in a_files:
@@ -2703,8 +2934,12 @@ class DownloaderBridgeAPI:
                     url, option, self.save_dir,
                     progress_callback=progress_callback,
                     status_callback=status_callback,
-                    browser_cookies=browser_cookies
+                    browser_cookies=browser_cookies,
+                    item_complete_callback=on_playlist_item_complete
                 )
+            
+            if is_playlist:
+                self.discard_unfinished_playlist_session()
             
             elapsed = time.time() - start_t
             _log.info(f"Download complete: {result.get('count', 0)} file(s) ({elapsed:.1f}s)")

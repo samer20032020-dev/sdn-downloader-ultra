@@ -101,6 +101,75 @@ class TestInPageAndPlaylistFeatures(unittest.TestCase):
         self.assertIn("v=ndCI8DIM86w", cleaned)
         self.assertIn("list=RDndCI8DIM86w", cleaned)
 
+    def test_format_aware_duplicate_checking(self):
+        # 1. Video exists: allow audio, reject video
+        vid_path = os.path.join(self.temp_dir, "Matrix_Trailer.mp4")
+        Path(vid_path).write_text("dummy video")
+
+        # Querying as video must trigger duplicate
+        dup_vid = self.api.check_duplicate(title="Matrix Trailer", target_type="video")
+        self.assertTrue(dup_vid['is_duplicate'])
+
+        # Querying as audio MUST NOT trigger duplicate (user permitted mp3 when video exists)
+        dup_aud = self.api.check_duplicate(title="Matrix Trailer", target_type="audio")
+        self.assertFalse(dup_aud['is_duplicate'])
+
+        # 2. Audio exists: allow video, reject audio
+        aud_path = os.path.join(self.temp_dir, "Podcast_Ep1.mp3")
+        Path(aud_path).write_text("dummy audio")
+
+        # Querying as audio must trigger duplicate
+        dup_aud2 = self.api.check_duplicate(title="Podcast Ep1", target_type="audio")
+        self.assertTrue(dup_aud2['is_duplicate'])
+
+        # Querying as video MUST NOT trigger duplicate (user permitted video when mp3 exists)
+        dup_vid2 = self.api.check_duplicate(title="Podcast Ep1", target_type="video")
+        self.assertFalse(dup_vid2['is_duplicate'])
+
+    def test_playlist_session_lifecycle(self):
+        # Temporary custom session file for isolation
+        custom_session_file = os.path.join(self.temp_dir, "test_playlist_session.json")
+        orig_getter = self.api._get_playlist_session_file
+        self.api._get_playlist_session_file = staticmethod(lambda: custom_session_file)
+
+        try:
+            # Initially no session
+            check_init = self.api.get_unfinished_playlist_session()
+            self.assertFalse(check_init['has_session'])
+
+            # Save session
+            session_data = {
+                'url': 'https://www.youtube.com/playlist?list=PL12345',
+                'playlist_title': 'My 30 Videos Playlist',
+                'playlist_count': 30,
+                'completed_count': 12,
+                'completed_items': [{'index': i, 'title': f'Item {i}'} for i in range(1, 13)],
+                'remaining_indices': list(range(13, 31)),
+                'mode': 'video',
+                'save_dir': self.temp_dir,
+                'option': {'type': 'video', 'ext': 'mp4'}
+            }
+            self.api._save_playlist_session(session_data)
+
+            # Check unfinished session detected
+            check_saved = self.api.get_unfinished_playlist_session()
+            self.assertTrue(check_saved['has_session'])
+            sess = check_saved['session']
+            self.assertEqual(sess['playlist_title'], 'My 30 Videos Playlist')
+            self.assertEqual(sess['completed_count'], 12)
+            self.assertEqual(sess['remaining_count'], 18)
+            self.assertEqual(sess['total_count'], 30)
+
+            # Discard session
+            disc = self.api.discard_unfinished_playlist_session()
+            self.assertTrue(disc['discarded'])
+
+            # Verify no longer active
+            check_after = self.api.get_unfinished_playlist_session()
+            self.assertFalse(check_after['has_session'])
+        finally:
+            self.api._get_playlist_session_file = orig_getter
+
 
 if __name__ == '__main__':
     unittest.main()

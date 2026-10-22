@@ -1052,6 +1052,7 @@ class MediaDownloader:
         progress_callback: ProgressCallback | None = None,
         status_callback: StatusCallback | None = None,
         browser_cookies: str = "none",
+        item_complete_callback: Any = None,
     ) -> dict[str, Any]:
         normalized = clean_url(url, keep_mix_playlist=bool(option.get("is_playlist")))
         if not _is_web_url(normalized):
@@ -1071,6 +1072,7 @@ class MediaDownloader:
                 progress_callback,
                 status_callback,
                 browser_cookies,
+                item_complete_callback,
             )
         finally:
             self._download_lock.release()
@@ -1084,6 +1086,7 @@ class MediaDownloader:
         progress_callback: ProgressCallback | None,
         status_callback: StatusCallback | None,
         browser_cookies: str,
+        item_complete_callback: Any = None,
     ) -> dict[str, Any]:
         is_audio = option.get("type") == "audio"
         is_playlist = bool(option.get("is_playlist"))
@@ -1159,6 +1162,11 @@ class MediaDownloader:
                     capture_path(raw_fn)
                     if status_callback:
                         status_callback("اكتمل تنزيل المسار، جاري تحضير المعالجة...")
+                    if item_complete_callback and is_playlist and not postprocessors:
+                        try:
+                            item_complete_callback(playlist_position, info_dict.get("title") or "", raw_fn)
+                        except Exception:
+                            pass
                 return
 
             if status != "downloading" or not progress_callback or not is_media:
@@ -1207,9 +1215,16 @@ class MediaDownloader:
                     status_callback("⚙️ جاري معالجة ودمج الملف عبر FFmpeg...")
             elif pp_status == "finished":
                 info_dict = data.get("info_dict") or {}
-                capture_path(info_dict.get("filepath") or info_dict.get("_filename"))
+                captured_fp = info_dict.get("filepath") or info_dict.get("_filename")
+                capture_path(captured_fp)
                 if status_callback:
                     status_callback("⚙️ اكتملت المعالجة، جاري حفظ وتجهيز الملف...")
+                if item_complete_callback and is_playlist:
+                    try:
+                        p_idx = info_dict.get("playlist_index") or playlist_position
+                        item_complete_callback(p_idx, info_dict.get("title") or "", captured_fp)
+                    except Exception:
+                        pass
 
         ydl_options = _common_ydl_options(option.get("proxy"))
         ydl_options.update(
