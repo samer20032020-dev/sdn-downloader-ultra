@@ -221,12 +221,12 @@ def get_github_token():
     gh_exe = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools", "gh", "gh.exe")
     if os.path.exists(gh_exe):
         try:
-            res = subprocess.run([gh_exe, "auth", "token"], capture_output=True, text=True, timeout=10)
+            res = subprocess.run([gh_exe, "auth", "token"], capture_output=True, text=True, timeout=30)
             tok = res.stdout.strip()
-            if tok and not tok.startswith("error"):
+            if tok and not tok.startswith("error") and len(tok) > 20:
                 return tok
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"  ⚠️ Warning gh auth token check: {e}")
     try:
         git_exe = find_git()
         if git_exe:
