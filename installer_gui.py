@@ -519,8 +519,9 @@ class InstallerAPI:
     def launch_app(self):
         try:
             if self.exe_path and os.path.exists(self.exe_path):
+                working_dir = os.path.dirname(self.exe_path)
                 CREATE_NO_WINDOW = 0x08000000
-                subprocess.Popen([self.exe_path], creationflags=CREATE_NO_WINDOW)
+                subprocess.Popen([self.exe_path], cwd=working_dir, creationflags=CREATE_NO_WINDOW)
             self.close_window()
         except Exception:
             self.close_window()
