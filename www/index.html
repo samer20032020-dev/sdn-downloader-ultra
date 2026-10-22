@@ -848,315 +848,337 @@ body.light-theme .input-field-wrap input { background: #fff; }
 .playlist-item:hover, .playlist-item.playing { border-color: var(--primary); background: rgba(56, 189, 248, 0.08); }
 
 /* ==========================================================================
-   ULTRA-SOFT, MINIMALIST & REFINED SETTINGS DESIGN SYSTEM
+   ULTRA-LUXURY, SOFT & MODERN SETTINGS DESIGN SYSTEM (100% REDESIGN)
    ========================================================================== */
 
 .settings-panel {
   display: none;
   flex-direction: column;
-  gap: 16px;
   width: 100%;
-  max-width: 820px;
+  max-width: 720px;
   margin: 0 auto;
-  animation: fadeInSettings 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  padding: 10px 8px 50px 8px;
+  animation: fadeInSettings 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 .settings-panel.active {
-  display: flex;
+  display: flex !important;
+  flex-direction: column !important;
 }
 
 @keyframes fadeInSettings {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Minimalist Clean Header ── */
+/* ── Minimalist Glowing Header ── */
 .settings-header-clean {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 6px 8px 6px;
+  margin-bottom: 18px;
+  padding: 4px 6px;
 }
 .settings-header-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 .settings-header-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: rgba(56, 189, 248, 0.12);
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.18) 0%, rgba(99, 102, 241, 0.18) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.35);
   color: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.15rem;
-  box-shadow: 0 0 20px rgba(56, 189, 248, 0.15);
+  font-size: 1.25rem;
+  box-shadow: 0 4px 20px rgba(56, 189, 248, 0.2);
+  flex-shrink: 0;
 }
 .settings-title-main {
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   font-weight: 800;
   color: var(--text-main);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.015em;
   margin: 0;
 }
 .settings-subtitle-main {
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   color: var(--text-sub);
-  margin-top: 2px;
+  margin-top: 3px;
+  line-height: 1.4;
 }
 
-/* ── Category Filter Pills ── */
+/* ── Floating Segmented Filter Bar ── */
 .settings-filter-bar {
   display: flex;
   align-items: center;
   gap: 6px;
   overflow-x: auto;
-  padding: 2px 2px 6px 2px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+  padding: 5px;
+  margin-bottom: 24px;
   scrollbar-width: none;
+  backdrop-filter: blur(12px);
 }
 .settings-filter-bar::-webkit-scrollbar { display: none; }
 .settings-filter-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border-radius: 9999px;
-  font-size: 0.8rem;
-  font-weight: 600;
+  gap: 7px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
   font-family: inherit;
   color: var(--text-sub);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: transparent;
+  border: none;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.settings-filter-pill:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text-main);
-  transform: translateY(-1px);
-}
-.settings-filter-pill.active {
-  background: rgba(56, 189, 248, 0.14);
-  border-color: rgba(56, 189, 248, 0.35);
-  color: #38bdf8;
-  box-shadow: 0 2px 10px rgba(56, 189, 248, 0.15);
-}
-
-/* ── Group Card ── */
-.settings-cards-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.settings-card {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: 18px;
-  overflow: hidden;
-  backdrop-filter: blur(20px);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-.settings-card:hover {
-  border-color: rgba(255, 255, 255, 0.12);
-}
-
-.settings-card-header {
-  padding: 14px 18px 10px 18px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-}
-.card-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.9rem;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   flex-shrink: 0;
 }
-.card-title {
-  font-size: 0.94rem;
-  font-weight: 700;
+.settings-filter-pill:hover {
   color: var(--text-main);
-  margin: 0;
+  background: rgba(255, 255, 255, 0.06);
 }
-.card-desc {
-  font-size: 0.76rem;
-  color: var(--text-sub);
-  margin-top: 2px;
+.settings-filter-pill.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+  box-shadow: 0 3px 12px rgba(56, 189, 248, 0.35);
 }
 
-/* ── Setting Rows ── */
-.settings-items-list {
-  display: flex;
-  flex-direction: column;
-}
-.settings-row, .settings-item-row {
-  padding: 13px 18px;
+/* ── Section Titles (macOS / iOS 18 style) ── */
+.settings-section-title {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.035);
-  transition: background 0.15s ease;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+  margin-inline-start: 8px;
 }
-.settings-row:last-child, .settings-item-row:last-child {
+.settings-section-title i {
+  font-size: 0.78rem;
+}
+
+/* ── Grouped Glass Cards (STRICT COLUMN FLEX) ── */
+.settings-cards-grid {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 20px;
+  width: 100%;
+}
+.settings-card {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100%;
+  background: linear-gradient(165deg, rgba(17, 24, 39, 0.72) 0%, rgba(10, 15, 28, 0.88) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 10px 32px -8px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  transition: border-color 0.22s ease, box-shadow 0.22s ease;
+}
+.settings-card:hover {
+  border-color: rgba(56, 189, 248, 0.22);
+}
+
+/* ── Clean Full-Width Rows ── */
+.settings-items-list {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100%;
+}
+.settings-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+  transition: background 0.15s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+.settings-row:last-child {
   border-bottom: none;
 }
-.settings-row:hover, .settings-item-row:hover {
-  background: rgba(255, 255, 255, 0.018);
+.settings-row:hover {
+  background: rgba(255, 255, 255, 0.02);
 }
-.row-info, .settings-label {
+
+.row-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   flex: 1;
   min-width: 0;
 }
-.row-icon, .item-icon-box {
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
+.row-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 .row-texts {
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
-.row-title, .settings-title {
-  font-size: 0.88rem;
-  font-weight: 600;
+.row-title {
+  font-size: 0.92rem;
+  font-weight: 700;
   color: var(--text-main);
   display: inline-flex;
   align-items: center;
   gap: 8px;
 }
-.row-desc, .settings-desc {
-  font-size: 0.76rem;
+.row-desc {
+  font-size: 0.77rem;
   color: var(--text-sub);
-  margin-top: 2px;
-  line-height: 1.4;
+  margin-top: 3px;
+  line-height: 1.42;
 }
 
-/* ── Soft Badges & Pills ── */
-.soft-badge, .item-badge {
+/* ── Soft Badges ── */
+.soft-badge {
   display: inline-flex;
   align-items: center;
   padding: 2px 7px;
   border-radius: 6px;
   font-size: 0.68rem;
-  font-weight: 600;
-  background: rgba(56, 189, 248, 0.1);
+  font-weight: 700;
+  background: rgba(56, 189, 248, 0.12);
   color: var(--primary);
-  border: 1px solid rgba(56, 189, 248, 0.2);
+  border: 1px solid rgba(56, 189, 248, 0.22);
 }
 
-/* ── Soft Spring Toggle Switch ── */
-.toggle-switch, .soft-switch {
+/* ── Luxury iOS 18 Switch ── */
+.toggle-switch {
   position: relative;
   display: inline-block;
-  width: 42px;
-  height: 24px;
+  width: 46px;
+  height: 26px;
   flex-shrink: 0;
   cursor: pointer;
 }
-.toggle-switch input, .soft-switch input {
+.toggle-switch input {
   opacity: 0;
   width: 0;
   height: 0;
 }
-.slider, .soft-slider {
+.slider {
   position: absolute;
   inset: 0;
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  transition: all 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.slider:before, .soft-slider:before {
+.slider:before {
   position: absolute;
   content: "";
-  height: 18px;
-  width: 18px;
+  height: 20px;
+  width: 20px;
   left: 2px;
   bottom: 2px;
   background: #ffffff;
   border-radius: 50%;
-  transition: all 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
 }
-.toggle-switch input:checked + .slider,
-.soft-switch input:checked + .soft-slider {
-  background: #0284c7;
-  border-color: #38bdf8;
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
+.toggle-switch input:checked + .slider {
+  background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+  border-color: rgba(56, 189, 248, 0.6);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.45);
 }
-.toggle-switch input:checked + .slider:before,
-.soft-switch input:checked + .soft-slider:before {
-  transform: translateX(18px);
+.toggle-switch input:checked + .slider:before {
+  transform: translateX(20px);
 }
 
-/* ── Soft Select Dropdowns ── */
-.custom-select-wrap, .soft-select-wrap {
+/* ── Modern Dropdown Selects ── */
+.custom-select-wrap {
   position: relative;
   display: inline-flex;
   align-items: center;
 }
-.select-dropdown, .soft-select {
+.select-dropdown {
   appearance: none;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--text-main);
-  padding: 6px 28px 6px 12px;
-  border-radius: 10px;
-  font-size: 0.82rem;
+  padding: 8px 34px 8px 14px;
+  border-radius: 12px;
+  font-size: 0.83rem;
   font-family: inherit;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   outline: none;
-  transition: all 0.2s ease;
-  min-width: 150px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  min-width: 155px;
 }
-.select-dropdown:hover, .soft-select:hover {
-  background: rgba(255, 255, 255, 0.08);
+.select-dropdown:hover {
+  background: rgba(255, 255, 255, 0.085);
   border-color: rgba(56, 189, 248, 0.4);
 }
-.select-dropdown:focus, .soft-select:focus {
+.select-dropdown:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 10px var(--primary-glow);
+  box-shadow: 0 0 14px var(--primary-glow);
+}
+.select-dropdown option {
+  background: #0b1120;
+  color: #f8fafc;
 }
 .select-chevron {
   position: absolute;
-  right: 10px;
+  right: 12px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   color: var(--muted);
   pointer-events: none;
 }
 
-/* ── Path Display Box ── */
-.storage-path-box, .soft-path-box {
-  display: inline-flex;
+/* ── Storage Folder Display & Action ── */
+.storage-control-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.storage-path-box {
+  display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(0, 0, 0, 0.22);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 9px;
-  padding: 5px 10px;
-  max-width: 260px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 6px 12px;
+  max-width: 240px;
   overflow: hidden;
+}
+.path-box-icon {
+  font-size: 0.85rem;
+  color: var(--primary);
+  flex-shrink: 0;
 }
 .path-text {
   font-family: monospace;
@@ -1167,36 +1189,28 @@ body.light-theme .input-field-wrap input { background: #fff; }
   text-overflow: ellipsis;
   direction: ltr;
 }
-.path-box-icon {
-  font-size: 0.8rem;
-  color: var(--muted);
-  flex-shrink: 0;
-}
-
-/* ── Action Buttons ── */
-.settings-action-btn, .settings-btn {
+.settings-action-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border-radius: 10px;
-  font-size: 0.8rem;
+  gap: 7px;
+  padding: 7px 15px;
+  border-radius: 11px;
+  font-size: 0.82rem;
   font-weight: 700;
+  border: none;
   cursor: pointer;
   font-family: inherit;
-  transition: all 0.2s ease;
-  border: none;
-  outline: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
 }
-.settings-action-btn.primary-glow-btn, .settings-btn.primary {
-  background: linear-gradient(135deg, #0284c7, #38bdf8);
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.25);
+.settings-action-btn.primary-glow-btn {
+  background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+  color: #fff;
+  box-shadow: 0 3px 12px rgba(56, 189, 248, 0.28);
 }
-.settings-action-btn.primary-glow-btn:hover, .settings-btn.primary:hover {
+.settings-action-btn.primary-glow-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(56, 189, 248, 0.35);
+  box-shadow: 0 5px 18px rgba(56, 189, 248, 0.42);
 }
 .settings-action-btn.amber-btn {
   background: rgba(245, 158, 11, 0.15);
@@ -1206,115 +1220,106 @@ body.light-theme .input-field-wrap input { background: #fff; }
 .settings-action-btn.amber-btn:hover {
   background: rgba(245, 158, 11, 0.25);
 }
-.settings-btn.secondary {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text-main);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-.settings-btn.secondary:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.16);
-}
-.settings-btn.danger, .yt-logout-btn {
-  background: rgba(244, 63, 94, 0.12);
-  color: #f43f5e;
-  border: 1px solid rgba(244, 63, 94, 0.25);
-  padding: 7px 14px;
-  border-radius: 10px;
-  font-weight: 700;
-  font-size: 0.8rem;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.2s;
-}
-.settings-btn.danger:hover, .yt-logout-btn:hover {
-  background: rgba(244, 63, 94, 0.2);
-}
 
-/* ── YouTube Account Row ── */
-.youtube-vip-banner {
-  padding: 14px 18px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+/* ── YouTube Connected Account Row ── */
+.youtube-account-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
   gap: 16px;
+  padding: 16px 20px;
   background: rgba(239, 68, 68, 0.04);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.035);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+  box-sizing: border-box;
 }
 .yt-account-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   min-width: 0;
   flex: 1;
 }
 .yt-icon-box {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: rgba(239, 68, 68, 0.12);
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.15);
   color: #ef4444;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.15rem;
+  font-size: 1.25rem;
   position: relative;
   flex-shrink: 0;
+  border: 1px solid rgba(239, 68, 68, 0.25);
 }
-.yt-live-pulse, .yt-dot {
+.yt-live-pulse {
   position: absolute;
   top: -2px;
   right: -2px;
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   background: #10b981;
-  box-shadow: 0 0 6px #10b981;
+  box-shadow: 0 0 8px #10b981;
 }
 .yt-status-badge {
   font-size: 0.7rem;
-  padding: 2px 8px;
-  border-radius: 9999px;
+  padding: 2px 9px;
+  border-radius: 999px;
   font-weight: 700;
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-sub);
 }
 .yt-status-badge.active {
-  background: rgba(16, 185, 129, 0.14);
+  background: rgba(16, 185, 129, 0.16);
   color: #10b981;
   border: 1px solid rgba(16, 185, 129, 0.3);
 }
 .yt-desc-text {
-  font-size: 0.76rem;
+  font-size: 0.77rem;
   color: var(--text-sub);
   margin-top: 3px;
-  line-height: 1.4;
-}
-.yt-buttons-area {
-  display: flex;
-  gap: 8px;
-  flex-shrink: 0;
+  line-height: 1.42;
 }
 .yt-login-btn {
   background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   color: #fff;
   border: none;
-  padding: 7px 16px;
-  border-radius: 10px;
+  padding: 8px 18px;
+  border-radius: 11px;
   font-weight: 700;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  box-shadow: 0 3px 12px rgba(239, 68, 68, 0.3);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.yt-login-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 18px rgba(239, 68, 68, 0.45);
+}
+.yt-logout-btn {
+  background: rgba(244, 63, 94, 0.12);
+  color: #f43f5e;
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  padding: 8px 16px;
+  border-radius: 11px;
+  font-weight: 700;
+  font-size: 0.82rem;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
-.yt-login-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+.yt-logout-btn:hover {
+  background: rgba(244, 63, 94, 0.2);
 }
 
 /* ── Proxy Input ── */
@@ -1324,45 +1329,47 @@ body.light-theme .input-field-wrap input { background: #fff; }
   align-items: center;
 }
 .custom-proxy-input {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 6px 12px 6px 28px;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 11px;
+  padding: 7px 12px 7px 32px;
   color: var(--text-main);
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-family: monospace;
   outline: none;
   transition: all 0.2s ease;
   direction: ltr;
-  width: 210px;
+  width: 200px;
 }
 .custom-proxy-input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 10px var(--primary-glow);
+  box-shadow: 0 0 12px var(--primary-glow);
 }
 .proxy-prefix-icon {
   position: absolute;
-  left: 9px;
-  font-size: 0.75rem;
+  left: 10px;
+  font-size: 0.78rem;
   color: var(--muted);
   pointer-events: none;
 }
 
-/* ── System Status Tiles ── */
+/* ── System Status Tiles Grid ── */
 .system-hub-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  padding: 14px 18px;
+  padding: 16px 20px;
+  box-sizing: border-box;
+  width: 100%;
 }
 @media (max-width: 580px) {
   .system-hub-grid { grid-template-columns: 1fr; }
 }
 .system-tile {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 14px;
-  padding: 12px 14px;
+  padding: 13px 15px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1370,119 +1377,113 @@ body.light-theme .input-field-wrap input { background: #fff; }
   transition: all 0.2s ease;
 }
 .system-tile:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(255, 255, 255, 0.09);
 }
 .tile-info {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 11px;
   min-width: 0;
 }
 .tile-icon-wrap {
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   flex-shrink: 0;
 }
 .tile-title {
-  font-size: 0.86rem;
+  font-size: 0.88rem;
   font-weight: 700;
   color: var(--text-main);
 }
 .system-btn {
-  padding: 5px 12px;
-  border-radius: 8px;
-  font-size: 0.76rem;
+  padding: 6px 14px;
+  border-radius: 9px;
+  font-size: 0.78rem;
   font-weight: 700;
   border: none;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  transition: all 0.2s;
+  gap: 6px;
+  transition: all 0.2s ease;
   white-space: nowrap;
+  font-family: inherit;
 }
 .system-btn.primary-btn {
-  background: rgba(56, 189, 248, 0.12);
+  background: rgba(56, 189, 248, 0.14);
   color: var(--primary);
-  border: 1px solid rgba(56, 189, 248, 0.25);
+  border: 1px solid rgba(56, 189, 248, 0.3);
 }
 .system-btn.primary-btn:hover {
-  background: rgba(56, 189, 248, 0.22);
+  background: rgba(56, 189, 248, 0.24);
 }
 .system-btn.emerald-btn {
-  background: rgba(16, 185, 129, 0.12);
+  background: rgba(16, 185, 129, 0.14);
   color: #10b981;
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  border: 1px solid rgba(16, 185, 129, 0.3);
 }
 .system-btn.emerald-btn:hover {
-  background: rgba(16, 185, 129, 0.22);
+  background: rgba(16, 185, 129, 0.24);
 }
 
-/* ── Light Mode Overrides ── */
-body.light-theme .settings-header-icon {
-  background: rgba(2, 132, 199, 0.1);
-  color: var(--primary);
+/* ── Light Theme Adaptations ── */
+body.light-theme .settings-card {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+body.light-theme .settings-row {
+  border-bottom-color: rgba(15, 23, 42, 0.05);
+}
+body.light-theme .settings-row:hover {
+  background: rgba(15, 23, 42, 0.02);
+}
+body.light-theme .settings-filter-bar {
+  background: rgba(15, 23, 42, 0.04);
+  border-color: rgba(15, 23, 42, 0.08);
 }
 body.light-theme .settings-filter-pill {
-  background: rgba(0, 0, 0, 0.035);
-  border-color: rgba(0, 0, 0, 0.08);
   color: #475569;
 }
 body.light-theme .settings-filter-pill:hover {
-  background: rgba(0, 0, 0, 0.06);
+  background: rgba(15, 23, 42, 0.06);
   color: #0f172a;
 }
 body.light-theme .settings-filter-pill.active {
-  background: rgba(2, 132, 199, 0.1);
-  border-color: rgba(2, 132, 199, 0.3);
-  color: #0284c7;
+  color: #fff;
+  background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
 }
-body.light-theme .settings-card {
-  background: rgba(255, 255, 255, 0.94);
+body.light-theme .slider {
+  background: rgba(15, 23, 42, 0.12);
   border-color: rgba(15, 23, 42, 0.08);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.03);
-}
-body.light-theme .settings-card-header {
-  border-bottom-color: rgba(0, 0, 0, 0.05);
-}
-body.light-theme .settings-row,
-body.light-theme .settings-item-row {
-  border-bottom-color: rgba(0, 0, 0, 0.04);
-}
-body.light-theme .settings-row:hover,
-body.light-theme .settings-item-row:hover {
-  background: rgba(0, 0, 0, 0.015);
-}
-body.light-theme .slider,
-body.light-theme .soft-slider {
-  background: rgba(0, 0, 0, 0.12);
-  border-color: rgba(0, 0, 0, 0.1);
 }
 body.light-theme .select-dropdown,
-body.light-theme .soft-select,
 body.light-theme .custom-proxy-input {
-  background: rgba(0, 0, 0, 0.035);
-  border-color: rgba(0, 0, 0, 0.1);
+  background: #f8fafc;
+  border-color: rgba(15, 23, 42, 0.12);
   color: #0f172a;
 }
-body.light-theme .storage-path-box,
-body.light-theme .soft-path-box {
-  background: rgba(0, 0, 0, 0.04);
-  border-color: rgba(0, 0, 0, 0.08);
+body.light-theme .select-dropdown option {
+  background: #ffffff;
+  color: #0f172a;
+}
+body.light-theme .storage-path-box {
+  background: #f1f5f9;
+  border-color: rgba(15, 23, 42, 0.08);
 }
 body.light-theme .system-tile {
-  background: rgba(0, 0, 0, 0.02);
-  border-color: rgba(0, 0, 0, 0.06);
+  background: #f8fafc;
+  border-color: rgba(15, 23, 42, 0.06);
 }
-body.light-theme .youtube-vip-banner {
+body.light-theme .youtube-account-row {
   background: rgba(239, 68, 68, 0.03);
-  border-bottom-color: rgba(0, 0, 0, 0.05);
+  border-bottom-color: rgba(15, 23, 42, 0.05);
 }
 
 /* Ultra-Clean, Soft, Minimalist Downloader Hub */
@@ -2569,7 +2570,7 @@ body.light-theme .youtube-vip-banner {
       <!-- Update Header Button -->
       <button id="headerUpdateBtn" onclick="onHeaderUpdateClick()" class="update-header-btn" title="فحص التحديثات" style="display:none;">
         <i class="fas fa-cog" id="updateHeaderIcon"></i>
-        <span id="updateHeaderTxt">v1.0.32</span>
+        <span id="updateHeaderTxt">v1.0.33</span>
       </button>
     </div>
   </header>
@@ -2585,7 +2586,7 @@ body.light-theme .youtube-vip-banner {
       <div style="display:flex; flex-direction:column; align-items:center; text-align:center; padding-top:16px; gap:8px;">
         <div class="clean-hero-badge">
           <span class="clean-hero-dot"></span>
-          <span>الإصدار 1.0.32 — تنزيل فائق السرعة وبدون إعلانات</span>
+          <span>الإصدار 1.0.33 — تنزيل فائق السرعة وبدون إعلانات</span>
         </div>
         <h1 class="clean-hero-title">نزّل الفيديوهات والموسيقى بأعلى جودة</h1>
         <p class="clean-hero-sub">ضع رابط أي فيديو من YouTube أو TikTok أو Instagram أو Facebook للتحميل الفوري</p>
@@ -2771,7 +2772,7 @@ body.light-theme .youtube-vip-banner {
 
     <!-- TAB 3: SETTINGS (الإعدادات الشاملة) -->
     <div id="settingsPage" style="display:contents;">
-        <div id="viewSettings" class="settings-panel">
+                <div id="viewSettings" class="settings-panel">
       <!-- Minimalist Clean Header -->
       <div class="settings-header-clean">
         <div class="settings-header-info">
@@ -2783,7 +2784,7 @@ body.light-theme .youtube-vip-banner {
         </div>
       </div>
 
-      <!-- Category Filter Pills -->
+      <!-- Floating Segmented Filter Bar -->
       <div class="settings-filter-bar">
         <button class="settings-filter-pill active" onclick="filterSettingsCategory('all', this)">
           <i class="fas fa-layer-group"></i> <span>الكل</span>
@@ -2809,14 +2810,8 @@ body.light-theme .youtube-vip-banner {
       <div class="settings-cards-grid">
         <!-- Category 1: Appearance & Defaults (المظهر وجودة التنزيل) -->
         <div class="settings-card" data-category="appearance">
-          <div class="settings-card-header">
-            <div class="card-icon" style="background: rgba(56, 189, 248, 0.12); color: #38bdf8;">
-              <i class="fas fa-palette"></i>
-            </div>
-            <div>
-              <h3 class="card-title">المظهر والواجهة</h3>
-              <p class="card-desc">السمة البصرية وجودة التنزيل الافتراضية ومعدل السرعة</p>
-            </div>
+          <div class="settings-section-title" style="padding: 14px 20px 6px 20px; margin: 0;">
+            <i class="fas fa-palette"></i> المظهر والواجهة الافتراضية
           </div>
 
           <div class="settings-items-list">
@@ -2895,14 +2890,8 @@ body.light-theme .youtube-vip-banner {
 
         <!-- Category 2: Storage & Files (التخزين والحفظ) -->
         <div class="settings-card" data-category="storage">
-          <div class="settings-card-header">
-            <div class="card-icon" style="background: rgba(16, 185, 129, 0.12); color: #10b981;">
-              <i class="fas fa-hdd"></i>
-            </div>
-            <div>
-              <h3 class="card-title">التخزين والملفات والحافظة</h3>
-              <p class="card-desc">تحديد مسار حفظ التنزيلات وسلوك فحص الحافظة التلقائي</p>
-            </div>
+          <div class="settings-section-title" style="padding: 14px 20px 6px 20px; margin: 0;">
+            <i class="fas fa-hdd"></i> التخزين والحفظ والملفات
           </div>
 
           <div class="settings-items-list">
@@ -2914,15 +2903,16 @@ body.light-theme .youtube-vip-banner {
                 </div>
                 <div class="row-texts">
                   <div class="row-title">مجلد حفظ التحميلات</div>
-                  <div class="storage-path-box">
-                    <i class="fas fa-folder-open path-box-icon"></i>
-                    <span class="path-text" id="savePathTxt">Downloads</span>
-                  </div>
+                  <div class="row-desc">المسار الذي تحفظ به جميع الفيديوهات والصوتيات</div>
                 </div>
               </div>
-              <div class="settings-control">
+              <div class="settings-control storage-control-group">
+                <div class="storage-path-box">
+                  <i class="fas fa-folder-open path-box-icon"></i>
+                  <span class="path-text" id="savePathTxt">Downloads</span>
+                </div>
                 <button class="settings-action-btn primary-glow-btn" id="changeFolderBtn">
-                  <i class="fas fa-folder-plus"></i> تغيير المجلد
+                  <i class="fas fa-folder-plus"></i> تغيير
                 </button>
               </div>
             </div>
@@ -2950,19 +2940,13 @@ body.light-theme .youtube-vip-banner {
 
         <!-- Category 3: Accounts & Cookies (حساب YouTube والتسجيل) -->
         <div class="settings-card" data-category="accounts">
-          <div class="settings-card-header">
-            <div class="card-icon" style="background: rgba(239, 68, 68, 0.12); color: #ef4444;">
-              <i class="fab fa-youtube"></i>
-            </div>
-            <div>
-              <h3 class="card-title">حساب YouTube والكوكيز</h3>
-              <p class="card-desc">تخطي القيود العمرية (18+)، تنزيل المشاهدة لاحقاً، وتجاوز الحجب</p>
-            </div>
+          <div class="settings-section-title" style="padding: 14px 20px 6px 20px; margin: 0;">
+            <i class="fab fa-youtube"></i> حساب YouTube وتكامل الكوكيز
           </div>
 
           <div class="settings-items-list">
             <!-- YouTube Account Row -->
-            <div class="youtube-vip-banner" id="youtubeLoginRow">
+            <div class="youtube-account-row" id="youtubeLoginRow">
               <div class="yt-account-info">
                 <div class="yt-icon-box">
                   <i class="fab fa-youtube"></i>
@@ -3061,14 +3045,8 @@ body.light-theme .youtube-vip-banner {
 
         <!-- Category 4: Performance & Speed (السرعة الفائقة والأداء) -->
         <div class="settings-card" data-category="performance">
-          <div class="settings-card-header">
-            <div class="card-icon" style="background: rgba(245, 158, 11, 0.12); color: #f59e0b;">
-              <i class="fas fa-bolt"></i>
-            </div>
-            <div>
-              <h3 class="card-title">السرعة والأداء والإشعارات</h3>
-              <p class="card-desc">تسريع النقل المتوازي، تسجيل البث، والتنبيهات</p>
-            </div>
+          <div class="settings-section-title" style="padding: 14px 20px 6px 20px; margin: 0;">
+            <i class="fas fa-bolt"></i> السرعة الفائقة والأداء
           </div>
 
           <div class="settings-items-list">
@@ -3113,7 +3091,7 @@ body.light-theme .youtube-vip-banner {
             <!-- Auto Update -->
             <div class="settings-row">
               <div class="row-info">
-                <div class="row-icon" style="color: #38bdf8; background: rgba(56, 189, 248, 0.12);">
+                <div class="row-icon" style="color: #06b6d4; background: rgba(6, 182, 212, 0.12);">
                   <i class="fas fa-sync-alt"></i>
                 </div>
                 <div class="row-texts">
@@ -3152,26 +3130,20 @@ body.light-theme .youtube-vip-banner {
 
         <!-- Category 5: System & Engine (معلومات النظام والمحرك) -->
         <div class="settings-card" data-category="system">
-          <div class="settings-card-header">
-            <div class="card-icon" style="background: rgba(99, 102, 241, 0.12); color: #6366f1;">
-              <i class="fas fa-server"></i>
-            </div>
-            <div>
-              <h3 class="card-title">حالة النظام ومحرّك التنزيل</h3>
-              <p class="card-desc">معلومات النسخة ومحرك الاستخراج والفحص اليدوي للتحديثات</p>
-            </div>
+          <div class="settings-section-title" style="padding: 14px 20px 6px 20px; margin: 0;">
+            <i class="fas fa-server"></i> حالة النظام ومحرّك التنزيل
           </div>
 
           <div class="system-hub-grid">
             <!-- App Version Tile -->
             <div class="system-tile">
               <div class="tile-info">
-                <div class="tile-icon-wrap" style="color:#38bdf8; background:rgba(56, 189, 248, 0.1);">
+                <div class="tile-icon-wrap" style="color:#38bdf8; background:rgba(56, 189, 248, 0.12);">
                   <i class="fas fa-cube"></i>
                 </div>
                 <div class="row-texts">
-                  <div class="tile-title">برنامج SDN Downloader</div>
-                  <div class="row-desc" id="settingsVersionTxt">SDN v1.0.30</div>
+                  <div class="tile-title">تطبيق SDN Downloader</div>
+                  <div class="row-desc" id="settingsVersionTxt">SDN v1.0.32</div>
                 </div>
               </div>
               <button class="system-btn primary-btn" id="checkUpdatesManualBtn">
@@ -3182,7 +3154,7 @@ body.light-theme .youtube-vip-banner {
             <!-- yt-dlp Engine Tile -->
             <div class="system-tile">
               <div class="tile-info">
-                <div class="tile-icon-wrap" style="color:#10b981; background:rgba(16, 185, 129, 0.1);">
+                <div class="tile-icon-wrap" style="color:#10b981; background:rgba(16, 185, 129, 0.12);">
                   <i class="fas fa-microchip"></i>
                 </div>
                 <div class="row-texts">
@@ -3853,6 +3825,7 @@ function filterSettingsCategory(category, button) {
   cards.forEach(card => {
     if (category === 'all' || card.getAttribute('data-category') === category) {
       card.style.display = 'flex';
+      card.style.flexDirection = 'column';
       card.style.animation = 'fadeInSettings 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards';
     } else {
       card.style.display = 'none';
@@ -4589,6 +4562,7 @@ function filterSettingsCategory(cat, btn) {
   cards.forEach(card => {
     if (cat === 'all' || card.dataset.category === cat) {
       card.style.display = 'flex';
+      card.style.flexDirection = 'column';
       card.style.animation = 'fadeInSettings 0.25s ease';
     } else {
       card.style.display = 'none';
@@ -4996,6 +4970,7 @@ function updateProgress(p) {
 
   if (p.status === 'downloading') {
     card.style.display = 'flex';
+      card.style.flexDirection = 'column';
     const pctVal = Math.round(p.percent || 0);
     if (fill) {
       fill.classList.remove('processing');
@@ -5016,6 +4991,7 @@ function updateProgress(p) {
 
   } else if (p.status === 'processing') {
     card.style.display = 'flex';
+      card.style.flexDirection = 'column';
     if (fill) {
       fill.classList.add('processing');
       fill.style.background = '';
@@ -5030,6 +5006,7 @@ function updateProgress(p) {
   } else if (p.status === 'complete') {
     setDownloadActive(false);
     card.style.display = 'flex';
+      card.style.flexDirection = 'column';
     if (fill) {
       fill.classList.remove('processing');
       fill.style.background = '';
@@ -5108,6 +5085,7 @@ function updateProgress(p) {
   } else if (p.status === 'cancelled') {
     setDownloadActive(false);
     card.style.display = 'flex';
+      card.style.flexDirection = 'column';
     if (fill) { fill.classList.remove('processing'); fill.style.width = '0%'; fill.style.background = ''; }
     if (pct) pct.innerText = '⏹️';
     if (stat) stat.innerText = p.error || 'تم إلغاء التنزيل';
@@ -5118,6 +5096,7 @@ function updateProgress(p) {
   } else if (p.status === 'error') {
     setDownloadActive(false);
     card.style.display = 'flex';
+      card.style.flexDirection = 'column';
     if (fill) { fill.classList.remove('processing'); fill.style.width = '100%'; fill.style.background = 'var(--red)'; }
     if (pct)  pct.innerText  = '❌';
     if (stat) stat.innerText = p.error || 'حدث خطأ أثناء التحميل';
@@ -5590,6 +5569,7 @@ document.getElementById('dlBtn').addEventListener('click', async () => {
 
   const card = document.getElementById('progCard');
   card.style.display = 'flex';
+      card.style.flexDirection = 'column';
   const fill = document.getElementById('progFill');
   if (fill) {
     fill.classList.remove('processing');
@@ -6073,7 +6053,7 @@ function incrementDlCounter() {
   num.style.animation = 'dlBadgeBump 0.35s ease';
 }
 
-let CURRENT_VERSION = '1.0.32';
+let CURRENT_VERSION = '1.0.33';
 let gLatestReleaseUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
 let gLatestReleasePage = gLatestReleaseUrl;
 let gLatestAssetUrl = '';
@@ -6428,6 +6408,7 @@ async function confirmResumePlaylist() {
 
   const card = document.getElementById('progCard');
   if (card) card.style.display = 'flex';
+      card.style.flexDirection = 'column';
   const stat = document.getElementById('progStatus');
   if (stat) stat.innerText = '🔄 جاري استئناف تنزيل المقاطع المتبقية...';
   setDownloadActive(true);
