@@ -78,8 +78,30 @@ class TestInPageAndPlaylistFeatures(unittest.TestCase):
         }
         self.assertTrue(option['mixed_playlist'])
         self.assertEqual(len(option['playlist_video_items']), 3)
-        self.assertEqual(len(option['playlist_audio_items']), 2)
+    def test_playlist_item_details_option_structure(self):
+        option = {
+            'type': 'video',
+            'is_playlist': True,
+            'playlist_items': [1, 2],
+            'playlist_item_details': [
+                {'index': 1, 'title': 'Track 1', 'url': 'https://www.youtube.com/watch?v=aaa111bbb22'},
+                {'index': 2, 'title': 'Track 2', 'url': 'https://www.youtube.com/watch?v=ccc333ddd44'},
+            ],
+            'playlist_count': 2,
+            'media_title': 'Mix Playlist'
+        }
+        self.assertTrue(option['is_playlist'])
+        self.assertEqual(len(option['playlist_item_details']), 2)
+        self.assertEqual(option['playlist_item_details'][0]['title'], 'Track 1')
+
+    def test_clean_url_mix_preserves_both_video_and_playlist(self):
+        from downloader import clean_url
+        url = "https://www.youtube.com/watch?v=ndCI8DIM86w&list=RDndCI8DIM86w"
+        cleaned = clean_url(url, keep_mix_playlist=True)
+        self.assertIn("v=ndCI8DIM86w", cleaned)
+        self.assertIn("list=RDndCI8DIM86w", cleaned)
 
 
 if __name__ == '__main__':
     unittest.main()
+

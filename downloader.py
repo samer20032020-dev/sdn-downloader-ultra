@@ -14,6 +14,7 @@ import sys
 import threading
 import time
 import urllib.parse
+import urllib.request
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -100,6 +101,108 @@ def extract_video_id_from_mix(playlist_id: str) -> str | None:
     if match:
         return match.group(1)
     return None
+
+
+def extract_youtube_mix(
+    video_id: str,
+    playlist_id: str,
+    proxy: str | None = None,
+) -> list[dict[str, Any]] | None:
+    """Extract tracks from YouTube mixes (RD...), radios, and playlist panels via Innertube next endpoint."""
+    v_id = (video_id or "").strip()
+    p_id = (playlist_id or "").strip()
+    if not v_id and p_id:
+        v_id = extract_video_id_from_mix(p_id) or ""
+    if not v_id and not p_id:
+        return None
+
+    api_url = "https://www.youtube.com/youtubei/v1/next"
+    payload: dict[str, Any] = {
+        "context": {
+            "client": {
+                "clientName": "WEB",
+                "clientVersion": "2.20240301.00.00",
+                "hl": "ar",
+                "gl": "US",
+            }
+        },
+    }
+    if v_id:
+        payload["videoId"] = v_id
+    if p_id:
+        payload["playlistId"] = p_id
+
+    req = urllib.request.Request(
+        api_url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/122.0.0.0 Safari/537.36"
+            ),
+        },
+    )
+
+    try:
+        opener = urllib.request.build_opener()
+        if proxy and proxy.strip():
+            opener.add_handler(urllib.request.ProxyHandler({"http": proxy.strip(), "https": proxy.strip()}))
+        with opener.open(req, timeout=12) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except Exception:
+        return None
+
+    def find_all(obj: Any, key: str) -> list[Any]:
+        results: list[Any] = []
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                if k == key:
+                    results.append(v)
+                results.extend(find_all(v, key))
+        elif isinstance(obj, list):
+            for it in obj:
+                results.extend(find_all(it, key))
+        return results
+
+    panels = find_all(data, "playlistPanelVideoRenderer")
+    if not panels:
+        return None
+
+    items: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    for idx, p in enumerate(panels, 1):
+        vid = p.get("videoId") or ""
+        if not vid or vid in seen_ids:
+            continue
+        seen_ids.add(vid)
+
+        title = p.get("title", {}).get("simpleText")
+        if not title:
+            runs = p.get("title", {}).get("runs") or []
+            title = "".join(r.get("text", "") for r in runs) or f"مقطع {idx}"
+
+        length = p.get("lengthText", {}).get("simpleText")
+        if not length:
+            runs = p.get("lengthText", {}).get("runs") or []
+            length = "".join(r.get("text", "") for r in runs) or ""
+
+        thumbs = p.get("thumbnail", {}).get("thumbnails") or []
+        thumb_url = thumbs[-1].get("url") if thumbs else f"https://i.ytimg.com/vi/{vid}/hqdefault.jpg"
+
+        items.append(
+            {
+                "index": len(items) + 1,
+                "title": title,
+                "url": f"https://www.youtube.com/watch?v={vid}",
+                "duration": length,
+                "thumbnail": thumb_url,
+                "selected": True,
+            }
+        )
+
+    return items if items else None
 
 
 def _find_youtube_video_fallback(url: str) -> str | None:
@@ -775,8 +878,9 @@ class MediaDownloader:
         )
         parsed_norm = urllib.parse.urlsplit(normalized)
         norm_query = urllib.parse.parse_qs(parsed_norm.query)
-        norm_list = (norm_query.get("list") or [""])[0].upper()
-        if norm_list.startswith(("RD", "UL", "PU")):
+        norm_list = (norm_query.get("list") or [""])[0].strip()
+        norm_vid = (norm_query.get("v") or [""])[0].strip() or extract_video_id_from_mix(norm_list) or ""
+        if norm_list.upper().startswith(("RD", "UL", "PU")):
             ydl_options["playlistend"] = 50
 
         _apply_cookies(ydl_options, browser_cookies)
@@ -820,6 +924,22 @@ class MediaDownloader:
                         pass
 
             if not info:
+                if norm_list:
+                    mix_items = extract_youtube_mix(norm_vid, norm_list, proxy=proxy)
+                    if mix_items:
+                        video_options, audio_options = build_download_options()
+                        return {
+                            "is_playlist": True,
+                            "title": f"قائمة تشغيل ({len(mix_items)} مقطع)",
+                            "uploader": "YouTube Mix",
+                            "thumbnail": mix_items[0].get("thumbnail") if mix_items else "",
+                            "entry_count": len(mix_items),
+                            "items": mix_items,
+                            "video_options": video_options,
+                            "audio_options": audio_options,
+                            "cleaned_url": normalized,
+                        }
+
                 if "unviewable" in str(exc).lower():
                     fallback_url = _find_youtube_video_fallback(url) or _find_youtube_video_fallback(normalized)
                     if fallback_url and fallback_url != normalized:
@@ -850,6 +970,21 @@ class MediaDownloader:
         video_options, audio_options = build_download_options()
         entries = info.get("entries")
         is_playlist = info.get("_type") in {"playlist", "multi_video"} or isinstance(entries, (list, tuple))
+
+        if not is_playlist and norm_list:
+            mix_items = extract_youtube_mix(norm_vid, norm_list, proxy=proxy)
+            if mix_items:
+                return {
+                    "is_playlist": True,
+                    "title": info.get("title") or f"قائمة تشغيل ({len(mix_items)} مقطع)",
+                    "uploader": info.get("uploader") or info.get("channel") or "YouTube",
+                    "thumbnail": info.get("thumbnail") or (mix_items[0].get("thumbnail") if mix_items else ""),
+                    "entry_count": len(mix_items),
+                    "items": mix_items,
+                    "video_options": video_options,
+                    "audio_options": audio_options,
+                    "cleaned_url": normalized,
+                }
 
         if is_playlist:
             items: list[dict[str, Any]] = []
