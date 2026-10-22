@@ -847,29 +847,498 @@ body.light-theme .input-field-wrap input { background: #fff; }
 }
 .playlist-item:hover, .playlist-item.playing { border-color: var(--primary); background: rgba(56, 189, 248, 0.08); }
 
-.settings-group { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
-.settings-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--card-border); }
+/* ==========================================================================
+   ULTRA-PREMIUM SETTINGS & PREFERENCES REDESIGN
+   ========================================================================== */
+
+.settings-panel {
+  display: none;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  animation: fadeInSettings 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.settings-panel.active {
+  display: flex;
+}
+
+@keyframes fadeInSettings {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Settings Hero Header ── */
+.settings-hero {
+  position: relative;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.75) 0%, rgba(15, 23, 42, 0.9) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 22px;
+  padding: 20px;
+  overflow: hidden;
+  box-shadow: 0 16px 36px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+body.light-theme .settings-hero {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(241, 245, 249, 0.95) 100%);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 16px 36px -12px rgba(15, 23, 42, 0.07), inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+.settings-hero-bg {
+  position: absolute;
+  top: -50px;
+  left: -50px;
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.22) 0%, rgba(99, 102, 241, 0.12) 50%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(35px);
+}
+
+.settings-hero-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+  z-index: 2;
+}
+
+.settings-hero-icon-box {
+  width: 52px;
+  height: 52px;
+  border-radius: 17px;
+  background: linear-gradient(135deg, #0284c7, #6366f1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 1.45rem;
+  box-shadow: 0 8px 20px rgba(2, 132, 199, 0.35);
+  flex-shrink: 0;
+  position: relative;
+}
+
+.settings-hero-pulse {
+  position: absolute;
+  inset: -3px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.5), rgba(99, 102, 241, 0.5));
+  opacity: 0.3;
+  z-index: -1;
+  animation: heroPulse 3s ease-in-out infinite alternate;
+}
+@keyframes heroPulse {
+  0% { transform: scale(1); opacity: 0.2; }
+  100% { transform: scale(1.08); opacity: 0.5; }
+}
+
+.settings-hero-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.settings-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--primary);
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  padding: 2px 9px;
+  border-radius: 20px;
+  width: fit-content;
+}
+
+.pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 8px var(--primary);
+  animation: dotBlink 1.6s infinite ease-in-out;
+}
+@keyframes dotBlink {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.settings-hero-title {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: var(--text-main);
+  letter-spacing: -0.3px;
+  margin: 0;
+}
+
+.settings-hero-subtitle {
+  font-size: 0.77rem;
+  color: var(--text-sub);
+  margin: 0;
+  line-height: 1.35;
+}
+
+/* ── Hero Stats Row ── */
+.settings-stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  position: relative;
+  z-index: 2;
+}
+body.light-theme .settings-stats-row {
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+@media (max-width: 520px) {
+  .settings-stats-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.settings-stat-chip {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+body.light-theme .settings-stat-chip {
+  background: rgba(15, 23, 42, 0.03);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+.settings-stat-chip:hover {
+  background: rgba(255, 255, 255, 0.07);
+  transform: translateY(-1px);
+}
+.settings-stat-chip i {
+  font-size: 1.05rem;
+}
+.stat-chip-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.stat-chip-label {
+  font-size: 0.65rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+.stat-chip-val {
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Category Filter Bar ── */
+.settings-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow-x: auto;
+  padding: 2px 2px 6px 2px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.settings-filter-bar::-webkit-scrollbar { display: none; }
+
+.settings-filter-pill {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  color: var(--text-sub);
+  border-radius: 11px;
+  padding: 7px 13px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: inherit;
+}
+.settings-filter-pill:hover {
+  color: var(--text-main);
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.07);
+}
+body.light-theme .settings-filter-pill:hover {
+  background: rgba(15, 23, 42, 0.05);
+  border-color: rgba(15, 23, 42, 0.15);
+}
+.settings-filter-pill.active {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.16), rgba(99, 102, 241, 0.16));
+  color: var(--primary);
+  border-color: rgba(56, 189, 248, 0.35);
+  box-shadow: 0 4px 14px var(--primary-glow);
+}
+
+/* ── Cards Grid ── */
+.settings-cards-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+/* ── Individual Settings Card (replaces plain settings-group) ── */
+.settings-card {
+  background: linear-gradient(145deg, rgba(20, 27, 45, 0.72), rgba(15, 23, 42, 0.85));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 10px 28px -10px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  transition: border-color 0.25s, box-shadow 0.25s, transform 0.2s;
+}
+body.light-theme .settings-card {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.9));
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 10px 28px -10px rgba(15, 23, 42, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.settings-card:hover {
+  border-color: rgba(255, 255, 255, 0.13);
+  box-shadow: 0 14px 34px -10px rgba(0, 0, 0, 0.5);
+}
+body.light-theme .settings-card:hover {
+  border-color: rgba(15, 23, 42, 0.14);
+}
+
+.settings-card.featured-card {
+  border-color: rgba(239, 68, 68, 0.28);
+  box-shadow: 0 10px 32px -10px rgba(239, 68, 68, 0.15);
+}
+
+/* Backwards compatibility helper */
+.settings-group {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 18px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Card Header ── */
+.settings-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+body.light-theme .settings-card-header {
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.card-header-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.card-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.card-title {
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.2px;
+  margin: 0;
+}
+
+.card-pill {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-sub);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+body.light-theme .card-pill {
+  background: rgba(15, 23, 42, 0.05);
+  border-color: rgba(15, 23, 42, 0.08);
+}
+.card-pill.badge-yt {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.card-desc {
+  font-size: 0.74rem;
+  color: var(--muted);
+  line-height: 1.35;
+  margin: 0;
+}
+
+/* ── Items List ── */
+.settings-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Setting Item Row (replaces plain settings-item) ── */
+.settings-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+body.light-theme .settings-item-row {
+  background: rgba(15, 23, 42, 0.02);
+  border: 1px solid rgba(15, 23, 42, 0.04);
+}
+.settings-item-row:hover {
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(255, 255, 255, 0.09);
+  transform: translateX(-3px);
+}
+body.light-theme .settings-item-row:hover {
+  background: rgba(15, 23, 42, 0.04);
+  border-color: rgba(15, 23, 42, 0.09);
+}
+
+.settings-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--card-border);
+}
 .settings-item:last-child { border-bottom: none; }
 .settings-label { display: flex; flex-direction: column; gap: 2px; }
 .settings-title { font-weight: 700; font-size: 0.92rem; color: var(--text-main); }
 .settings-desc { font-size: 0.78rem; color: var(--text-sub); }
 
-/* Toggle Switch Control */
+.item-icon-box {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.item-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.item-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-sub);
+}
+.item-badge.badge-blue { background: rgba(56, 189, 248, 0.12); color: #38bdf8; }
+.item-badge.badge-green { background: rgba(16, 185, 129, 0.12); color: #10b981; }
+.item-badge.badge-purple { background: rgba(139, 92, 246, 0.12); color: #8b5cf6; }
+.item-badge.badge-pink { background: rgba(236, 72, 153, 0.12); color: #ec4899; }
+.item-badge.badge-amber { background: rgba(245, 158, 11, 0.12); color: #f59e0b; }
+.item-badge.badge-red { background: rgba(239, 68, 68, 0.12); color: #ef4444; }
+.item-badge.badge-indigo { background: rgba(99, 102, 241, 0.12); color: #818cf8; }
+
+.settings-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* ── Toggle Switch Control ── */
 .toggle-switch {
-  position: relative; width: 46px; height: 26px; display: inline-block; flex-shrink: 0;
+  position: relative;
+  width: 48px;
+  height: 28px;
+  display: inline-block;
+  flex-shrink: 0;
 }
 .toggle-switch input { opacity: 0; width: 0; height: 0; }
 .slider {
-  position: absolute; cursor: pointer; inset: 0; background-color: rgba(255,255,255,0.15);
-  border-radius: 30px; transition: .3s; border: 1px solid var(--card-border);
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: rgba(255, 255, 255, 0.14);
+  border-radius: 30px;
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid var(--card-border);
+}
+body.light-theme .slider {
+  background-color: rgba(15, 23, 42, 0.12);
+  border-color: rgba(15, 23, 42, 0.1);
 }
 .slider:before {
-  position: absolute; content: ""; height: 20px; width: 20px; left: 2px; bottom: 2px;
-  background-color: white; border-radius: 50%; transition: .3s;
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background-color: #ffffff;
+  border-radius: 50%;
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
 }
-input:checked + .slider { background-color: var(--primary); }
-input:checked + .slider:before { transform: translateX(20px); }
+input:checked + .slider {
+  background: linear-gradient(135deg, #0284c7, #38bdf8);
+  border-color: rgba(56, 189, 248, 0.5);
+  box-shadow: 0 0 12px var(--primary-glow);
+}
+input:checked + .slider:before {
+  transform: translateX(20px);
+}
 
+/* ── Select Dropdowns ── */
 select, .select-dropdown {
   color-scheme: dark;
   background: #0f172a !important;
@@ -904,6 +1373,399 @@ body.light-theme select, body.light-theme .select-dropdown {
 body.light-theme select option, body.light-theme .select-dropdown option {
   background-color: #ffffff !important;
   color: #0f172a !important;
+}
+
+.custom-select-wrap {
+  position: relative;
+  display: inline-block;
+}
+.custom-select-wrap select {
+  padding-left: 32px !important;
+  padding-right: 14px !important;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+.select-chevron {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: 0.72rem;
+  color: var(--text-sub);
+  transition: transform 0.2s;
+}
+
+/* ── Storage Path Box ── */
+.storage-path-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 9px;
+  padding: 4px 10px;
+  margin-top: 4px;
+  max-width: fit-content;
+}
+body.light-theme .storage-path-box {
+  background: rgba(15, 23, 42, 0.04);
+  border-color: rgba(15, 23, 42, 0.07);
+}
+.path-box-icon {
+  font-size: 0.75rem;
+  color: #10b981;
+}
+.path-text {
+  font-family: 'Outfit', monospace;
+  font-size: 0.76rem !important;
+  font-weight: 600;
+  direction: ltr;
+  text-align: left;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Settings Action Buttons ── */
+.settings-action-btn {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-main);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 7px 14px;
+  border-radius: 11px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: inherit;
+}
+.settings-action-btn:hover {
+  transform: translateY(-1px);
+}
+.settings-action-btn.primary-glow-btn {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.15), rgba(99, 102, 241, 0.2));
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.35);
+  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.18);
+}
+.settings-action-btn.primary-glow-btn:hover {
+  background: #38bdf8;
+  color: #070a14;
+  box-shadow: 0 6px 18px var(--primary-glow);
+}
+.settings-action-btn.amber-btn {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+.settings-action-btn.amber-btn:hover {
+  background: #f59e0b;
+  color: #070a14;
+}
+
+/* ── YouTube VIP Banner ── */
+.youtube-vip-banner {
+  position: relative;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(185, 28, 28, 0.15) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 16px;
+  padding: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px -6px rgba(239, 68, 68, 0.2);
+}
+.yt-banner-glow {
+  position: absolute;
+  top: -20px;
+  left: -20px;
+  width: 120px;
+  height: 120px;
+  background: radial-gradient(circle, rgba(239, 68, 68, 0.25) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(20px);
+}
+.yt-banner-body {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+  z-index: 2;
+}
+@media (max-width: 600px) {
+  .yt-banner-body {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+.yt-icon-container {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.4);
+}
+.yt-big-icon {
+  font-size: 1.5rem;
+}
+.yt-live-pulse {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #22c55e;
+  border: 2px solid #070a14;
+  box-shadow: 0 0 8px #22c55e;
+  display: none;
+}
+.yt-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+.yt-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.yt-header-title {
+  font-size: 0.94rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+.yt-status-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 9px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+}
+.yt-desc-text {
+  font-size: 0.76rem;
+  color: var(--text-sub);
+  line-height: 1.35;
+}
+.yt-perks-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.yt-perk-chip {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.22);
+  border-radius: 6px;
+  padding: 2px 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.yt-buttons-area {
+  flex-shrink: 0;
+}
+.yt-login-btn {
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.35);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: inherit;
+}
+.yt-login-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.5);
+}
+.yt-logout-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.yt-logout-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+/* ── Proxy Input ── */
+.proxy-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.proxy-prefix-icon {
+  position: absolute;
+  right: 12px;
+  color: var(--text-sub);
+  font-size: 0.78rem;
+  pointer-events: none;
+}
+.custom-proxy-input {
+  width: 175px;
+  padding: 8px 32px 8px 12px !important;
+  border-radius: 11px !important;
+  border: 1px solid var(--card-border) !important;
+  background: var(--input-bg, rgba(15, 23, 42, 0.6)) !important;
+  color: var(--text-main) !important;
+  font-family: 'Outfit', monospace !important;
+  font-size: 0.78rem !important;
+  transition: all 0.2s ease;
+  outline: none;
+}
+.custom-proxy-input:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 14px var(--primary-glow) !important;
+}
+
+/* ── System Hub Cards ── */
+.system-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+@media (max-width: 580px) {
+  .system-hub-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.system-tile {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  transition: all 0.2s ease;
+}
+body.light-theme .system-tile {
+  background: rgba(15, 23, 42, 0.02);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+.system-tile:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+}
+.system-tile-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tile-icon-wrap {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+.tile-title-box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+.tile-title {
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tile-action-wrap {
+  display: flex;
+  justify-content: flex-end;
+}
+.system-btn {
+  padding: 7px 13px;
+  border-radius: 9px;
+  font-size: 0.77rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.system-btn:hover {
+  transform: translateY(-1px);
+}
+.system-btn.primary-btn {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.18), rgba(99, 102, 241, 0.22));
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+}
+.system-btn.primary-btn:hover {
+  background: #38bdf8;
+  color: #070a14;
+  box-shadow: 0 4px 14px var(--primary-glow);
+}
+.system-btn.emerald-btn {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(5, 150, 105, 0.22));
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+.system-btn.emerald-btn:hover {
+  background: #10b981;
+  color: #070a14;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+}
+
+.settings-system-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.72rem;
+  color: var(--muted);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 /* Ultra-Clean, Soft, Minimalist Downloader Hub */
@@ -1949,7 +2811,7 @@ body.light-theme select option, body.light-theme .select-dropdown option {
       <!-- Update Header Button -->
       <button id="headerUpdateBtn" onclick="onHeaderUpdateClick()" class="update-header-btn" title="فحص التحديثات" style="display:none;">
         <i class="fas fa-cog" id="updateHeaderIcon"></i>
-        <span id="updateHeaderTxt">v1.0.27</span>
+        <span id="updateHeaderTxt">v1.0.28</span>
       </button>
     </div>
   </header>
@@ -1965,7 +2827,7 @@ body.light-theme select option, body.light-theme .select-dropdown option {
       <div style="display:flex; flex-direction:column; align-items:center; text-align:center; padding-top:16px; gap:8px;">
         <div class="clean-hero-badge">
           <span class="clean-hero-dot"></span>
-          <span>الإصدار 1.0.27 — تنزيل فائق السرعة وبدون إعلانات</span>
+          <span>الإصدار 1.0.28 — تنزيل فائق السرعة وبدون إعلانات</span>
         </div>
         <h1 class="clean-hero-title">نزّل الفيديوهات والموسيقى بأعلى جودة</h1>
         <p class="clean-hero-sub">ضع رابط أي فيديو من YouTube أو TikTok أو Instagram أو Facebook للتحميل الفوري</p>
@@ -2152,211 +3014,520 @@ body.light-theme select option, body.light-theme .select-dropdown option {
     <!-- TAB 3: SETTINGS (الإعدادات الشاملة) -->
     <div id="settingsPage" style="display:contents;">
     <div id="viewSettings" class="settings-panel">
-      <h3 style="font-size:1.1rem; font-weight:800; margin-bottom:6px;">⚙️ الإعدادات المتقدمة</h3>
-
-      <!-- Group 1: Appearance & Theme -->
-      <div class="settings-group">
-        <div style="font-size:0.82rem; font-weight:800; color:var(--primary);">🎨 المظهر والواجهة</div>
-        
-        <div class="settings-item">
-          <div class="settings-label">
-            <span class="settings-title">الـثـيـم (داكن / فاتح)</span>
-            <span class="settings-desc">التبديل بين الثيم المظلم والنظيف الفاتح</span>
+      <!-- Premium Hero Header -->
+      <div class="settings-hero">
+        <div class="settings-hero-bg"></div>
+        <div class="settings-hero-content">
+          <div class="settings-hero-icon-box">
+            <i class="fas fa-sliders-h"></i>
+            <span class="settings-hero-pulse"></span>
           </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="themeToggle">
-            <span class="slider"></span>
-          </label>
-        </div>
-
-        <div class="settings-item">
-          <div class="settings-label">
-            <span class="settings-title">جودة التنزيل الافتراضية</span>
-            <span class="settings-desc">تحديد الجودة المفضل تحديدها تلقائياً</span>
-          </div>
-          <select class="select-dropdown" id="defaultQualitySelect">
-            <option value="best">أفضل جودة متاحة (Best)</option>
-            <option value="2160">4K Ultra HD (2160p)</option>
-            <option value="1080">1080p (Full HD)</option>
-            <option value="720" selected>720p (HD)</option>
-            <option value="480">480p (SD)</option>
-            <option value="360">360p</option>
-            <option value="mp3">صوت MP3 فقط</option>
-          </select>
-        </div>
-
-        <div class="settings-item">
-          <div class="settings-label">
-            <span class="settings-title">تحديد سرعة التحميل</span>
-            <span class="settings-desc">الحد الأقصى لسرعة التنزيل أو أقصى سرعة</span>
-          </div>
-          <select class="select-dropdown" id="speedLimitSelect">
-            <option value="0" selected>أقصى سرعة (بلا قيود)</option>
-            <option value="500">500 KB/s</option>
-            <option value="1000">1 MB/s</option>
-            <option value="2000">2 MB/s</option>
-            <option value="5000">5 MB/s</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Group 2: Storage & Files -->
-      <div class="settings-group">
-        <div style="font-size:0.82rem; font-weight:800; color:var(--primary);">📁 التخزين والحفظ</div>
-        
-        <div class="settings-item">
-          <div class="settings-label">
-            <span class="settings-title">مجلد حفظ التحميلات</span>
-            <span class="settings-desc" id="savePathTxt">Downloads</span>
-          </div>
-          <button class="header-btn" id="changeFolderBtn" style="width:auto; padding:0 12px; font-size:0.8rem;">تغيير 🗂</button>
-        </div>
-
-        <div class="settings-item">
-          <div class="settings-label">
-            <span class="settings-title">لصق الحافظة التلقائي</span>
-            <span class="settings-desc">قراءة وجلب الرابط التلقائي من الحافظة عند الفتح</span>
-          </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="autoPasteToggle" checked>
-            <span class="slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <!-- Group: Access (Cookies & Proxy) -->
-      <div class="settings-group">
-        <div style="font-size:0.82rem; font-weight:800; color:var(--primary);">🔑 الوصول والمحتوى الخاص</div>
-
-        <!-- YouTube Account Login Card -->
-        <div class="settings-item" id="youtubeLoginRow" style="background: rgba(255, 0, 0, 0.08); border: 1px solid rgba(255, 0, 0, 0.22); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; display:flex; justify-content:space-between; align-items:center;">
-          <div class="settings-label" style="flex:1;">
-            <div style="display:flex; align-items:center; gap:8px;">
-              <i class="fab fa-youtube" style="color:#ff334b; font-size:1.3rem;"></i>
-              <span class="settings-title" style="font-weight:700;">تسجيل الدخول إلى YouTube</span>
-              <span id="youtubeBadge" style="font-size:0.72rem; padding:2px 8px; border-radius:20px; background:rgba(255,255,255,0.1); color:var(--text-muted); font-weight:600;">غير متصل</span>
+          <div class="settings-hero-text">
+            <div class="settings-hero-badge">
+              <span class="pulse-dot"></span>
+              <span>مركز التحكم والتفضيلات</span>
             </div>
-            <span class="settings-desc" id="youtubeLoginStatus" style="margin-top:4px;">
-              يتيح تنزيل قائمة المشاهدة لاحقاً، المحتوى المقيد عمرياً (18+)، والفيديوهات الخاصة بحسابك مباشرة.
-            </span>
-          </div>
-          <div style="display:flex; gap:8px; align-items:center;">
-            <button class="header-btn" id="youtubeLoginBtn" style="width:auto; padding:6px 14px; font-size:0.8rem; background:linear-gradient(135deg, #e50914, #ff334b); color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer;">
-              <i class="fas fa-sign-in-alt"></i> تسجيل الدخول
-            </button>
-            <button class="header-btn" id="youtubeLogoutBtn" style="display:none; width:auto; padding:6px 12px; font-size:0.8rem; background:rgba(255,255,255,0.08); color:var(--text-muted); border:1px solid var(--border); border-radius:8px; font-weight:600; cursor:pointer;">
-              خروج
-            </button>
+            <h2 class="settings-hero-title">إعدادات النظام والتنزيل</h2>
+            <p class="settings-hero-subtitle">تخصيص سلوك البرنامج، دقة الوسائط، محرك التحميل وتكامل الحسابات</p>
           </div>
         </div>
 
-        <div class="settings-item">
-          <div class="settings-label">
-            <span class="settings-title">مصدر الكوكيز (Cookies)</span>
-            <span class="settings-desc" id="cookieSourceDesc">للمحتوى الخاص أو الذي يتطلب تسجيل دخول</span>
+        <!-- Quick Stats Bar in Settings Header -->
+        <div class="settings-stats-row">
+          <div class="settings-stat-chip">
+            <i class="fas fa-bolt" style="color: #f59e0b;"></i>
+            <div class="stat-chip-info">
+              <span class="stat-chip-label">وضع التحميل</span>
+              <span class="stat-chip-val" id="statTurboBadge">توربو فائق السرعة</span>
+            </div>
           </div>
-          <select class="select-dropdown" id="cookieSourceSelect">
-            <option value="auto" selected>تلقائي (حساب YouTube إن وجد أو بدون كوكيز)</option>
-            <option value="none">بدون كوكيز (تنزيل عام بلا كوكيز)</option>
-            <option value="youtube_login" id="youtubeLoginOption">حساب YouTube المسجل</option>
-            <option value="chrome">Google Chrome</option>
-            <option value="edge">Microsoft Edge</option>
-            <option value="brave">Brave</option>
-            <option value="firefox">Mozilla Firefox</option>
-            <option value="opera">Opera</option>
-            <option value="vivaldi">Vivaldi</option>
-            <option value="chromium">Chromium</option>
-            <option value="file">ملف كوكيز (cookies.txt)</option>
-          </select>
-        </div>
-
-        <div class="settings-item" id="cookieFileRow" style="display:none;">
-          <div class="settings-label">
-            <span class="settings-title">ملف الكوكيز المحدد</span>
-            <span class="settings-desc" id="cookieFileTxt">لم يتم اختيار ملف</span>
+          <div class="settings-stat-chip">
+            <i class="fas fa-microchip" style="color: #10b981;"></i>
+            <div class="stat-chip-info">
+              <span class="stat-chip-label">محرك الاستخراج</span>
+              <span class="stat-chip-val" id="statEngineBadge">yt-dlp Core</span>
+            </div>
           </div>
-          <button class="header-btn" id="pickCookieFileBtn" style="width:auto; padding:0 12px; font-size:0.8rem;">اختيار 📄</button>
-        </div>
-
-        <div class="settings-item">
-          <div class="settings-label">
-            <span class="settings-title">البروكسي (اختياري)</span>
-            <span class="settings-desc">مثال: http://127.0.0.1:8080 أو socks5://127.0.0.1:1080</span>
+          <div class="settings-stat-chip">
+            <i class="fab fa-youtube" style="color: #ef4444;"></i>
+            <div class="stat-chip-info">
+              <span class="stat-chip-label">حساب YouTube</span>
+              <span class="stat-chip-val" id="statYoutubeStatus">غير متصل</span>
+            </div>
           </div>
-          <input type="text" id="proxyInp" dir="ltr" placeholder="http://host:port"
-            style="width:170px; padding:8px 10px; border-radius:10px; border:1px solid var(--border); background:var(--input-bg); color:var(--text); font-size:0.78rem;">
         </div>
       </div>
 
-      <!-- Group 3: Updates & Notifications -->
-      <div class="settings-group">
-        <div style="font-size:0.82rem; font-weight:800; color:var(--primary);">🚀 التحديثات والإشعارات</div>
-        
-        <div class="settings-item">
-          <div class="settings-label">
-            <span class="settings-title">🎯 السماح بتنزيل البث المباشر</span>
-            <span class="settings-desc">تسجيل البث المباشر من بدايته عند توفره بدل رفض الرابط</span>
-          </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="smartLiveDetectToggle" checked>
-            <span class="slider"></span>
-          </label>
-        </div>
-
-        <div class="settings-item">
-          <div class="settings-label">
-            <span class="settings-title">⚡ وضع السرعة الفائقة (Turbo)</span>
-            <span class="settings-desc">تنزيل أجزاء الملف بالتوازي لتسريع التحميل (استهلاك شبكة أعلى)</span>
-          </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="turboModeToggle" checked>
-            <span class="slider"></span>
-          </label>
-        </div>
-
-        <div class="settings-item">
-          <div class="settings-label">
-            <span class="settings-title">التحديث التلقائي</span>
-            <span class="settings-desc">إشعار بالنسخ الجديدة المتاحة تلقائياً</span>
-          </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="autoUpdateToggle" checked>
-            <span class="slider"></span>
-          </label>
-        </div>
-
-        <div class="settings-item">
-          <div class="settings-label">
-            <span class="settings-title">اهتزاز وتنبيه الاكتمال</span>
-            <span class="settings-desc">تنبيه بالاهتزاز عند اكتمال التنزيل (بدون رنين صوتي)</span>
-          </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="soundToggle">
-            <span class="slider"></span>
-          </label>
-        </div>
+      <!-- Interactive Category Filter Chips -->
+      <div class="settings-filter-bar">
+        <button class="settings-filter-pill active" onclick="filterSettingsCategory('all', this)">
+          <i class="fas fa-layer-group"></i> <span>الكل</span>
+        </button>
+        <button class="settings-filter-pill" onclick="filterSettingsCategory('appearance', this)">
+          <i class="fas fa-palette"></i> <span>المظهر والتحميل</span>
+        </button>
+        <button class="settings-filter-pill" onclick="filterSettingsCategory('storage', this)">
+          <i class="fas fa-folder-open"></i> <span>التخزين والحفظ</span>
+        </button>
+        <button class="settings-filter-pill" onclick="filterSettingsCategory('accounts', this)">
+          <i class="fas fa-key"></i> <span>الحسابات والكوكيز</span>
+        </button>
+        <button class="settings-filter-pill" onclick="filterSettingsCategory('performance', this)">
+          <i class="fas fa-tachometer-alt"></i> <span>السرعة والإشعارات</span>
+        </button>
+        <button class="settings-filter-pill" onclick="filterSettingsCategory('system', this)">
+          <i class="fas fa-info-circle"></i> <span>حول وتحديثات</span>
+        </button>
       </div>
 
-      <!-- Group 4: App Info & Utilities -->
-      <div class="settings-group">
-        <div style="font-size:0.82rem; font-weight:800; color:var(--primary);">ℹ️ معلومات البرنامج</div>
-        
-        <div class="settings-item">
-          <div class="settings-label">
-            <span class="settings-title">إصدار التطبيق الحالي</span>
-            <span class="settings-desc" id="settingsVersionTxt">SDN v1.0.27</span>
+      <!-- Container for all cards -->
+      <div class="settings-cards-grid">
+        <!-- Category 1: Appearance & Quality (المظهر وجودة التنزيل) -->
+        <div class="settings-card" data-category="appearance">
+          <div class="settings-card-header">
+            <div class="card-header-icon" style="background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(99, 102, 241, 0.25)); color: #38bdf8;">
+              <i class="fas fa-palette"></i>
+            </div>
+            <div class="card-header-text">
+              <div class="card-title-row">
+                <h3 class="card-title">المظهر والواجهة الافتراضية</h3>
+                <span class="card-pill">تخصيص الواجهة</span>
+              </div>
+              <p class="card-desc">التحكم في سمة العرض وجودة الوسائط وتحديد سرعة التنزيل القصوى</p>
+            </div>
           </div>
-          <button class="header-btn" id="checkUpdatesManualBtn" style="width:auto; padding:0 10px; font-size:0.78rem; color:var(--primary);">فحص التحديثات</button>
+
+          <div class="settings-items-list">
+            <!-- Item 1: Theme -->
+            <div class="settings-item-row">
+              <div class="item-icon-box" style="color: #f59e0b; background: rgba(245, 158, 11, 0.12);">
+                <i class="fas fa-moon" id="themeIcon"></i>
+              </div>
+              <div class="settings-label">
+                <div class="item-title-row">
+                  <span class="settings-title">الـثـيـم (داكن / فاتح)</span>
+                  <span class="item-badge" id="themeBadgeText">ليلي فاخر</span>
+                </div>
+                <span class="settings-desc">التبديل الفوري بين الوضع الليلي المظلم والثيم الأبيض النظيف</span>
+              </div>
+              <div class="settings-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="themeToggle">
+                  <span class="slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Item 2: Default Quality -->
+            <div class="settings-item-row">
+              <div class="item-icon-box" style="color: #38bdf8; background: rgba(56, 189, 248, 0.12);">
+                <i class="fas fa-photo-video"></i>
+              </div>
+              <div class="settings-label">
+                <div class="item-title-row">
+                  <span class="settings-title">جودة التنزيل الافتراضية</span>
+                  <span class="item-badge badge-blue">دقة الفيديو</span>
+                </div>
+                <span class="settings-desc">تحديد الجودة المفضلة تلقائياً عند لصق أو اختيار أي رابط فيديو</span>
+              </div>
+              <div class="settings-control">
+                <div class="custom-select-wrap">
+                  <select class="select-dropdown" id="defaultQualitySelect">
+                    <option value="best">👑 أفضل جودة متاحة (Best)</option>
+                    <option value="2160">🌟 4K Ultra HD (2160p)</option>
+                    <option value="1080">🎬 1080p (Full HD)</option>
+                    <option value="720" selected>⚡ 720p (HD)</option>
+                    <option value="480">📱 480p (SD)</option>
+                    <option value="360">📉 360p (خفيف)</option>
+                    <option value="mp3">🎵 صوت MP3 فقط</option>
+                  </select>
+                  <i class="fas fa-chevron-down select-chevron"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- Item 3: Speed Limit -->
+            <div class="settings-item-row">
+              <div class="item-icon-box" style="color: #10b981; background: rgba(16, 185, 129, 0.12);">
+                <i class="fas fa-tachometer-alt"></i>
+              </div>
+              <div class="settings-label">
+                <div class="item-title-row">
+                  <span class="settings-title">تحديد سرعة التحميل</span>
+                  <span class="item-badge badge-green">معدل الباندويث</span>
+                </div>
+                <span class="settings-desc">ضبط الحد الأقصى لسرعة النقل لتجنب استهلاك كامل سرعة الراوتر</span>
+              </div>
+              <div class="settings-control">
+                <div class="custom-select-wrap">
+                  <select class="select-dropdown" id="speedLimitSelect">
+                    <option value="0" selected>🚀 أقصى سرعة (بلا قيود)</option>
+                    <option value="500">🐢 500 KB/s</option>
+                    <option value="1000">⚡ 1 MB/s</option>
+                    <option value="2000">🔥 2 MB/s</option>
+                    <option value="5000">💨 5 MB/s</option>
+                  </select>
+                  <i class="fas fa-chevron-down select-chevron"></i>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div class="settings-item">
-          <div class="settings-label">
-            <span class="settings-title">محرّك الاستخراج (yt-dlp)</span>
-            <span class="settings-desc" id="engineVersionTxt">الإصدار: غير معروف</span>
+        <!-- Category 2: Storage & Files (التخزين والحفظ) -->
+        <div class="settings-card" data-category="storage">
+          <div class="settings-card-header">
+            <div class="card-header-icon" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.25)); color: #10b981;">
+              <i class="fas fa-hdd"></i>
+            </div>
+            <div class="card-header-text">
+              <div class="card-title-row">
+                <h3 class="card-title">التخزين والملفات والحافظة</h3>
+                <span class="card-pill">إدارة المسارات</span>
+              </div>
+              <p class="card-desc">تحديد مسار حفظ التنزيلات وسلوك جلب الروابط التلقائي من الحافظة</p>
+            </div>
           </div>
-          <button class="header-btn" id="updateEngineBtn" style="width:auto; padding:0 10px; font-size:0.78rem; color:var(--primary);">تحديث المحرّك</button>
+
+          <div class="settings-items-list">
+            <!-- Item 1: Save Path -->
+            <div class="settings-item-row">
+              <div class="item-icon-box" style="color: #10b981; background: rgba(16, 185, 129, 0.12);">
+                <i class="fas fa-folder"></i>
+              </div>
+              <div class="settings-label" style="flex:1;">
+                <div class="item-title-row">
+                  <span class="settings-title">مجلد حفظ التحميلات</span>
+                  <span class="item-badge badge-green">المسار النشط</span>
+                </div>
+                <div class="storage-path-box">
+                  <i class="fas fa-folder-open path-box-icon"></i>
+                  <span class="settings-desc path-text" id="savePathTxt">Downloads</span>
+                </div>
+              </div>
+              <div class="settings-control">
+                <button class="settings-action-btn primary-glow-btn" id="changeFolderBtn">
+                  <i class="fas fa-folder-plus"></i>
+                  <span>تغيير المجلد</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Item 2: Auto Paste -->
+            <div class="settings-item-row">
+              <div class="item-icon-box" style="color: #8b5cf6; background: rgba(139, 92, 246, 0.12);">
+                <i class="fas fa-paste"></i>
+              </div>
+              <div class="settings-label">
+                <div class="item-title-row">
+                  <span class="settings-title">لصق الحافظة التلقائي</span>
+                  <span class="item-badge badge-purple">ذكي وسريع</span>
+                </div>
+                <span class="settings-desc">قراءة الروابط المنسوخة تلقائياً وفحصها فور فتح أو تنشيط التطبيق</span>
+              </div>
+              <div class="settings-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="autoPasteToggle" checked>
+                  <span class="slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
         </div>
-    </div><!-- End settings-group group 4 -->
+
+        <!-- Category 3: Accounts & Cookies (الوصول والمحتوى الخاص) -->
+        <div class="settings-card featured-card" data-category="accounts">
+          <div class="settings-card-header">
+            <div class="card-header-icon" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(220, 38, 38, 0.35)); color: #ef4444;">
+              <i class="fab fa-youtube"></i>
+            </div>
+            <div class="card-header-text">
+              <div class="card-title-row">
+                <h3 class="card-title">تكامل الحسابات والكوكيز</h3>
+                <span class="card-pill badge-yt">VIP Access</span>
+              </div>
+              <p class="card-desc">تخطي القيود العمرية (18+)، تنزيل المشاهدة لاحقاً، والبروكسي</p>
+            </div>
+          </div>
+
+          <div class="settings-items-list">
+            <!-- YouTube VIP Login Master Row -->
+            <div class="youtube-vip-banner" id="youtubeLoginRow">
+              <div class="yt-banner-glow"></div>
+              <div class="yt-banner-body">
+                <div class="yt-icon-container">
+                  <i class="fab fa-youtube yt-big-icon"></i>
+                  <div class="yt-live-pulse" id="ytPulseDot"></div>
+                </div>
+                <div class="yt-details">
+                  <div class="yt-title-row">
+                    <span class="settings-title yt-header-title">تسجيل الدخول إلى حساب YouTube</span>
+                    <span id="youtubeBadge" class="yt-status-badge">غير متصل</span>
+                  </div>
+                  <span class="settings-desc yt-desc-text" id="youtubeLoginStatus">
+                    يتيح تنزيل قائمة المشاهدة لاحقاً، المحتوى المقيد عمرياً (18+)، والفيديوهات الخاصة بحسابك مباشرة.
+                  </span>
+                  <div class="yt-perks-row">
+                    <span class="yt-perk-chip"><i class="fas fa-check-circle"></i> تخطي قيود السن</span>
+                    <span class="yt-perk-chip"><i class="fas fa-check-circle"></i> المشاهدة لاحقاً</span>
+                    <span class="yt-perk-chip"><i class="fas fa-check-circle"></i> تنزيل خاص</span>
+                  </div>
+                </div>
+                <div class="yt-buttons-area">
+                  <button class="yt-login-btn" id="youtubeLoginBtn">
+                    <i class="fas fa-sign-in-alt"></i>
+                    <span>تسجيل الدخول</span>
+                  </button>
+                  <button class="yt-logout-btn" id="youtubeLogoutBtn" style="display:none;">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>تسجيل الخروج</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Cookie Source Row -->
+            <div class="settings-item-row">
+              <div class="item-icon-box" style="color: #ec4899; background: rgba(236, 72, 153, 0.12);">
+                <i class="fas fa-cookie-bite"></i>
+              </div>
+              <div class="settings-label">
+                <div class="item-title-row">
+                  <span class="settings-title">مصدر الكوكيز (Cookies)</span>
+                  <span class="item-badge badge-pink">المتصفح & الملفات</span>
+                </div>
+                <span class="settings-desc" id="cookieSourceDesc">للمحتوى الخاص أو الذي يتطلب تسجيل دخول</span>
+              </div>
+              <div class="settings-control">
+                <div class="custom-select-wrap">
+                  <select class="select-dropdown" id="cookieSourceSelect">
+                    <option value="auto" selected>✨ تلقائي (YouTube أو بدون كوكيز)</option>
+                    <option value="none">🚫 بدون كوكيز (تنزيل عام بلا كوكيز)</option>
+                    <option value="youtube_login" id="youtubeLoginOption">🔴 حساب YouTube المسجل</option>
+                    <option value="chrome">🌐 Google Chrome</option>
+                    <option value="edge">🌐 Microsoft Edge</option>
+                    <option value="brave">🦁 Brave</option>
+                    <option value="firefox">🦊 Mozilla Firefox</option>
+                    <option value="opera">⭕ Opera</option>
+                    <option value="vivaldi">🎭 Vivaldi</option>
+                    <option value="chromium">🌐 Chromium</option>
+                    <option value="file">📄 ملف كوكيز خارجي (cookies.txt)</option>
+                  </select>
+                  <i class="fas fa-chevron-down select-chevron"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- Cookie File Row (when file is selected) -->
+            <div class="settings-item-row" id="cookieFileRow" style="display:none;">
+              <div class="item-icon-box" style="color: #f59e0b; background: rgba(245, 158, 11, 0.12);">
+                <i class="fas fa-file-code"></i>
+              </div>
+              <div class="settings-label" style="flex:1;">
+                <div class="item-title-row">
+                  <span class="settings-title">ملف الكوكيز المحدد</span>
+                  <span class="item-badge badge-amber">cookies.txt</span>
+                </div>
+                <div class="storage-path-box">
+                  <i class="fas fa-file-alt path-box-icon"></i>
+                  <span class="settings-desc path-text" id="cookieFileTxt">لم يتم اختيار ملف</span>
+                </div>
+              </div>
+              <div class="settings-control">
+                <button class="settings-action-btn amber-btn" id="pickCookieFileBtn">
+                  <i class="fas fa-file-upload"></i>
+                  <span>اختيار ملف</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Proxy Input Row -->
+            <div class="settings-item-row">
+              <div class="item-icon-box" style="color: #6366f1; background: rgba(99, 102, 241, 0.12);">
+                <i class="fas fa-network-wired"></i>
+              </div>
+              <div class="settings-label">
+                <div class="item-title-row">
+                  <span class="settings-title">البروكسي (Proxy اختياري)</span>
+                  <span class="item-badge badge-indigo">تخطي الحجب</span>
+                </div>
+                <span class="settings-desc">مثال: http://127.0.0.1:8080 أو socks5://127.0.0.1:1080</span>
+              </div>
+              <div class="settings-control">
+                <div class="proxy-input-wrapper">
+                  <i class="fas fa-globe proxy-prefix-icon"></i>
+                  <input type="text" id="proxyInp" dir="ltr" placeholder="http://host:port" class="custom-proxy-input">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Category 4: Performance, Engine & Notifications (السرعة والإشعارات) -->
+        <div class="settings-card" data-category="performance">
+          <div class="settings-card-header">
+            <div class="card-header-icon" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.25)); color: #f59e0b;">
+              <i class="fas fa-bolt"></i>
+            </div>
+            <div class="card-header-text">
+              <div class="card-title-row">
+                <h3 class="card-title">السرعة الفائقة والتنبيهات</h3>
+                <span class="card-pill">محرك التحميل</span>
+              </div>
+              <p class="card-desc">تسريع النقل متعدد الأجزاء وتسجيل البث وتنبيهات الاكتمال</p>
+            </div>
+          </div>
+
+          <div class="settings-items-list">
+            <!-- Live Stream Toggle -->
+            <div class="settings-item-row">
+              <div class="item-icon-box" style="color: #ef4444; background: rgba(239, 68, 68, 0.12);">
+                <i class="fas fa-satellite-dish"></i>
+              </div>
+              <div class="settings-label">
+                <div class="item-title-row">
+                  <span class="settings-title">السماح بتنزيل البث المباشر</span>
+                  <span class="item-badge badge-red">Smart Live</span>
+                </div>
+                <span class="settings-desc">تسجيل البث المباشر من بدايته عند توفره بدل رفض الرابط المباشر</span>
+              </div>
+              <div class="settings-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="smartLiveDetectToggle" checked>
+                  <span class="slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Turbo Mode Toggle -->
+            <div class="settings-item-row">
+              <div class="item-icon-box" style="color: #f59e0b; background: rgba(245, 158, 11, 0.12);">
+                <i class="fas fa-rocket"></i>
+              </div>
+              <div class="settings-label">
+                <div class="item-title-row">
+                  <span class="settings-title">وضع السرعة الفائقة (Turbo Mode)</span>
+                  <span class="item-badge badge-amber">تسريع متوازي</span>
+                </div>
+                <span class="settings-desc">تنزيل أجزاء الملف بالتوازي لتسريع التحميل إلى أقصى طاقة للاتصال</span>
+              </div>
+              <div class="settings-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="turboModeToggle" checked>
+                  <span class="slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Auto Update Toggle -->
+            <div class="settings-item-row">
+              <div class="item-icon-box" style="color: #38bdf8; background: rgba(56, 189, 248, 0.12);">
+                <i class="fas fa-sync-alt"></i>
+              </div>
+              <div class="settings-label">
+                <div class="item-title-row">
+                  <span class="settings-title">التحديث التلقائي الدوري</span>
+                  <span class="item-badge badge-blue">تلقائي</span>
+                </div>
+                <span class="settings-desc">إشعار فوري عند صدور نسخ جديدة وتحديثات أمنية وتوافق المواقع</span>
+              </div>
+              <div class="settings-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="autoUpdateToggle" checked>
+                  <span class="slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Sound / Haptic Toggle -->
+            <div class="settings-item-row">
+              <div class="item-icon-box" style="color: #10b981; background: rgba(16, 185, 129, 0.12);">
+                <i class="fas fa-bell"></i>
+              </div>
+              <div class="settings-label">
+                <div class="item-title-row">
+                  <span class="settings-title">اهتزاز وتنبيه الاكتمال</span>
+                  <span class="item-badge badge-green">Haptic</span>
+                </div>
+                <span class="settings-desc">تنبيه بالاهتزاز أو إشعار هادئ عند اكتمال تنزيل الملف بدون إزعاج</span>
+              </div>
+              <div class="settings-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="soundToggle">
+                  <span class="slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Category 5: App & Engine Info (معلومات التطبيق والمحرك) -->
+        <div class="settings-card system-hub-card" data-category="system">
+          <div class="settings-card-header">
+            <div class="card-header-icon" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.25)); color: #818cf8;">
+              <i class="fas fa-server"></i>
+            </div>
+            <div class="card-header-text">
+              <div class="card-title-row">
+                <h3 class="card-title">حالة النظام ومحرّك التنزيل</h3>
+                <span class="card-pill">Core Engine</span>
+              </div>
+              <p class="card-desc">معلومات النسخة ومحرك yt-dlp الأساسي والفحص اليدوي للتحديثات</p>
+            </div>
+          </div>
+
+          <div class="system-hub-grid">
+            <!-- App Box -->
+            <div class="system-tile">
+              <div class="system-tile-header">
+                <div class="tile-icon-wrap" style="color:#38bdf8; background:rgba(56, 189, 248, 0.1);">
+                  <i class="fas fa-cube"></i>
+                </div>
+                <div class="tile-title-box">
+                  <div class="tile-title">تطبيق SDN Downloader</div>
+                  <span class="settings-desc" id="settingsVersionTxt">SDN v1.0.28</span>
+                </div>
+              </div>
+              <div class="tile-action-wrap">
+                <button class="system-btn primary-btn" id="checkUpdatesManualBtn">
+                  <i class="fas fa-redo-alt"></i>
+                  <span>فحص التحديثات</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Engine Box -->
+            <div class="system-tile">
+              <div class="system-tile-header">
+                <div class="tile-icon-wrap" style="color:#10b981; background:rgba(16, 185, 129, 0.1);">
+                  <i class="fas fa-microchip"></i>
+                </div>
+                <div class="tile-title-box">
+                  <div class="tile-title">محرّك الاستخراج (yt-dlp)</div>
+                  <span class="settings-desc" id="engineVersionTxt">الإصدار: غير معروف</span>
+                </div>
+              </div>
+              <div class="tile-action-wrap">
+                <button class="system-btn emerald-btn" id="updateEngineBtn">
+                  <i class="fas fa-cloud-download-alt"></i>
+                  <span>تحديث المحرّك</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer Info Badge -->
+          <div class="settings-system-footer">
+            <div class="footer-left">
+              <i class="fas fa-shield-alt" style="color: #10b981;"></i>
+              <span>محمي ومحدث بأحدث مكتبات فك التشفير والتشغيل السريع</span>
+            </div>
+            <div class="footer-right">
+              <span>SDN Ultra Architecture</span>
+            </div>
+          </div>
+        </div>
+      </div><!-- End settings-cards-grid -->
 
     </div><!-- End viewSettings -->
 
@@ -2605,6 +3776,16 @@ function refreshYouTubeUI(isLoggedIn) {
   }
   if (opt) {
     opt.innerText = gYouTubeLoggedIn ? 'حساب YouTube المسجل (متصل ✅)' : 'حساب YouTube المسجل';
+  }
+
+  const statYt = document.getElementById('statYoutubeStatus');
+  if (statYt) {
+    statYt.innerText = gYouTubeLoggedIn ? 'متصل ومفعّل ✅' : 'غير متصل';
+    statYt.style.color = gYouTubeLoggedIn ? '#10b981' : 'var(--text-sub)';
+  }
+  const ytPulse = document.getElementById('ytPulseDot');
+  if (ytPulse) {
+    ytPulse.style.display = gYouTubeLoggedIn ? 'block' : 'none';
   }
 }
 
@@ -2979,6 +4160,16 @@ function switchTab(targetId) {
     if (typeof refreshHistoryUI === 'function') refreshHistoryUI();
   } else if (targetId === 'viewSettings') {
     checkYouTubeLoginStatus();
+    const turboEl = document.getElementById('turboModeToggle');
+    const statTurbo = document.getElementById('statTurboBadge');
+    if (turboEl && statTurbo) {
+      statTurbo.innerText = turboEl.checked ? 'توربو فائق السرعة' : 'وضع عادي';
+    }
+    const engineTxt = document.getElementById('engineVersionTxt');
+    const statEngine = document.getElementById('statEngineBadge');
+    if (engineTxt && statEngine && engineTxt.innerText && !engineTxt.innerText.includes('غير معروف')) {
+      statEngine.innerText = engineTxt.innerText.replace('الإصدار:', '').trim() || 'yt-dlp Core';
+    }
   }
 }
 window.switchMainView = switchTab;
@@ -3688,6 +4879,13 @@ const themeToggle = document.getElementById('themeToggle');
 function applyTheme(light) {
   document.body.classList.toggle('light-theme', Boolean(light));
   if (themeToggle) themeToggle.checked = Boolean(light);
+  const themeBadge = document.getElementById('themeBadgeText');
+  const themeIcon = document.getElementById('themeIcon');
+  if (themeBadge) themeBadge.innerText = light ? 'نهاري ناصع' : 'ليلي فاخر';
+  if (themeIcon) {
+    themeIcon.className = light ? 'fas fa-sun' : 'fas fa-moon';
+    themeIcon.parentElement.style.color = light ? '#eab308' : '#f59e0b';
+  }
 }
 applyTheme(getPref('theme', false));
 themeToggle?.addEventListener('change', () => {
@@ -3695,6 +4893,22 @@ themeToggle?.addEventListener('change', () => {
   setPref('theme', themeToggle.checked);
   toast(themeToggle.checked ? '☀️ تم تفعيل الثيم الفاتح' : '🌙 تم تفعيل الثيم الداكن');
 });
+
+/* ── Settings Category Filtering ── */
+function filterSettingsCategory(cat, btn) {
+  document.querySelectorAll('.settings-filter-pill').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const cards = document.querySelectorAll('.settings-card');
+  cards.forEach(card => {
+    if (cat === 'all' || card.dataset.category === cat) {
+      card.style.display = 'flex';
+      card.style.animation = 'fadeInSettings 0.25s ease';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
+window.filterSettingsCategory = filterSettingsCategory;
 
 /* ── Settings Wiring (persisted preferences) ── */
 function bindToggle(id, prefKey, toastOn, toastOff) {
@@ -3720,6 +4934,17 @@ bindToggle('smartLiveDetectToggle', 'allowLive', '🎯 سيتم السماح ب�
 bindToggle('turboModeToggle', 'turboMode', '⚡ تم تفعيل وضع السرعة الفائقة', '🐢 تم إيقاف وضع السرعة الفائقة');
 bindToggle('autoUpdateToggle', 'autoUpdate', '🚀 سيتم فحص التحديثات تلقائياً', '🔕 تم إيقاف فحص التحديثات التلقائي');
 bindToggle('soundToggle', 'sound', '📳 تم تفعيل تنبيه الاهتزاز عند الاكتمال', '🔕 تم إيقاف تنبيه الاكتمال');
+
+// Sync Turbo mode stat badge on load and toggle
+const turboModeToggleEl = document.getElementById('turboModeToggle');
+if (turboModeToggleEl) {
+  const syncTurboBadge = () => {
+    const statTurbo = document.getElementById('statTurboBadge');
+    if (statTurbo) statTurbo.innerText = turboModeToggleEl.checked ? 'توربو فائق السرعة' : 'وضع عادي';
+  };
+  syncTurboBadge();
+  turboModeToggleEl.addEventListener('change', syncTurboBadge);
+}
 
 restoreSelect('defaultQualitySelect', 'defaultQuality');
 restoreSelect('speedLimitSelect', 'speedLimit');
@@ -5144,7 +6369,7 @@ function incrementDlCounter() {
   num.style.animation = 'dlBadgeBump 0.35s ease';
 }
 
-let CURRENT_VERSION = '1.0.27';
+let CURRENT_VERSION = '1.0.28';
 let gLatestReleaseUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
 let gLatestReleasePage = gLatestReleaseUrl;
 let gLatestAssetUrl = '';
