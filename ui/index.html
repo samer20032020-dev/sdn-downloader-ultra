@@ -206,7 +206,8 @@ html, body {
   #dlCounterBadge { padding: 5px 8px !important; gap: 4px !important; }
   #dlCounterBadge .counter-label { display: none; }
   #toastBox {
-    top: calc(env(safe-area-inset-top) + 72px);
+    bottom: calc(env(safe-area-inset-bottom) + 24px);
+    top: auto;
     width: calc(100% - 24px);
   }
   .url-action-card {
@@ -706,8 +707,8 @@ body.light-theme .input-field-wrap input { background: #fff; }
 
 /* Toast System */
 #toastBox {
-  position: fixed; top: 78px; left: 50%; transform: translateX(-50%); z-index: 9999;
-  display: flex; flex-direction: column; gap: 6px; pointer-events: none; width: 90%; max-width: 360px;
+  position: fixed; bottom: 30px; top: auto; left: 50%; transform: translateX(-50%); z-index: 9999;
+  display: flex; flex-direction: column-reverse; gap: 6px; pointer-events: none; width: 90%; max-width: 360px;
 }
 .toast-msg {
   background: rgba(15, 23, 42, 0.95); border: 1px solid var(--card-border); color: #fff;
@@ -715,7 +716,7 @@ body.light-theme .input-field-wrap input { background: #fff; }
   box-shadow: 0 10px 30px rgba(0,0,0,0.5); backdrop-filter: blur(10px);
   text-align: center; animation: popToast 0.3s ease forwards;
 }
-@keyframes popToast { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes popToast { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 
 /* Progress Floating Card */
 .progress-card {
@@ -2428,7 +2429,7 @@ body.light-theme .youtube-account-row {
       <!-- Update Header Button -->
       <button id="headerUpdateBtn" onclick="onHeaderUpdateClick()" class="update-header-btn" title="فحص التحديثات" style="display:none;">
         <i class="fas fa-cog" id="updateHeaderIcon"></i>
-        <span id="updateHeaderTxt">v1.0.34</span>
+        <span id="updateHeaderTxt">v1.0.35</span>
       </button>
     </div>
   </header>
@@ -2441,11 +2442,7 @@ body.light-theme .youtube-account-row {
     <div id="viewHome" style="display:flex; flex-direction:column; gap:18px; max-width:800px; margin:0 auto; width:100%;">
       
       <!-- Clean Welcome Header -->
-      <div style="display:flex; flex-direction:column; align-items:center; text-align:center; padding-top:16px; gap:8px;">
-        <div class="clean-hero-badge">
-          <span class="clean-hero-dot"></span>
-          <span>الإصدار 1.0.34 — تنزيل فائق السرعة وبدون إعلانات</span>
-        </div>
+      <div style="display:flex; flex-direction:column; align-items:center; text-align:center; padding-top:20px; gap:8px;">
         <h1 class="clean-hero-title">نزّل الفيديوهات والموسيقى بأعلى جودة</h1>
         <p class="clean-hero-sub">ضع رابط أي فيديو من YouTube أو TikTok أو Instagram أو Facebook للتحميل الفوري</p>
       </div>
@@ -5892,7 +5889,7 @@ function incrementDlCounter() {
   num.style.animation = 'dlBadgeBump 0.35s ease';
 }
 
-let CURRENT_VERSION = '1.0.34';
+let CURRENT_VERSION = '1.0.35';
 let gLatestReleaseUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
 let gLatestReleasePage = gLatestReleaseUrl;
 let gLatestAssetUrl = '';
