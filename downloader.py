@@ -54,10 +54,13 @@ _log = setup_logger("SDN.Downloader")
 ProgressCallback = Callable[[dict[str, Any]], None]
 StatusCallback = Callable[[str], None]
 
-MEDIA_EXTENSIONS = {
-    ".mp4", ".mkv", ".webm", ".mov", ".avi",
+AUDIO_EXTENSIONS = {
     ".mp3", ".m4a", ".aac", ".flac", ".ogg", ".opus", ".wav", ".wma",
 }
+VIDEO_EXTENSIONS = {
+    ".mp4", ".mkv", ".webm", ".mov", ".avi",
+}
+MEDIA_EXTENSIONS = AUDIO_EXTENSIONS | VIDEO_EXTENSIONS
 _NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
 
@@ -1109,7 +1112,7 @@ class MediaDownloader:
             template = os.path.join(
                 save_dir,
                 "%(playlist_title|Playlist).120B",
-                f"%(playlist_index)03d - %(title).160B [%(id)s] [{quality_tag}] [{run_token}].%(ext)s",
+                f"%(playlist_index)03d - %(title).160B [%(id)s] [{quality_tag}].%(ext)s",
             )
         else:
             template = os.path.join(
@@ -1120,6 +1123,42 @@ class MediaDownloader:
         captured_files: list[str] = []
         captured_lock = threading.Lock()
         requested_count = len(selected_indices) if selected_indices else int(option.get("playlist_count") or 0)
+
+        # Pre-scan existing files in save_dir and its subdirectories to prevent duplicate downloads
+        allow_duplicate = bool(option.get("allow_duplicate"))
+        target_exts = AUDIO_EXTENSIONS if is_audio else VIDEO_EXTENSIONS
+        target_type_label = "صوت (Audio)" if is_audio else "فيديو (Video)"
+        existing_disk_items: dict[str, str] = {}
+        if not allow_duplicate and os.path.isdir(save_dir):
+            try:
+                for root, _, files in os.walk(save_dir):
+                    for fname in files:
+                        ext = os.path.splitext(fname)[1].lower()
+                        if ext in target_exts:
+                            full_p = os.path.join(root, fname)
+                            try:
+                                if os.path.getsize(full_p) > 1024:
+                                    m = re.search(r'\[([a-zA-Z0-9_-]{11})\]', fname)
+                                    if m:
+                                        existing_disk_items[m.group(1)] = full_p
+                            except OSError:
+                                pass
+            except Exception as e:
+                _log.debug(f"Failed scanning existing disk items: {e}")
+
+        def item_duplicate_filter(info_candidate: dict[str, Any], *, incomplete: bool = False) -> str | None:
+            if allow_duplicate:
+                return None
+            vid = info_candidate.get("id")
+            if vid and vid in existing_disk_items:
+                it_title = info_candidate.get("title") or vid
+                existing_path = existing_disk_items[vid]
+                capture_path(existing_path)
+                msg = f"⚠️ المقطع '{it_title[:35]}' موجود مسبقاً بنفس الصيغة ({target_type_label}) - تم تخطيه"
+                if status_callback:
+                    status_callback(msg)
+                return msg
+            return None
 
         def capture_path(candidate: str | None) -> None:
             if not candidate:
@@ -1231,6 +1270,7 @@ class MediaDownloader:
             {
                 "format": format_id,
                 "outtmpl": template,
+                "match_filter": item_duplicate_filter,
                 "progress_hooks": [ydl_progress_hook],
                 "postprocessor_hooks": [postprocessor_hook],
                 "postprocessor_args": {"ffmpeg": ["-nostdin"]},
@@ -1364,7 +1404,7 @@ class MediaDownloader:
                 raise RuntimeError(clean_error_message(exc, url=url)) from exc
 
         # Resolve any Windows temporary merge files locked briefly by antivirus/indexing
-        for temp_file in glob.glob(os.path.join(save_dir, "**", f"*{run_token}*.temp.*"), recursive=True):
+        for temp_file in glob.glob(os.path.join(save_dir, "**", "*.temp.*"), recursive=True):
             target = temp_file.replace(".temp.", ".")
             for _ in range(5):
                 try:
@@ -1393,11 +1433,16 @@ class MediaDownloader:
                 raise RuntimeError(clean_error_message(fatal_errors[-1]))
             raise RuntimeError("فشل التنزيل ولم تُنتج المنصة أي ملف.")
 
-        # Post-processing hooks can omit the final path on some extractors. The
-        # unique run token makes this fallback deterministic and safe.
+        # Post-processing hooks can omit the final path on some extractors.
         if not captured_files:
-            for candidate in glob.glob(os.path.join(save_dir, "**", f"*{run_token}*"), recursive=True):
-                capture_path(candidate)
+            info_entries = info.get("entries") if isinstance(info, dict) else None
+            candidates = info_entries or [info]
+            for entry in candidates:
+                if not isinstance(entry, dict):
+                    continue
+                capture_path(entry.get("filepath") or entry.get("_filename"))
+                for requested in entry.get("requested_downloads") or []:
+                    capture_path(requested.get("filepath"))
 
         final_files = [path for path in captured_files if os.path.isfile(path)]
         if not final_files:

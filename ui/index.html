@@ -2429,7 +2429,7 @@ body.light-theme .youtube-account-row {
       <!-- Update Header Button -->
       <button id="headerUpdateBtn" onclick="onHeaderUpdateClick()" class="update-header-btn" title="فحص التحديثات" style="display:none;">
         <i class="fas fa-cog" id="updateHeaderIcon"></i>
-        <span id="updateHeaderTxt">v1.0.35</span>
+        <span id="updateHeaderTxt">v1.0.36</span>
       </button>
     </div>
   </header>
@@ -5388,14 +5388,19 @@ document.getElementById('dlBtn').addEventListener('click', async () => {
 
   const sourceUrl = gData.cleaned_url || gData.source_url || document.getElementById('urlInp').value;
 
-  // Format-aware duplicate pre-check for single items
-  if (!gData.is_playlist && window.pywebview?.api?.check_duplicate) {
+  // Format-aware duplicate pre-check for single items & playlists
+  if (window.pywebview?.api?.check_duplicate) {
     const targetType = (gOpt.type === 'audio' || String(gOpt.label || '').includes('صوت') || String(gOpt.label || '').includes('MP3')) ? 'audio' : 'video';
     try {
-      const dupCheck = await window.pywebview.api.check_duplicate(sourceUrl, gData.title, targetType);
+      const isPl = Boolean(gData.is_playlist);
+      const dupCheck = await window.pywebview.api.check_duplicate(sourceUrl, gData.title, targetType, isPl);
       if (dupCheck && dupCheck.is_duplicate) {
         const typeLabel = targetType === 'audio' ? 'صوت (MP3)' : 'فيديو (MP4)';
-        toast(`⚠️ هذا المقطع موجود بالفعل بنفس الصيغة (${typeLabel}) في مجلد التنزيلات!`);
+        if (dupCheck.is_playlist) {
+          toast(`⚠️ هذه القائمة موجودة بالفعل بنفس الصيغة (${typeLabel}) على جهازك!`);
+        } else {
+          toast(`⚠️ هذا المقطع موجود بالفعل بنفس الصيغة (${typeLabel}) في مجلد التنزيلات!`);
+        }
         return;
       }
     } catch (e) {
@@ -5889,7 +5894,7 @@ function incrementDlCounter() {
   num.style.animation = 'dlBadgeBump 0.35s ease';
 }
 
-let CURRENT_VERSION = '1.0.35';
+let CURRENT_VERSION = '1.0.36';
 let gLatestReleaseUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
 let gLatestReleasePage = gLatestReleaseUrl;
 let gLatestAssetUrl = '';

@@ -1989,10 +1989,11 @@ class DownloaderBridgeAPI:
             _log.warning(f"Failed to play file: {e}")
         return {'success': False}
 
-    def check_duplicate(self, url=None, title=None, target_type=None):
+    def check_duplicate(self, url=None, title=None, target_type=None, is_playlist=False):
         """Check if URL or title has already been downloaded into save_dir or history to prevent duplicate waste.
         Respects format: downloading MP3 when video exists (or vice versa) is allowed!
-        Only flags duplicate if the SAME format (video vs video, or audio vs audio) already exists."""
+        Only flags duplicate if the SAME format (video vs video, or audio vs audio) already exists.
+        Supports full playlist duplicate detection as well."""
         history = self.get_history() or []
         import re
 
@@ -2030,6 +2031,73 @@ class DownloaderBridgeAPI:
                 if s in VIDEO_EXTS:
                     return 'video'
             return None
+
+        # Check for playlist duplicate
+        is_pl = bool(is_playlist or ('list=' in str(url or '')) or ('/playlist' in str(url or '')))
+        if is_pl:
+            target_exts = AUDIO_EXTS if norm_target == 'audio' else VIDEO_EXTS
+            # 1. Check if playlist folder exists in save_dir and contains files of the target format
+            if os.path.exists(self.save_dir):
+                norm_p_title = title.strip().lower() if title else ""
+                try:
+                    with os.scandir(self.save_dir) as entries:
+                        for entry in entries:
+                            if entry.is_dir():
+                                e_name_lower = entry.name.strip().lower()
+                                is_match = False
+                                if norm_p_title and (norm_p_title in e_name_lower or e_name_lower in norm_p_title):
+                                    is_match = True
+                                elif 'watch later' in e_name_lower or 'مشاهدة لاحقاً' in e_name_lower or 'مشاهده لاحقا' in e_name_lower:
+                                    if 'WL' in (url or '').upper() or 'watch later' in norm_p_title or 'مشاهدة' in norm_p_title or 'مشاهده' in norm_p_title:
+                                        is_match = True
+                                
+                                if is_match:
+                                    matching_files = []
+                                    for sub_entry in os.scandir(entry.path):
+                                        if sub_entry.is_file():
+                                            fext = Path(sub_entry.name).suffix.lower()
+                                            if fext in target_exts and os.path.getsize(sub_entry.path) > 1024:
+                                                matching_files.append(sub_entry.path)
+                                    if len(matching_files) >= 1:
+                                        _log.info(f"Playlist folder duplicate found: {entry.name} ({len(matching_files)} items in {norm_target})")
+                                        return {
+                                            'is_duplicate': True,
+                                            'is_playlist': True,
+                                            'matched_title': entry.name,
+                                            'filepath': entry.path,
+                                            'reason': 'playlist_folder_exists',
+                                            'format': norm_target or 'media',
+                                            'count': len(matching_files)
+                                        }
+                except Exception as ex:
+                    _log.debug(f"Playlist folder scan exception: {ex}")
+
+            # 2. Check history for playlist items with target format
+            if url and 'list=' in url:
+                m_list = re.search(r'list=([a-zA-Z0-9_-]+)', url)
+                if m_list:
+                    list_id = m_list.group(1)
+                    hist_matches = 0
+                    first_fp = ''
+                    for h in history:
+                        h_url = h.get('url', '')
+                        if list_id in h_url:
+                            fp = h.get('filepath', '')
+                            if fp and os.path.exists(fp):
+                                if _get_entry_type(fp, hist_item=h) == norm_target:
+                                    hist_matches += 1
+                                    if not first_fp:
+                                        first_fp = fp
+                    if hist_matches >= 3:
+                        return {
+                            'is_duplicate': True,
+                            'is_playlist': True,
+                            'matched_title': title or 'قائمة تشغيل سابقة',
+                            'filepath': first_fp,
+                            'reason': 'playlist_history',
+                            'format': norm_target or 'media',
+                            'count': hist_matches
+                        }
 
         def _norm_title(t):
             if not t:
@@ -2283,15 +2351,21 @@ class DownloaderBridgeAPI:
         if not isinstance(option, dict):
             return {'started': False, 'error': 'خيار التنزيل غير صالح.'}
 
-        # Format-aware duplicate check for single item downloads
-        if not option.get('is_playlist') and not option.get('allow_duplicate'):
+        # Format-aware duplicate check for single item & playlist downloads
+        if not option.get('allow_duplicate'):
             target_type = option.get('type', 'video')
             if target_type not in ('audio', 'video'):
                 target_type = 'audio' if 'mp3' in str(option.get('ext', '')).lower() else 'video'
             title = option.get('media_title') or option.get('title')
-            dup = self.check_duplicate(url, title, target_type=target_type)
+            is_playlist = bool(option.get('is_playlist'))
+            dup = self.check_duplicate(url, title, target_type=target_type, is_playlist=is_playlist)
             if dup and dup.get('is_duplicate'):
                 type_name = "صوت (Audio)" if target_type == 'audio' else "فيديو (Video)"
+                if dup.get('is_playlist'):
+                    return {
+                        'started': False,
+                        'error': f"⚠️ هذه القائمة موجودة بالفعل بنفس الصيغة ({type_name}) في مجلد التنزيلات!"
+                    }
                 return {
                     'started': False,
                     'error': f"⚠️ هذا المقطع موجود بالفعل بنفس الصيغة ({type_name}) في مجلد التنزيلات!"
@@ -2637,12 +2711,16 @@ class DownloaderBridgeAPI:
         is_audio = (str(quality).lower() == 'mp3' or 'audio' in str(quality).lower())
         target_type = 'audio' if is_audio else 'video'
 
-        # Duplicate check before downloading (bypass for full playlist mode):
-        if not force and mode != 'playlist_all':
-            dup_info = self.check_duplicate(url=url, title=title, target_type=target_type)
+        # Duplicate check before downloading:
+        if not force:
+            is_pl = (mode == 'playlist_all') or ('list=' in url)
+            dup_info = self.check_duplicate(url=url, title=title, target_type=target_type, is_playlist=is_pl)
             if dup_info.get('is_duplicate'):
                 format_name = 'صوت MP3' if is_audio else 'فيديو'
-                msg = f"⚠️ هذا المقطع تم تنزيله مسبقاً بصيغة ({format_name}) وهو موجود بالفعل في جهازك!"
+                if dup_info.get('is_playlist'):
+                    msg = f"⚠️ هذه القائمة تم تنزيلها مسبقاً بصيغة ({format_name}) وهي موجودة بالفعل في جهازك!"
+                else:
+                    msg = f"⚠️ هذا المقطع تم تنزيله مسبقاً بصيغة ({format_name}) وهو موجود بالفعل في جهازك!"
                 self._notify_browser_toast(msg, 'warning', is_dup=True, dup_url=url, quality=quality, mode=mode, title=title)
                 return {'success': False, 'duplicate': True, 'msg': msg}
 
