@@ -686,22 +686,50 @@ body.light-theme .input-field-wrap input { background: #fff; }
   border: 1px solid rgba(52, 211, 153, 0.2);
 }
 
-.download-actions-row { display: grid; grid-template-columns: 1fr auto; gap: 9px; }
+.download-actions-row { display: flex; gap: 9px; align-items: center; }
 .btn-start-download {
+  flex: 1;
   height: 48px; border-radius: 14px; background: linear-gradient(135deg, #34d399 0%, #38bdf8 100%);
   border: none; color: #000; font-size: 1rem; font-weight: 900; cursor: pointer; font-family: inherit;
   display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 4px;
+  transition: all 0.2s ease;
 }
 .btn-start-download:disabled { opacity: 0.55; cursor: wait; }
+.btn-open-folder-main {
+  height: 48px;
+  min-width: 120px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 4px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.btn-open-folder-main:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px);
+}
 .btn-cancel-download {
   display: none;
-  min-width: 102px;
+  height: 48px;
+  min-width: 90px;
   border: 1px solid rgba(248, 113, 113, 0.45);
   border-radius: 14px;
   background: rgba(248, 113, 113, 0.12);
   color: #fca5a5;
   font: 800 0.86rem inherit;
   cursor: pointer;
+  margin-top: 4px;
 }
 .btn-cancel-download.active { display: block; }
 
@@ -2429,7 +2457,7 @@ body.light-theme .youtube-account-row {
       <!-- Update Header Button -->
       <button id="headerUpdateBtn" onclick="onHeaderUpdateClick()" class="update-header-btn" title="فحص التحديثات" style="display:none;">
         <i class="fas fa-cog" id="updateHeaderIcon"></i>
-        <span id="updateHeaderTxt">v1.0.36</span>
+        <span id="updateHeaderTxt">v1.0.37</span>
       </button>
     </div>
   </header>
@@ -2575,6 +2603,7 @@ body.light-theme .youtube-account-row {
         <div class="quality-selector-grid" id="qGrid"></div>
         <div class="download-actions-row">
           <button class="btn-start-download" id="dlBtn">⚡ تنزيل الآن</button>
+          <button class="btn-open-folder-main" id="btnOpenFolderMain" type="button" onclick="if(window.pywebview?.api?.open_folder) window.pywebview.api.open_folder()" title="فتح مجلد التنزيلات">📁 فتح المجلد</button>
           <button class="btn-cancel-download" id="cancelDlBtn" type="button">إلغاء</button>
         </div>
       </div>
@@ -5401,6 +5430,11 @@ document.getElementById('dlBtn').addEventListener('click', async () => {
         } else {
           toast(`⚠️ هذا المقطع موجود بالفعل بنفس الصيغة (${typeLabel}) في مجلد التنزيلات!`);
         }
+        if (dupCheck.filepath && window.pywebview?.api?.locate_file) {
+          window.pywebview.api.locate_file(dupCheck.filepath);
+        } else if (window.pywebview?.api?.open_folder) {
+          window.pywebview.api.open_folder();
+        }
         return;
       }
     } catch (e) {
@@ -5894,7 +5928,7 @@ function incrementDlCounter() {
   num.style.animation = 'dlBadgeBump 0.35s ease';
 }
 
-let CURRENT_VERSION = '1.0.36';
+let CURRENT_VERSION = '1.0.37';
 let gLatestReleaseUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
 let gLatestReleasePage = gLatestReleaseUrl;
 let gLatestAssetUrl = '';

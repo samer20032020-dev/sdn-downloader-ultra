@@ -164,6 +164,12 @@ class YouTubeBrowserBridge:
     def get_history_file_states(self):
         return self.main_api.get_history_file_states()
 
+    def open_folder(self, path=None):
+        return self.main_api.open_folder(path)
+
+    def locate_file(self, filepath=None):
+        return self.main_api.locate_file(filepath)
+
 
 YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
 (function() {
@@ -504,16 +510,31 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
         var textSpan = createEl('span', '', 'line-height:1.4;', msg);
         t.appendChild(textSpan);
 
-        if (actionData && actionData.url) {
-            var actionBtn = createEl('button', '', 'background:#ffffff; color:#0f172a; border:none; border-radius:14px; padding:4px 12px; font-size:12px; font-weight:700; cursor:pointer; margin-right:6px; white-space:nowrap;', 'تنزيل على أي حال ↻');
-            actionBtn.onclick = function(e) {
+        if (actionData && (actionData.url || actionData.filepath)) {
+            if (actionData.url) {
+                var actionBtn = createEl('button', '', 'background:#ffffff; color:#0f172a; border:none; border-radius:14px; padding:4px 12px; font-size:12px; font-weight:700; cursor:pointer; margin-right:6px; white-space:nowrap;', 'تنزيل على أي حال ↻');
+                actionBtn.onclick = function(e) {
+                    e.stopPropagation();
+                    t.style.opacity = '0';
+                    if (window.pywebview && window.pywebview.api && window.pywebview.api.download_url) {
+                        window.pywebview.api.download_url(actionData.url, actionData.quality || 'best', actionData.mode || 'single', true, actionData.title || '');
+                    }
+                };
+                t.appendChild(actionBtn);
+            }
+
+            var openFolderBtn = createEl('button', '', 'background:rgba(255,255,255,0.18); color:#ffffff; border:1px solid rgba(255,255,255,0.35); border-radius:14px; padding:4px 12px; font-size:12px; font-weight:700; cursor:pointer; margin-right:6px; white-space:nowrap; display:inline-flex; align-items:center; gap:4px;', '📁 فتح مجلد');
+            openFolderBtn.onclick = function(e) {
                 e.stopPropagation();
-                t.style.opacity = '0';
-                if (window.pywebview && window.pywebview.api && window.pywebview.api.download_url) {
-                    window.pywebview.api.download_url(actionData.url, actionData.quality || 'best', actionData.mode || 'single', true, actionData.title || '');
+                if (window.pywebview && window.pywebview.api) {
+                    if (actionData.filepath && window.pywebview.api.locate_file) {
+                        window.pywebview.api.locate_file(actionData.filepath);
+                    } else if (window.pywebview.api.open_folder) {
+                        window.pywebview.api.open_folder(actionData.filepath || null);
+                    }
                 }
             };
-            t.appendChild(actionBtn);
+            t.appendChild(openFolderBtn);
         }
 
         t.style.opacity = '1';
@@ -639,6 +660,12 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
 
         var div = createEl('div', '', 'border-top:1px solid rgba(255,255,255,0.08); margin:4px 2px;');
         menu.appendChild(div);
+
+        addItem('📁 فتح مجلد التنزيلات', 'مجلد', function() {
+            if (window.pywebview && window.pywebview.api && window.pywebview.api.open_folder) {
+                window.pywebview.api.open_folder();
+            }
+        });
 
         addItem('فتح وتعديل الرابط في محرك SDN', '↗', function() {
             if (window.pywebview && window.pywebview.api && window.pywebview.api.send_to_main) {
@@ -2689,12 +2716,14 @@ class DownloaderBridgeAPI:
         except Exception as e:
             _log.error(f"Failed to open YouTube browser: {e}")
 
-    def _notify_browser_toast(self, msg, toast_type='info', is_dup=False, dup_url=None, quality='best', mode='single', title=None):
+    def _notify_browser_toast(self, msg, toast_type='info', is_dup=False, dup_url=None, quality='best', mode='single', title=None, filepath=None):
         if getattr(self, '_youtube_browser_win', None):
             try:
                 action_data = None
                 if is_dup and dup_url:
-                    action_data = {'url': dup_url, 'quality': quality, 'mode': mode, 'title': title or ''}
+                    action_data = {'url': dup_url, 'quality': quality, 'mode': mode, 'title': title or '', 'filepath': filepath or ''}
+                elif filepath:
+                    action_data = {'filepath': filepath or ''}
                 js_call = f"if (window.showSdnToast) window.showSdnToast({json.dumps(msg)}, {json.dumps(toast_type)}, {json.dumps(action_data)});"
                 self._youtube_browser_win.evaluate_js(js_call)
             except Exception as e:
@@ -2721,7 +2750,7 @@ class DownloaderBridgeAPI:
                     msg = f"⚠️ هذه القائمة تم تنزيلها مسبقاً بصيغة ({format_name}) وهي موجودة بالفعل في جهازك!"
                 else:
                     msg = f"⚠️ هذا المقطع تم تنزيله مسبقاً بصيغة ({format_name}) وهو موجود بالفعل في جهازك!"
-                self._notify_browser_toast(msg, 'warning', is_dup=True, dup_url=url, quality=quality, mode=mode, title=title)
+                self._notify_browser_toast(msg, 'warning', is_dup=True, dup_url=url, quality=quality, mode=mode, title=title, filepath=dup_info.get('filepath'))
                 return {'success': False, 'duplicate': True, 'msg': msg}
 
         if is_audio:
@@ -2731,7 +2760,8 @@ class DownloaderBridgeAPI:
                 'label': 'صوت MP3 (320kbps)',
                 'ext': 'mp3',
                 'format_id': 'bestaudio/best',
-                'media_title': title or 'مقطع صوتي'
+                'media_title': title or 'مقطع صوتي',
+                'turbo': True
             }
         else:
             height = None
@@ -2749,7 +2779,8 @@ class DownloaderBridgeAPI:
                 'label': f'فيديو ({quality})',
                 'ext': 'mp4',
                 'format_id': _video_selector(height),
-                'media_title': title or 'مقطع فيديو'
+                'media_title': title or 'مقطع فيديو',
+                'turbo': True
             }
 
         if mode == 'playlist_all':
@@ -2833,10 +2864,12 @@ class DownloaderBridgeAPI:
                     self.add_history(h_item)
 
                 if len(downloaded_files) > 1 or option.get('is_playlist'):
-                    self._notify_browser_toast(f"✅ تم اكتمال تنزيل كامل القائمة ({len(downloaded_files)} عنصر) بنجاح!", 'success')
+                    first_fp = downloaded_files[0].get('filepath') if downloaded_files else self.save_dir
+                    self._notify_browser_toast(f"✅ تم اكتمال تنزيل كامل القائمة ({len(downloaded_files)} عنصر) بنجاح!", 'success', filepath=first_fp)
                 else:
-                    first_name = Path(downloaded_files[0]['filepath']).name if downloaded_files and downloaded_files[0].get('filepath') else media_title
-                    self._notify_browser_toast(f"✅ تم اكتمال تنزيل: {first_name} بنجاح!", 'success')
+                    first_fp = downloaded_files[0].get('filepath') if downloaded_files else ''
+                    first_name = Path(first_fp).name if first_fp else media_title
+                    self._notify_browser_toast(f"✅ تم اكتمال تنزيل: {first_name} بنجاح!", 'success', filepath=first_fp)
 
                 if self._window:
                     try:

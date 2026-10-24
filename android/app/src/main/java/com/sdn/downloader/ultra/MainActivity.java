@@ -504,7 +504,8 @@ public class MainActivity extends BridgeActivity {
             request.addOption("--continue");
             request.addOption("--retries", 15);
             request.addOption("--fragment-retries", 15);
-            request.addOption("--concurrent-fragments", option.optBoolean("turbo", false) ? "4" : "1");
+            request.addOption("--concurrent-fragments", option.optBoolean("turbo", true) ? "16" : "8");
+            request.addOption("--buffer-size", "512k");
             request.addOption("--http-chunk-size", "10M");
             request.addOption("--no-overwrites");
             request.addOption("--windows-filenames");

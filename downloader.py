@@ -373,16 +373,16 @@ def _common_ydl_options(proxy: str | None = None) -> dict[str, Any]:
         "quiet": True,
         "no_warnings": True,
         "noprogress": True,
-        "socket_timeout": 30,
-        "retries": 15,
-        "fragment_retries": 15,
+        "socket_timeout": 15,
+        "retries": 10,
+        "fragment_retries": 10,
         "extractor_retries": 5,
         "file_access_retries": 5,
-        "concurrent_fragment_downloads": 1,
+        "concurrent_fragment_downloads": 8,
         "continuedl": True,
         "windowsfilenames": True,
         "http_chunk_size": 10485760,
-        "buffersize": 1024 * 16,
+        "buffersize": 1024 * 512,
     }
     if proxy and proxy.strip():
         options["proxy"] = proxy.strip()
@@ -1273,7 +1273,7 @@ class MediaDownloader:
                 "match_filter": item_duplicate_filter,
                 "progress_hooks": [ydl_progress_hook],
                 "postprocessor_hooks": [postprocessor_hook],
-                "postprocessor_args": {"ffmpeg": ["-nostdin"]},
+                "postprocessor_args": {"ffmpeg": ["-nostdin", "-threads", "0"]},
                 "quiet": True,
                 "no_warnings": True,
                 "ffmpeg_location": self.ffmpeg_path,
@@ -1306,8 +1306,8 @@ class MediaDownloader:
 
         _apply_cookies(ydl_options, browser_cookies)
 
-        if option.get("turbo"):
-            ydl_options["concurrent_fragment_downloads"] = 4
+        turbo_active = option.get("turbo", True)
+        ydl_options["concurrent_fragment_downloads"] = 16 if turbo_active else 8
 
         if not option.get("allow_live", True):
             def _reject_live(info_dict: dict, *, incomplete: bool = False):

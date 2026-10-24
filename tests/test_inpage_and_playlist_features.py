@@ -27,6 +27,10 @@ class TestInPageAndPlaylistFeatures(unittest.TestCase):
         res = bridge.send_to_main("https://www.youtube.com/watch?v=unique123", auto_playlist_select=True)
         self.assertTrue(res['success'])
 
+        # Test open folder & locate file
+        bridge.open_folder(self.temp_dir)
+        bridge.locate_file(None)
+
     def test_check_duplicate_url_and_title(self):
         # Add item to history
         sample_path = os.path.join(self.temp_dir, "MySong.mp3")
