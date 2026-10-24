@@ -2476,7 +2476,7 @@ body.light-theme .youtube-account-row {
       <!-- Update Header Button -->
       <button id="headerUpdateBtn" onclick="onHeaderUpdateClick()" class="update-header-btn" title="فحص التحديثات" style="display:none;">
         <i class="fas fa-cog" id="updateHeaderIcon"></i>
-        <span id="updateHeaderTxt">v1.0.38</span>
+        <span id="updateHeaderTxt">v1.0.39</span>
       </button>
     </div>
   </header>
@@ -5961,7 +5961,7 @@ function incrementDlCounter() {
   num.style.animation = 'dlBadgeBump 0.35s ease';
 }
 
-let CURRENT_VERSION = '1.0.38';
+let CURRENT_VERSION = '1.0.39';
 let gLatestReleaseUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
 let gLatestReleasePage = gLatestReleaseUrl;
 let gLatestAssetUrl = '';
@@ -6009,46 +6009,63 @@ async function checkForAppUpdates(isManual = false) {
   let assetUrl = '';
   let assetSha256 = '';
 
-  // 1. Try releases/latest API
-  try {
-    const resp = await fetch('https://api.github.com/repos/samer20032020-dev/sdn-downloader-ultra/releases/latest');
-    if (resp.ok) {
-      const release = await resp.json();
-      latestTag = (release.tag_name || '').replace(/^v/, '');
-      if (release.html_url) releasePageUrl = release.html_url;
-      if (release.assets && Array.isArray(release.assets)) {
-        const wantedAsset = window.androidInterface
-          ? 'SDN_Downloader_Ultra.apk'
-          : 'SDN_Downloader_Setup.exe';
-        const releaseAsset = release.assets.find(a => a.name === wantedAsset);
-        if (releaseAsset && releaseAsset.browser_download_url) {
-          assetUrl = releaseAsset.browser_download_url;
-          directDownloadUrl = assetUrl;
-          const digest = String(releaseAsset.digest || '');
-          if (digest.startsWith('sha256:')) assetSha256 = digest.slice(7);
-        }
+  // 1. Try python backend check_app_update first (has 3-tier fallback and bypasses rate limits)
+  if (window.pywebview?.api?.check_app_update) {
+    try {
+      const upInfo = await window.pywebview.api.check_app_update();
+      if (upInfo && upInfo.latest_version) {
+        latestTag = String(upInfo.latest_version).replace(/^v/i, '');
+        if (upInfo.download_url) directDownloadUrl = upInfo.download_url;
+        if (upInfo.html_url) releasePageUrl = upInfo.html_url;
+        if (upInfo.sha256) assetSha256 = upInfo.sha256;
       }
+    } catch(e) {
+      console.debug('Python check_app_update call error:', e);
     }
-  } catch(e) {}
+  }
 
-  // 2. Fallback to tags API if release tag is missing (page only, no asset)
+  // 2. Try releases/latest API if latestTag not yet resolved
   if (!latestTag) {
     try {
-      const resp = await fetch('https://api.github.com/repos/samer20032020-dev/sdn-downloader-ultra/tags');
+      const resp = await fetch('https://api.github.com/repos/samer20032020-dev/sdn-downloader-ultra/releases/latest');
       if (resp.ok) {
-        const tags = await resp.json();
-        if (tags && tags.length > 0) {
-          latestTag = (tags[0].name || '').replace(/^v/, '');
-          releasePageUrl = `https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/tag/v${latestTag}`;
-          directDownloadUrl = releasePageUrl;
-          assetUrl = '';
-          assetSha256 = '';
+        const release = await resp.json();
+        latestTag = (release.tag_name || '').replace(/^v/, '');
+        if (release.html_url) releasePageUrl = release.html_url;
+        if (release.assets && Array.isArray(release.assets)) {
+          const wantedAsset = window.androidInterface
+            ? 'SDN_Downloader_Ultra.apk'
+            : 'SDN_Downloader_Setup.exe';
+          const releaseAsset = release.assets.find(a => a.name === wantedAsset);
+          if (releaseAsset && releaseAsset.browser_download_url) {
+            assetUrl = releaseAsset.browser_download_url;
+            directDownloadUrl = assetUrl;
+            const digest = String(releaseAsset.digest || '');
+            if (digest.startsWith('sha256:')) assetSha256 = digest.slice(7);
+          }
         }
       }
     } catch(e) {}
   }
 
-  gLatestAssetUrl = assetUrl;
+  // 3. Fallback to raw repository version.py (immune to rate limits)
+  if (!latestTag) {
+    try {
+      const resp = await fetch('https://raw.githubusercontent.com/samer20032020-dev/sdn-downloader-ultra/main/version.py');
+      if (resp.ok) {
+        const text = await resp.text();
+        const m = text.match(/APP_VERSION\s*=\s*["']([^"']+)["']/);
+        if (m) {
+          latestTag = m[1].replace(/^v/i, '');
+          releasePageUrl = `https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/tag/v${latestTag}`;
+          const wantedAsset = window.androidInterface ? 'SDN_Downloader_Ultra.apk' : 'SDN_Downloader_Setup.exe';
+          directDownloadUrl = `https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/download/v${latestTag}/${wantedAsset}`;
+        }
+      }
+    } catch(e) {}
+  }
+
+  gLatestAssetUrl = assetUrl || directDownloadUrl;
   gLatestSha256 = assetSha256;
   gLatestReleasePage = releasePageUrl;
   gLatestReleaseUrl = directDownloadUrl;
@@ -6062,7 +6079,7 @@ async function checkForAppUpdates(isManual = false) {
     if (icon) icon.className = 'fas fa-arrow-alt-circle-up';
     toast(`🚀 يتوفر تحديث جديد (v${latestTag})! انقر زِر التحديث في الأعلى للتثبيت.`);
     return true;
-  } else {
+  } else if (latestTag && compareVersions(latestTag, CURRENT_VERSION) <= 0) {
     if (btn) {
       btn.classList.remove('has-update');
       btn.style.display = 'none';
@@ -6071,6 +6088,12 @@ async function checkForAppUpdates(isManual = false) {
     if (icon) icon.className = 'fas fa-check-circle';
     if (isManual) {
       toast(`✨ أنت تستخدم أحدث إصدار من البرنامج (v${CURRENT_VERSION})`);
+    }
+    return false;
+  } else {
+    // Both API and all fallbacks failed
+    if (isManual) {
+      toast(`⚠️ تعذر التحقق من التحديثات (تأكد من الاتصال بالإنترنت).`);
     }
     return false;
   }

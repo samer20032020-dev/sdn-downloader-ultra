@@ -3193,8 +3193,15 @@ class DownloaderBridgeAPI:
     # Ultra: App Update & Installer Launch
     # ================================================================
     def check_app_update(self):
+        import urllib.request
+        import urllib.error
+        tag_name = ""
+        body = ""
+        assets = []
+        release_html_url = f"https://github.com/{GITHUB_REPO}/releases/latest"
+
+        # Tier 1: Try GitHub REST API
         try:
-            import urllib.request
             req = urllib.request.Request(
                 f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest",
                 headers={
@@ -3202,37 +3209,83 @@ class DownloaderBridgeAPI:
                     'Accept': 'application/vnd.github+json',
                 }
             )
-            with urllib.request.urlopen(req, timeout=8) as resp:
+            with urllib.request.urlopen(req, timeout=6) as resp:
                 data = json.loads(resp.read().decode('utf-8'))
-                tag_name = data.get('tag_name', '').lstrip('v')
+                tag_name = str(data.get('tag_name') or '').lstrip('v')
                 body = data.get('body', '')
                 assets = data.get('assets', [])
-                release_html_url = data.get('html_url', f"https://github.com/{GITHUB_REPO}/releases/latest")
-                portable = _release_asset_details(assets, WINDOWS_PORTABLE_ASSET)
-                installer = _release_asset_details(assets, WINDOWS_INSTALLER_ASSET)
+                release_html_url = data.get('html_url', release_html_url)
+        except Exception as api_err:
+            _log.info(f"GitHub REST API update check rate-limited or unavailable ({api_err}); using rate-limit-free fallbacks...")
 
-                if tag_name and _version_key(tag_name) > _version_key(CURRENT_APP_VERSION):
-                    preferred = portable or installer or {}
-                    return {
-                        'has_update': True,
-                        'latest_version': tag_name,
-                        'current_version': CURRENT_APP_VERSION,
-                        'download_url': preferred.get('url') or release_html_url,
-                        'html_url': release_html_url,
-                        'sha256': preferred.get('sha256'),
-                        'size': preferred.get('size'),
-                        'update_kind': 'portable' if portable else 'installer',
-                        'portable_url': portable.get('url') if portable else None,
-                        'portable_sha256': portable.get('sha256') if portable else None,
-                        'portable_size': portable.get('size') if portable else None,
-                        'installer_url': installer.get('url') if installer else None,
-                        'installer_sha256': installer.get('sha256') if installer else None,
-                        'installer_size': installer.get('size') if installer else None,
-                        'notes': body or 'تحديث جديد لتحسين الأداء وحل المشاكل.'
-                    }
-        except Exception as e:
-            _log.debug(f"Update check failed (offline?): {e}")
-        return {'has_update': False, 'current_version': CURRENT_APP_VERSION}
+        # Tier 2: Fallback to HTML redirect on github.com (immune to GitHub API 60 req/hr rate limits)
+        if not tag_name:
+            try:
+                class NoRedirect(urllib.request.HTTPRedirectHandler):
+                    def redirect_request(self, req, fp, code, msg, headers, newurl):
+                        return None
+
+                opener = urllib.request.build_opener(NoRedirect)
+                req_html = urllib.request.Request(
+                    f"https://github.com/{GITHUB_REPO}/releases/latest",
+                    headers={'User-Agent': f'SDN-Downloader-App/{CURRENT_APP_VERSION}'}
+                )
+                try:
+                    resp_html = opener.open(req_html, timeout=6)
+                    target_url = resp_html.geturl()
+                except urllib.error.HTTPError as he:
+                    target_url = he.headers.get('Location') or ''
+
+                if target_url and '/tag/' in target_url:
+                    raw_tag = target_url.split('/tag/')[-1].split('/')[0].strip()
+                    tag_name = raw_tag.lstrip('v')
+                    release_html_url = target_url
+            except Exception as html_err:
+                _log.debug(f"HTML redirect fallback check failed: {html_err}")
+
+        # Tier 3: Fallback to raw repository version.py (immune to rate limits)
+        if not tag_name:
+            try:
+                raw_url = f"https://raw.githubusercontent.com/{GITHUB_REPO}/main/version.py"
+                req_raw = urllib.request.Request(raw_url, headers={'User-Agent': f'SDN-Downloader-App/{CURRENT_APP_VERSION}'})
+                with urllib.request.urlopen(req_raw, timeout=6) as resp_raw:
+                    content = resp_raw.read().decode('utf-8')
+                    m_v = re.search(r'APP_VERSION\s*=\s*["\']([^"\']+)["\']', content)
+                    if m_v:
+                        tag_name = m_v.group(1).lstrip('v')
+            except Exception as raw_err:
+                _log.debug(f"Raw version fallback check failed: {raw_err}")
+
+        if not tag_name:
+            return {'has_update': False, 'current_version': CURRENT_APP_VERSION, 'error': 'offline_or_rate_limited'}
+
+        if _version_key(tag_name) > _version_key(CURRENT_APP_VERSION):
+            portable = _release_asset_details(assets, WINDOWS_PORTABLE_ASSET) if assets else None
+            installer = _release_asset_details(assets, WINDOWS_INSTALLER_ASSET) if assets else None
+
+            portable_url = (portable.get('url') if portable else None) or f"https://github.com/{GITHUB_REPO}/releases/download/v{tag_name}/{WINDOWS_PORTABLE_ASSET}"
+            installer_url = (installer.get('url') if installer else None) or f"https://github.com/{GITHUB_REPO}/releases/download/v{tag_name}/{WINDOWS_INSTALLER_ASSET}"
+
+            preferred_url = portable_url if portable_url else (installer_url or release_html_url)
+            return {
+                'has_update': True,
+                'latest_version': tag_name,
+                'current_version': CURRENT_APP_VERSION,
+                'download_url': preferred_url,
+                'html_url': release_html_url,
+                'sha256': portable.get('sha256') if portable else (installer.get('sha256') if installer else None),
+                'size': portable.get('size') if portable else (installer.get('size') if installer else None),
+                'update_kind': 'portable' if portable else 'installer',
+                'portable_url': portable_url,
+                'portable_sha256': portable.get('sha256') if portable else None,
+                'portable_size': portable.get('size') if portable else None,
+                'installer_url': installer_url,
+                'installer_sha256': installer.get('sha256') if installer else None,
+                'installer_size': installer.get('size') if installer else None,
+                'notes': body or f'تحديث جديد SDN v{tag_name} يتضمن تحسينات وميزات جديدة.'
+            }
+
+        return {'has_update': False, 'current_version': CURRENT_APP_VERSION, 'latest_version': tag_name}
 
     def _current_application_path(self):
         if getattr(sys, 'frozen', False):
