@@ -247,7 +247,27 @@ class InstallerAPI:
 
             dest_exe = os.path.join(self.install_dir, 'SDN_Downloader.exe')
             if os.path.exists(src_exe):
-                shutil.copy2(src_exe, dest_exe)
+                backup_exe = os.path.join(self.install_dir, 'SDN_Downloader.exe.old')
+                copied = False
+                for _ in range(20):
+                    try:
+                        if os.path.exists(backup_exe):
+                            try:
+                                os.remove(backup_exe)
+                            except Exception:
+                                pass
+                        if os.path.exists(dest_exe):
+                            try:
+                                os.replace(dest_exe, backup_exe)
+                            except Exception:
+                                pass
+                        shutil.copy2(src_exe, dest_exe)
+                        copied = True
+                        break
+                    except Exception:
+                        time.sleep(0.5)
+                if not copied:
+                    shutil.copy2(src_exe, dest_exe)
 
             # 2. Clean up any conflicting loose runtime DLLs in the installation folder
             # because SDN_Downloader.exe is a self-contained onefile executable bundling its own runtime.
@@ -520,8 +540,7 @@ class InstallerAPI:
         try:
             if self.exe_path and os.path.exists(self.exe_path):
                 working_dir = os.path.dirname(self.exe_path)
-                CREATE_NO_WINDOW = 0x08000000
-                subprocess.Popen([self.exe_path], cwd=working_dir, creationflags=CREATE_NO_WINDOW)
+                subprocess.Popen([self.exe_path], cwd=working_dir)
             self.close_window()
         except Exception:
             self.close_window()
