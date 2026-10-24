@@ -175,6 +175,51 @@ class TestInPageAndPlaylistFeatures(unittest.TestCase):
             self.api._get_playlist_session_file = orig_getter
 
 
+    def test_playlist_incremental_duplicate_checking(self):
+        # Create a playlist folder with 40 video files
+        pl_folder = os.path.join(self.temp_dir, "My Awesome Playlist")
+        os.makedirs(pl_folder, exist_ok=True)
+        for i in range(1, 41):
+            f_path = os.path.join(pl_folder, f"{i:03d} - Track {i} [vid{i:05d}].mp4")
+            with open(f_path, "wb") as f:
+                f.write(b"0" * 2048)
+
+        # Total is 50, but 40 are downloaded -> partial match (is_duplicate=False, is_partial=True)
+        dup_part = self.api.check_duplicate(
+            title="My Awesome Playlist",
+            target_type="video",
+            is_playlist=True,
+            total_count=50
+        )
+        self.assertFalse(dup_part['is_duplicate'])
+        self.assertTrue(dup_part['is_partial'])
+        self.assertEqual(dup_part['existing_count'], 40)
+        self.assertEqual(dup_part['remaining_count'], 10)
+        self.assertEqual(dup_part['total_count'], 50)
+
+        # Total is 40 and 40 are downloaded -> full duplicate (is_duplicate=True)
+        dup_full = self.api.check_duplicate(
+            title="My Awesome Playlist",
+            target_type="video",
+            is_playlist=True,
+            total_count=40
+        )
+        self.assertTrue(dup_full['is_duplicate'])
+        self.assertEqual(dup_full['count'], 40)
+
+    def test_bridge_cancel_download(self):
+        bridge = YouTubeBrowserBridge(self.api)
+        res = bridge.cancel_download()
+        self.assertIn('cancelled', res)
+
+    def test_downloader_cancel_event(self):
+        from downloader import MediaDownloader
+        dl = MediaDownloader()
+        self.assertFalse(dl._cancel_event.is_set())
+        dl.cancel()
+        self.assertTrue(dl._cancel_event.is_set())
+
+
 if __name__ == '__main__':
     unittest.main()
 

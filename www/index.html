@@ -732,6 +732,25 @@ body.light-theme .input-field-wrap input { background: #fff; }
   margin-top: 4px;
 }
 .btn-cancel-download.active { display: block; }
+.btn-prog-cancel {
+  background: rgba(239, 68, 68, 0.22);
+  border: 1px solid rgba(239, 68, 68, 0.55);
+  color: #fca5a5;
+  border-radius: 8px;
+  padding: 3px 10px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.btn-prog-cancel:hover {
+  background: rgba(239, 68, 68, 0.45);
+  color: #ffffff;
+  border-color: #ef4444;
+}
 
 /* Toast System */
 #toastBox {
@@ -2457,7 +2476,7 @@ body.light-theme .youtube-account-row {
       <!-- Update Header Button -->
       <button id="headerUpdateBtn" onclick="onHeaderUpdateClick()" class="update-header-btn" title="فحص التحديثات" style="display:none;">
         <i class="fas fa-cog" id="updateHeaderIcon"></i>
-        <span id="updateHeaderTxt">v1.0.37</span>
+        <span id="updateHeaderTxt">v1.0.38</span>
       </button>
     </div>
   </header>
@@ -2604,15 +2623,18 @@ body.light-theme .youtube-account-row {
         <div class="download-actions-row">
           <button class="btn-start-download" id="dlBtn">⚡ تنزيل الآن</button>
           <button class="btn-open-folder-main" id="btnOpenFolderMain" type="button" onclick="if(window.pywebview?.api?.open_folder) window.pywebview.api.open_folder()" title="فتح مجلد التنزيلات">📁 فتح المجلد</button>
-          <button class="btn-cancel-download" id="cancelDlBtn" type="button">إلغاء</button>
+          <button class="btn-cancel-download" id="cancelDlBtn" type="button">🛑 إيقاف التنزيل</button>
         </div>
       </div>
 
       <!-- Live Progress Card -->
       <div class="progress-card" id="progCard">
-        <div style="display:flex; justify-content:space-between; font-size:0.82rem; font-weight:700;">
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.82rem; font-weight:700;">
           <span id="progStatus">جاري التحميل...</span>
-          <span id="progPct">0%</span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span id="progPct">0%</span>
+            <button id="progCardCancelBtn" type="button" class="btn-prog-cancel" onclick="document.getElementById('cancelDlBtn')?.click()" title="إيقاف التنزيل">🛑 إيقاف</button>
+          </div>
         </div>
         <div class="progress-bar-track">
           <div class="progress-bar-fill" id="progFill"></div>
@@ -4936,11 +4958,19 @@ function updateProgress(p) {
       }
     } catch(_) {}
 
-    toast(
-      p.count > 1
-        ? `✅ اكتمل تنزيل ${p.count} ملفات بنجاح!`
-        : (mediaType === 'audio' ? '✅ تم تنزيل الصوت وأضيف إلى المشغل!' : '✅ تم تحميل الفيديو بنجاح!')
-    );
+    let completeMsg = p.count > 1
+      ? `✅ اكتمل تنزيل ${p.count} ملفات بنجاح!`
+      : (mediaType === 'audio' ? '✅ تم تنزيل الصوت وأضيف إلى المشغل!' : '✅ تم تحميل الفيديو بنجاح!');
+    if (p.is_playlist && (p.new_count !== undefined || p.skipped_count !== undefined)) {
+      if (p.new_count > 0 && p.skipped_count > 0) {
+        completeMsg = `✅ تم تنزيل ${p.new_count} مقطع جديد وتخطي ${p.skipped_count} مقطع موجود مسبقاً!`;
+      } else if (p.new_count === 0 && p.skipped_count > 0) {
+        completeMsg = `ℹ️ جميع عناصر القائمة (${p.skipped_count} مقطع) موجودة مسبقاً بالفعل!`;
+      } else if (p.new_count > 0) {
+        completeMsg = `✅ تم تنزيل جميع المقاطع الجديدة (${p.new_count} مقطع) بنجاح!`;
+      }
+    }
+    toast(completeMsg);
 
     // Auto-hide progress card after 4s
     setTimeout(() => {
@@ -4953,11 +4983,11 @@ function updateProgress(p) {
       card.style.flexDirection = 'column';
     if (fill) { fill.classList.remove('processing'); fill.style.width = '0%'; fill.style.background = ''; }
     if (pct) pct.innerText = '⏹️';
-    if (stat) stat.innerText = p.error || 'تم إلغاء التنزيل';
+    if (stat) stat.innerText = p.error || '🛑 تم إيقاف وإلغاء عملية التنزيل بنجاح';
     if (speed) speed.innerText = '';
     if (eta) eta.innerText = '';
     if (sizes) sizes.innerText = '';
-    toast('⏹️ تم إلغاء التنزيل');
+    toast('🛑 تم إيقاف وإلغاء عملية التنزيل بنجاح');
   } else if (p.status === 'error') {
     setDownloadActive(false);
     card.style.display = 'flex';
@@ -5422,11 +5452,12 @@ document.getElementById('dlBtn').addEventListener('click', async () => {
     const targetType = (gOpt.type === 'audio' || String(gOpt.label || '').includes('صوت') || String(gOpt.label || '').includes('MP3')) ? 'audio' : 'video';
     try {
       const isPl = Boolean(gData.is_playlist);
-      const dupCheck = await window.pywebview.api.check_duplicate(sourceUrl, gData.title, targetType, isPl);
+      const totalCount = isPl ? (gData.playlist_count || (gData.entries ? gData.entries.length : 0)) : 1;
+      const dupCheck = await window.pywebview.api.check_duplicate(sourceUrl, gData.title, targetType, isPl, totalCount);
       if (dupCheck && dupCheck.is_duplicate) {
         const typeLabel = targetType === 'audio' ? 'صوت (MP3)' : 'فيديو (MP4)';
         if (dupCheck.is_playlist) {
-          toast(`⚠️ هذه القائمة موجودة بالفعل بنفس الصيغة (${typeLabel}) على جهازك!`);
+          toast(`⚠️ جميع مقاطع هذه القائمة (${dupCheck.count || totalCount} مقطع) موجودة مسبقاً بنفس الصيغة (${typeLabel}) على جهازك!`);
         } else {
           toast(`⚠️ هذا المقطع موجود بالفعل بنفس الصيغة (${typeLabel}) في مجلد التنزيلات!`);
         }
@@ -5436,6 +5467,8 @@ document.getElementById('dlBtn').addEventListener('click', async () => {
           window.pywebview.api.open_folder();
         }
         return;
+      } else if (dupCheck && dupCheck.is_partial) {
+        toast(`ℹ️ تم العثور على ${dupCheck.existing_count} مقطع منزّل مسبقاً. سيتم تنزيل ${dupCheck.remaining_count} مقطع جديد وتخطي المكررة تلقائياً!`, 'info');
       }
     } catch (e) {
       console.warn('Duplicate pre-check warning:', e);
@@ -5928,7 +5961,7 @@ function incrementDlCounter() {
   num.style.animation = 'dlBadgeBump 0.35s ease';
 }
 
-let CURRENT_VERSION = '1.0.37';
+let CURRENT_VERSION = '1.0.38';
 let gLatestReleaseUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
 let gLatestReleasePage = gLatestReleaseUrl;
 let gLatestAssetUrl = '';

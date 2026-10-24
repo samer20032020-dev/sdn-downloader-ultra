@@ -1129,6 +1129,7 @@ class MediaDownloader:
         target_exts = AUDIO_EXTENSIONS if is_audio else VIDEO_EXTENSIONS
         target_type_label = "صوت (Audio)" if is_audio else "فيديو (Video)"
         existing_disk_items: dict[str, str] = {}
+        existing_disk_titles: dict[str, str] = {}
         if not allow_duplicate and os.path.isdir(save_dir):
             try:
                 for root, _, files in os.walk(save_dir):
@@ -1141,19 +1142,40 @@ class MediaDownloader:
                                     m = re.search(r'\[([a-zA-Z0-9_-]{11})\]', fname)
                                     if m:
                                         existing_disk_items[m.group(1)] = full_p
+                                    clean_stem = re.sub(r'^\d+\s*-\s*', '', os.path.splitext(fname)[0])
+                                    clean_stem = re.sub(r'\[.*?\]', '', clean_stem).strip().lower()
+                                    clean_key = "".join(c for c in clean_stem if c.isalnum())
+                                    if clean_key:
+                                        existing_disk_titles[clean_key] = full_p
                             except OSError:
                                 pass
             except Exception as e:
                 _log.debug(f"Failed scanning existing disk items: {e}")
 
+        newly_downloaded_files: list[str] = []
+        skipped_duplicate_files: list[str] = []
+        skipped_lock = threading.Lock()
+        newly_lock = threading.Lock()
+
         def item_duplicate_filter(info_candidate: dict[str, Any], *, incomplete: bool = False) -> str | None:
             if allow_duplicate:
                 return None
             vid = info_candidate.get("id")
+            existing_path = None
             if vid and vid in existing_disk_items:
-                it_title = info_candidate.get("title") or vid
                 existing_path = existing_disk_items[vid]
+            else:
+                raw_t = info_candidate.get("title") or ""
+                clean_t = "".join(c for c in raw_t.lower() if c.isalnum())
+                if clean_t and clean_t in existing_disk_titles:
+                    existing_path = existing_disk_titles[clean_t]
+
+            if existing_path:
+                it_title = info_candidate.get("title") or vid or "مقطع"
                 capture_path(existing_path)
+                with skipped_lock:
+                    if existing_path not in skipped_duplicate_files:
+                        skipped_duplicate_files.append(existing_path)
                 msg = f"⚠️ المقطع '{it_title[:35]}' موجود مسبقاً بنفس الصيغة ({target_type_label}) - تم تخطيه"
                 if status_callback:
                     status_callback(msg)
@@ -1169,6 +1191,16 @@ class MediaDownloader:
             with captured_lock:
                 if normalized_path not in captured_files:
                     captured_files.append(normalized_path)
+
+        def capture_new_path(candidate: str | None) -> None:
+            if not candidate:
+                return
+            normalized_path = os.path.normpath(candidate)
+            if Path(normalized_path).suffix.lower() not in MEDIA_EXTENSIONS:
+                return
+            with newly_lock:
+                if normalized_path not in newly_downloaded_files and normalized_path not in skipped_duplicate_files:
+                    newly_downloaded_files.append(normalized_path)
 
         def ydl_progress_hook(data: dict[str, Any]) -> None:
             if self._cancel_event.is_set():
@@ -1199,6 +1231,7 @@ class MediaDownloader:
             if status == "finished":
                 if is_media:
                     capture_path(raw_fn)
+                    capture_new_path(raw_fn)
                     if status_callback:
                         status_callback("اكتمل تنزيل المسار، جاري تحضير المعالجة...")
                     if item_complete_callback and is_playlist and not postprocessors:
@@ -1256,6 +1289,7 @@ class MediaDownloader:
                 info_dict = data.get("info_dict") or {}
                 captured_fp = info_dict.get("filepath") or info_dict.get("_filename")
                 capture_path(captured_fp)
+                capture_new_path(captured_fp)
                 if status_callback:
                     status_callback("⚙️ اكتملت المعالجة، جاري حفظ وتجهيز الملف...")
                 if item_complete_callback and is_playlist:
@@ -1309,15 +1343,17 @@ class MediaDownloader:
         turbo_active = option.get("turbo", True)
         ydl_options["concurrent_fragment_downloads"] = 16 if turbo_active else 8
 
+        filter_fn = item_duplicate_filter
         if not option.get("allow_live", True):
-            def _reject_live(info_dict: dict, *, incomplete: bool = False):
-                if info_dict.get("is_live"):
+            def combined_filter(info_candidate: dict[str, Any], *, incomplete: bool = False) -> str | None:
+                if info_candidate.get("is_live"):
                     return "🔴 هذا المحتوى بث مباشر والتنزيل المباشر موقوف من الإعدادات"
-                return None
+                return item_duplicate_filter(info_candidate, incomplete=incomplete)
 
-            ydl_options["match_filter"] = _reject_live
+            filter_fn = combined_filter
         else:
             ydl_options["live_from_start"] = True
+        ydl_options["match_filter"] = filter_fn
 
         postprocessors: list[dict[str, Any]] = []
         if is_audio:
@@ -1358,13 +1394,30 @@ class MediaDownloader:
         used_cookies = bool(ydl_options.get("cookiefile") or ydl_options.get("cookiesfrombrowser"))
         cookie_session_file = ydl_options.get("cookiefile")
 
+        def _cleanup_partial_files() -> None:
+            try:
+                for part_f in glob.glob(os.path.join(save_dir, "**", "*.part"), recursive=True):
+                    try:
+                        os.remove(part_f)
+                    except Exception:
+                        pass
+                for ytdl_f in glob.glob(os.path.join(save_dir, "**", "*.ytdl"), recursive=True):
+                    try:
+                        os.remove(ytdl_f)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
         try:
             with yt_dlp.YoutubeDL(ydl_options) as ydl:
                 info = ydl.extract_info(url, download=True)
         except DownloadCancelled:
+            _cleanup_partial_files()
             raise
         except Exception as exc:
             if self._cancel_event.is_set():
+                _cleanup_partial_files()
                 raise DownloadCancelled("Download cancelled by user") from exc
 
             # If download failed with cookie rejection, automatically retry without cookies
@@ -1396,6 +1449,7 @@ class MediaDownloader:
                             except Exception:
                                 pass
                     except DownloadCancelled:
+                        _cleanup_partial_files()
                         raise
                     except Exception:
                         download_recovered = False
@@ -1468,7 +1522,10 @@ class MediaDownloader:
         if not final_files:
             raise RuntimeError("اكتمل الاستخراج لكن تعذر العثور على الملف النهائي.")
 
-        directory = os.path.dirname(final_files[0]) if is_playlist else save_dir
+        actual_skipped = [p for p in skipped_duplicate_files if os.path.isfile(p)]
+        actual_new = [p for p in final_files if p not in actual_skipped]
+
+        directory = os.path.dirname(final_files[0]) if (is_playlist and final_files) else save_dir
         file_items = [
             {
                 "filepath": path,
@@ -1480,9 +1537,11 @@ class MediaDownloader:
             for path in final_files
         ]
         return {
-            "filepath": final_files[0],
+            "filepath": final_files[0] if final_files else "",
             "files": file_items,
             "count": len(final_files),
+            "new_count": len(actual_new),
+            "skipped_count": len(actual_skipped),
             "directory": directory,
             "is_playlist": is_playlist,
             "media_type": "audio" if is_audio else "video",

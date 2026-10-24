@@ -155,8 +155,11 @@ class YouTubeBrowserBridge:
     def send_to_main(self, url, auto_playlist_select=False):
         return self.main_api.load_url_in_main(url, auto_playlist_select)
 
-    def check_duplicate(self, url, title=None, target_type=None):
-        return self.main_api.check_duplicate(url, title, target_type=target_type)
+    def check_duplicate(self, url, title=None, target_type=None, is_playlist=False, total_count=None):
+        return self.main_api.check_duplicate(url, title, target_type=target_type, is_playlist=is_playlist, total_count=total_count)
+
+    def cancel_download(self):
+        return self.main_api.cancel_download()
 
     def delete_history_item(self, filepath_or_url):
         return self.main_api.delete_history_item(filepath_or_url)
@@ -510,6 +513,18 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
         var textSpan = createEl('span', '', 'line-height:1.4;', msg);
         t.appendChild(textSpan);
 
+        if (actionData && actionData.is_downloading) {
+            var cancelDlBtn = createEl('button', '', 'background:#ef4444; color:#ffffff; border:none; border-radius:14px; padding:4px 12px; font-size:12px; font-weight:700; cursor:pointer; margin-right:6px; white-space:nowrap; display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 8px rgba(239,68,68,0.4);', '🛑 إيقاف التنزيل');
+            cancelDlBtn.onclick = function(e) {
+                e.stopPropagation();
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.cancel_download) {
+                    window.pywebview.api.cancel_download();
+                    window.showSdnToast('🛑 جاري إيقاف وإلغاء التنزيل...', 'info');
+                }
+            };
+            t.appendChild(cancelDlBtn);
+        }
+
         if (actionData && (actionData.url || actionData.filepath)) {
             if (actionData.url) {
                 var actionBtn = createEl('button', '', 'background:#ffffff; color:#0f172a; border:none; border-radius:14px; padding:4px 12px; font-size:12px; font-weight:700; cursor:pointer; margin-right:6px; white-space:nowrap;', 'تنزيل على أي حال ↻');
@@ -660,6 +675,13 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
 
         var div = createEl('div', '', 'border-top:1px solid rgba(255,255,255,0.08); margin:4px 2px;');
         menu.appendChild(div);
+
+        addItem('🛑 إيقاف التنزيل الحالي', 'إيقاف', function() {
+            if (window.pywebview && window.pywebview.api && window.pywebview.api.cancel_download) {
+                window.pywebview.api.cancel_download();
+                showToast('🛑 تم إرسال أمر إيقاف التنزيل...', 'info');
+            }
+        });
 
         addItem('📁 فتح مجلد التنزيلات', 'مجلد', function() {
             if (window.pywebview && window.pywebview.api && window.pywebview.api.open_folder) {
@@ -2016,7 +2038,7 @@ class DownloaderBridgeAPI:
             _log.warning(f"Failed to play file: {e}")
         return {'success': False}
 
-    def check_duplicate(self, url=None, title=None, target_type=None, is_playlist=False):
+    def check_duplicate(self, url=None, title=None, target_type=None, is_playlist=False, total_count=None):
         """Check if URL or title has already been downloaded into save_dir or history to prevent duplicate waste.
         Respects format: downloading MP3 when video exists (or vice versa) is allowed!
         Only flags duplicate if the SAME format (video vs video, or audio vs audio) already exists.
@@ -2086,6 +2108,22 @@ class DownloaderBridgeAPI:
                                             if fext in target_exts and os.path.getsize(sub_entry.path) > 1024:
                                                 matching_files.append(sub_entry.path)
                                     if len(matching_files) >= 1:
+                                        tot = int(total_count) if (total_count and int(total_count) > 0) else None
+                                        if tot and len(matching_files) < tot:
+                                            _log.info(f"Playlist folder partial match: {entry.name} ({len(matching_files)}/{tot} items in {norm_target})")
+                                            return {
+                                                'is_duplicate': False,
+                                                'is_partial': True,
+                                                'is_playlist': True,
+                                                'matched_title': entry.name,
+                                                'filepath': entry.path,
+                                                'reason': 'playlist_partial',
+                                                'format': norm_target or 'media',
+                                                'existing_count': len(matching_files),
+                                                'total_count': tot,
+                                                'remaining_count': tot - len(matching_files),
+                                                'count': len(matching_files)
+                                            }
                                         _log.info(f"Playlist folder duplicate found: {entry.name} ({len(matching_files)} items in {norm_target})")
                                         return {
                                             'is_duplicate': True,
@@ -2094,7 +2132,8 @@ class DownloaderBridgeAPI:
                                             'filepath': entry.path,
                                             'reason': 'playlist_folder_exists',
                                             'format': norm_target or 'media',
-                                            'count': len(matching_files)
+                                            'count': len(matching_files),
+                                            'total_count': tot or len(matching_files)
                                         }
                 except Exception as ex:
                     _log.debug(f"Playlist folder scan exception: {ex}")
@@ -2116,6 +2155,21 @@ class DownloaderBridgeAPI:
                                     if not first_fp:
                                         first_fp = fp
                     if hist_matches >= 3:
+                        tot = int(total_count) if (total_count and int(total_count) > 0) else None
+                        if tot and hist_matches < tot:
+                            return {
+                                'is_duplicate': False,
+                                'is_partial': True,
+                                'is_playlist': True,
+                                'matched_title': title or 'قائمة تشغيل سابقة',
+                                'filepath': first_fp,
+                                'reason': 'playlist_partial_history',
+                                'format': norm_target or 'media',
+                                'existing_count': hist_matches,
+                                'total_count': tot,
+                                'remaining_count': tot - hist_matches,
+                                'count': hist_matches
+                            }
                         return {
                             'is_duplicate': True,
                             'is_playlist': True,
@@ -2123,7 +2177,8 @@ class DownloaderBridgeAPI:
                             'filepath': first_fp,
                             'reason': 'playlist_history',
                             'format': norm_target or 'media',
-                            'count': hist_matches
+                            'count': hist_matches,
+                            'total_count': tot or hist_matches
                         }
 
         def _norm_title(t):
@@ -2385,13 +2440,14 @@ class DownloaderBridgeAPI:
                 target_type = 'audio' if 'mp3' in str(option.get('ext', '')).lower() else 'video'
             title = option.get('media_title') or option.get('title')
             is_playlist = bool(option.get('is_playlist'))
-            dup = self.check_duplicate(url, title, target_type=target_type, is_playlist=is_playlist)
+            total_items_count = int(option.get('playlist_count') or len(option.get('playlist_items') or []) or 0) if is_playlist else 1
+            dup = self.check_duplicate(url, title, target_type=target_type, is_playlist=is_playlist, total_count=total_items_count)
             if dup and dup.get('is_duplicate'):
                 type_name = "صوت (Audio)" if target_type == 'audio' else "فيديو (Video)"
                 if dup.get('is_playlist'):
                     return {
                         'started': False,
-                        'error': f"⚠️ هذه القائمة موجودة بالفعل بنفس الصيغة ({type_name}) في مجلد التنزيلات!"
+                        'error': f"⚠️ جميع مقاطع هذه القائمة ({dup.get('count', 0)} مقطع) موجودة مسبقاً بنفس الصيغة ({type_name}) في مجلد التنزيلات!"
                     }
                 return {
                     'started': False,
@@ -2716,7 +2772,7 @@ class DownloaderBridgeAPI:
         except Exception as e:
             _log.error(f"Failed to open YouTube browser: {e}")
 
-    def _notify_browser_toast(self, msg, toast_type='info', is_dup=False, dup_url=None, quality='best', mode='single', title=None, filepath=None):
+    def _notify_browser_toast(self, msg, toast_type='info', is_dup=False, dup_url=None, quality='best', mode='single', title=None, filepath=None, is_downloading=False):
         if getattr(self, '_youtube_browser_win', None):
             try:
                 action_data = None
@@ -2724,6 +2780,10 @@ class DownloaderBridgeAPI:
                     action_data = {'url': dup_url, 'quality': quality, 'mode': mode, 'title': title or '', 'filepath': filepath or ''}
                 elif filepath:
                     action_data = {'filepath': filepath or ''}
+                if is_downloading:
+                    if not action_data:
+                        action_data = {}
+                    action_data['is_downloading'] = True
                 js_call = f"if (window.showSdnToast) window.showSdnToast({json.dumps(msg)}, {json.dumps(toast_type)}, {json.dumps(action_data)});"
                 self._youtube_browser_win.evaluate_js(js_call)
             except Exception as e:
