@@ -2476,7 +2476,7 @@ body.light-theme .youtube-account-row {
       <!-- Update Header Button -->
       <button id="headerUpdateBtn" onclick="onHeaderUpdateClick()" class="update-header-btn" title="فحص التحديثات" style="display:none;">
         <i class="fas fa-cog" id="updateHeaderIcon"></i>
-        <span id="updateHeaderTxt">v1.0.40</span>
+        <span id="updateHeaderTxt">v1.0.41</span>
       </button>
     </div>
   </header>
@@ -3383,7 +3383,6 @@ function logoutYouTube() {
 window.onYouTubeLoginComplete = function(success, errMsg) {
   if (success) {
     refreshYouTubeUI(true);
-    toast('🎉 تم تسجيل الدخول بنجاح! تم ربط حساب YouTube.');
   } else if (errMsg) {
     toast('❌ خطأ في تسجيل الدخول: ' + errMsg);
   }
@@ -5961,7 +5960,7 @@ function incrementDlCounter() {
   num.style.animation = 'dlBadgeBump 0.35s ease';
 }
 
-let CURRENT_VERSION = '1.0.40';
+let CURRENT_VERSION = '1.0.41';
 let gLatestReleaseUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
 let gLatestReleasePage = gLatestReleaseUrl;
 let gLatestAssetUrl = '';

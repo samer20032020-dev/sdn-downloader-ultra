@@ -2760,7 +2760,8 @@ class DownloaderBridgeAPI:
                             if self._check_cookie_auth(cookies):
                                 from downloader import save_cookies_to_netscape_file, get_youtube_session_cookie_path
                                 save_cookies_to_netscape_file(cookies, get_youtube_session_cookie_path())
-                                if self._window:
+                                if self._window and not getattr(self, '_yt_browser_auth_synced', False):
+                                    self._yt_browser_auth_synced = True
                                     self._window.evaluate_js("if (window.onYouTubeLoginComplete) window.onYouTubeLoginComplete(true);")
                         except Exception:
                             pass
