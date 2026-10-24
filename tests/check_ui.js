@@ -1,17 +1,25 @@
 const fs = require('fs');
 const vm = require('vm');
 
-const html = fs.readFileSync('ui/index.html', 'utf8');
-const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
-  .map(match => match[1])
-  .filter(Boolean);
+function validateHtmlScripts(filePath, label) {
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`File not found: ${filePath}`);
+  }
+  const html = fs.readFileSync(filePath, 'utf8');
+  const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
+    .map(match => match[1])
+    .filter(Boolean);
 
-if (!scripts.length) {
-  throw new Error('No inline UI script was found');
+  if (!scripts.length) {
+    throw new Error(`No inline script found in ${label} (${filePath})`);
+  }
+
+  scripts.forEach((source, index) => {
+    new vm.Script(source, { filename: `${label}-inline-${index}.js` });
+  });
+
+  console.log(`✅ ${label} JavaScript parsed successfully (${scripts.length} block)`);
 }
 
-scripts.forEach((source, index) => {
-  new vm.Script(source, { filename: `ui-inline-${index}.js` });
-});
-
-console.log(`UI JavaScript parsed successfully (${scripts.length} block)`);
+validateHtmlScripts('ui/index.html', 'PC UI');
+validateHtmlScripts('www/index.html', 'Mobile UI');

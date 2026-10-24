@@ -89,7 +89,18 @@ def update_ui_index_html(new_version: str) -> None:
                   f'<span class="settings-desc" id="settingsVersionTxt">SDN v{new_version}</span>', text)
 
     ui_file.write_text(text, encoding="utf-8")
-    print(f"  [✓] Updated ui/index.html -> v{new_version}")
+    print(f"  [✓] Updated ui/index.html (PC UI) -> v{new_version}")
+
+
+def update_mobile_index_html(new_version: str) -> None:
+    mobile_file = ROOT / "www" / "index.html"
+    if not mobile_file.is_file():
+        return
+    text = mobile_file.read_text(encoding="utf-8")
+    text = re.sub(r"let CURRENT_VERSION\s*=\s*'[^']*';", f"let CURRENT_VERSION = '{new_version}';", text, count=1)
+    text = re.sub(r'SDN Ultra v[\d\.]+', f'SDN Ultra v{new_version}', text)
+    mobile_file.write_text(text, encoding="utf-8")
+    print(f"  [✓] Updated www/index.html (Mobile UI) -> v{new_version}")
 
 
 def update_installer_iss(new_version: str) -> None:
@@ -164,6 +175,7 @@ def bump(mode: str = "patch", explicit: str | None = None) -> str:
     update_version_py(new_version)
     update_android_gradle(new_version)
     update_ui_index_html(new_version)
+    update_mobile_index_html(new_version)
     update_installer_html(new_version)
     update_installer_iss(new_version)
     update_app_config(new_version)

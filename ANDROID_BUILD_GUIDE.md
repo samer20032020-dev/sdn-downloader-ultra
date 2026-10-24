@@ -19,9 +19,9 @@ python build_and_upload_apk.py --no-upload
 
 تقوم الأداة تلقائيًا بما يلي:
 
-1. مزامنة رقم الإصدار من `version.py` مع `android/app/build.gradle` و`ui/index.html`.
-2. مزامنة `ui/index.html` مع نسختي الويب وأندرويد.
-3. بناء APK ونسخه إلى `dist/SDN_Downloader_Ultra.apk`.
+1. مزامنة رقم الإصدار من `version.py` مع `android/app/build.gradle` وواجهة الهاتف المستقلة `www/index.html`.
+2. التحقق من استقلال نسختي الهاتف (`www/index.html`) والكمبيوتر (`ui/index.html`) بنسبة 100% بدون أي تداخل أو استبدال.
+3. مزامنة واجهة الهاتف `www/` مباشرة عبر Capacitor وبناء APK ونسخه إلى `dist/SDN_Downloader_Ultra.apk`.
 
 لحفظ APK مباشرة في إصدار GitHub الحالي بعد البناء، احذف الخيار `--no-upload`.
 

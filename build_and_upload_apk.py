@@ -100,7 +100,7 @@ def configure_environment() -> None:
 
 
 def sync_version_files() -> None:
-    """Keep build.gradle and the web UI in sync with version.py."""
+    """Keep build.gradle and the mobile web UI (www/index.html) in sync with version.py."""
     major, minor, patch = (int(part) for part in APP_VERSION.split(".")[:3])
     version_code = major * 10000 + minor * 100 + patch
 
@@ -115,16 +115,19 @@ def sync_version_files() -> None:
     )
     gradle_file.write_text(gradle_text, encoding="utf-8")
 
-    ui_file = ROOT / "ui" / "index.html"
-    ui_text = ui_file.read_text(encoding="utf-8")
-    ui_text = re.sub(
-        r"let CURRENT_VERSION = '[^']*';",
-        f"let CURRENT_VERSION = '{APP_VERSION}';",
-        ui_text,
-        count=1,
-    )
-    ui_file.write_text(ui_text, encoding="utf-8")
-    print(f"Synced version {APP_VERSION} (versionCode {version_code}) into Gradle and UI")
+    mobile_file = ROOT / "www" / "index.html"
+    if mobile_file.is_file():
+        mobile_text = mobile_file.read_text(encoding="utf-8")
+        mobile_text = re.sub(
+            r"let CURRENT_VERSION = '[^']*';",
+            f"let CURRENT_VERSION = '{APP_VERSION}';",
+            mobile_text,
+            count=1,
+        )
+        mobile_text = re.sub(r'SDN Ultra v[\d\.]+', f'SDN Ultra v{APP_VERSION}', mobile_text)
+        mobile_file.write_text(mobile_text, encoding="utf-8")
+
+    print(f"Synced mobile version {APP_VERSION} (versionCode {version_code}) into Gradle and www/index.html")
 
 
 def build_apk() -> Path:
