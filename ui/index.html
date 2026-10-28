@@ -2476,7 +2476,7 @@ body.light-theme .youtube-account-row {
       <!-- Update Header Button -->
       <button id="headerUpdateBtn" onclick="onHeaderUpdateClick()" class="update-header-btn" title="فحص التحديثات" style="display:none;">
         <i class="fas fa-cog" id="updateHeaderIcon"></i>
-        <span id="updateHeaderTxt">v1.0.45</span>
+        <span id="updateHeaderTxt">v1.0.46</span>
       </button>
     </div>
   </header>
@@ -3392,7 +3392,7 @@ function openYouTubeBrowser(targetUrl) {
   const url = targetUrl || 'https://www.youtube.com';
   if (window.pywebview?.api?.open_youtube_browser) {
     window.pywebview.api.open_youtube_browser(url);
-    toast('🎬 تم فتح متصفح YouTube الذكي (بدون إعلانات + IDM)');
+    // Toast removed per user preference
   } else if (window.androidInterface?.openYouTubeBrowser) {
     try {
       window.androidInterface.openYouTubeBrowser(url);
@@ -4908,33 +4908,59 @@ function updateProgress(p) {
     const title = p.title || p.media_title || (Array.isArray(p.files) && p.files[0]?.title) || gData?.title || 'وسائط محمّلة';
     const qualLabel = p.quality || gOpt?.label || gOpt?.size_str || 'جودة افتراضية';
     const mediaType = p.media_type || gOpt?.type || 'video';
-    const firstFile = Array.isArray(p.files) && p.files.length ? p.files[0] : null;
-    const summaryTitle = p.count > 1 ? `${title} (${p.count} ملفات)` : title;
-    addRecentItem(
-      summaryTitle,
-      qualLabel,
-      mediaType === 'audio' ? 'audio' : 'yt',
-      p.filepath || firstFile?.filepath || '',
-      firstFile?.playable_url || '',
-      new Date().toISOString()
-    );
+    const downloadedFiles = Array.isArray(p.files) && p.files.length ? p.files : (p.filepath ? [{ filepath: p.filepath, title: title }] : []);
 
-    // Auto-sync any downloaded audio tracks directly into Music Library
-    const downloadedFiles = Array.isArray(p.files) ? p.files : (p.filepath ? [{ filepath: p.filepath, title: title }] : []);
-    const audioFiles = downloadedFiles.filter(f => {
-      const pStr = (f.filepath || '').toLowerCase();
-      return f.is_audio || f.type === 'audio' || mediaType === 'audio' || pStr.endsWith('.mp3') || pStr.endsWith('.m4a') || pStr.endsWith('.wav') || pStr.endsWith('.flac') || pStr.endsWith('.opus');
-    });
+    // 1) Add each individual downloaded item to Recent & History
+    if (downloadedFiles.length > 1) {
+      downloadedFiles.forEach(f => {
+        const fPath = f.filepath || '';
+        const fTitle = f.title || title;
+        const fIsAudio = Boolean(f.is_audio || mediaType === 'audio' || String(fPath).toLowerCase().match(/\.(mp3|m4a|wav|flac|opus|aac|ogg)$/));
+        addRecentItem(
+          fTitle,
+          fIsAudio ? 'صوت MP3' : qualLabel,
+          fIsAudio ? 'audio' : 'yt',
+          fPath,
+          f.playable_url || '',
+          new Date().toISOString()
+        );
+      });
+    } else {
+      const firstFile = downloadedFiles[0] || null;
+      const fPath = p.filepath || firstFile?.filepath || '';
+      const fTitle = firstFile?.title || title;
+      const fIsAudio = Boolean(mediaType === 'audio' || firstFile?.is_audio || String(fPath).toLowerCase().match(/\.(mp3|m4a|wav|flac|opus|aac|ogg)$/));
+      addRecentItem(
+        fTitle,
+        fIsAudio ? 'صوت MP3' : qualLabel,
+        fIsAudio ? 'audio' : 'yt',
+        fPath,
+        firstFile?.playable_url || '',
+        new Date().toISOString()
+      );
+    }
 
-    if (audioFiles.length > 0) {
-      const newTracks = audioFiles.map(f => ({
-        title: f.title || (f.filepath ? f.filepath.split(/[\\/]/).pop().replace(/\.[^/.]+$/, "") : "مقطع صوتي"),
-        uploader: f.uploader || gData?.uploader || 'SDN Audio',
-        thumbnail: f.thumbnail || gData?.thumbnail || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300',
+    // Refresh history UI from backend storage (~/.sdn_history.json)
+    if (typeof refreshHistoryUI === 'function') {
+      refreshHistoryUI();
+    }
+
+    // 2) Auto-sync any downloaded files (audio and video) directly into Music/Media Library
+    const newTracks = downloadedFiles.map(f => {
+      const fPath = f.filepath || p.filepath || '';
+      const fTitle = f.title || (fPath ? fPath.split(/[\\/]/).pop().replace(/\.[^/.]+$/, "") : "مقطع وسائط");
+      const isAudio = Boolean(f.is_audio || mediaType === 'audio' || String(fPath).toLowerCase().match(/\.(mp3|m4a|wav|flac|opus|aac|ogg)$/));
+      return {
+        title: fTitle,
+        uploader: f.uploader || gData?.uploader || (isAudio ? 'SDN Audio' : 'SDN Video'),
+        thumbnail: f.thumbnail || gData?.thumbnail || (isAudio ? 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300' : 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=300'),
         url: f.playable_url || getPlayableTrackUrl(f),
         playable_url: f.playable_url || getPlayableTrackUrl(f),
-        filepath: f.filepath
-      }));
+        filepath: fPath,
+        type: isAudio ? 'audio' : 'video'
+      };
+    });
+    if (newTracks.length > 0) {
       addTracksToPlaylist(newTracks);
       renderPlaylistUI();
     }
@@ -5960,7 +5986,7 @@ function incrementDlCounter() {
   num.style.animation = 'dlBadgeBump 0.35s ease';
 }
 
-let CURRENT_VERSION = '1.0.45';
+let CURRENT_VERSION = '1.0.46';
 let gLatestReleaseUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
 let gLatestReleasePage = gLatestReleaseUrl;
 let gLatestAssetUrl = '';
@@ -6345,7 +6371,7 @@ async function confirmResumePlaylist() {
 
   try {
     const res = await window.pywebview.api.resume_playlist_download();
-    if (res && res.resumed) {
+    if (res && (res.resumed || res.success)) {
       toast(`🚀 ${res.message || 'تم استئناف التنزيل بنجاح!'}`);
     } else {
       setDownloadActive(false);

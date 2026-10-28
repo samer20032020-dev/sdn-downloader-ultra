@@ -2569,12 +2569,20 @@ class DownloaderBridgeAPI:
         session = self._load_playlist_session()
         if session:
             rem = session.get('remaining_indices') or []
+            comp = session.get('completed_indices') or []
+            total = session.get('total_count') or session.get('playlist_count') or 0
+            if not rem and total > len(comp):
+                completed_set = set(comp)
+                rem = [i for i in range(1, total + 1) if i not in completed_set]
+                session['remaining_indices'] = rem
             status = session.get('status', 'in_progress')
             if len(rem) > 0 and status in ('in_progress', 'paused', 'interrupted'):
-                total = session.get('total_count') or session.get('playlist_count') or (session.get('completed_count', 0) + len(rem))
-                session['total_count'] = total
+                session['total_count'] = total if total > 0 else (len(comp) + len(rem))
+                session['completed_count'] = len(comp)
                 session['remaining_count'] = len(rem)
                 session['playlist_title'] = session.get('playlist_title') or session.get('title') or 'قائمة تشغيل'
+                opt = session.get('option') or {}
+                session['mode'] = 'audio' if opt.get('type') == 'audio' else ('mixed' if opt.get('mixed_playlist') else 'video')
                 return {
                     'has_session': True,
                     'session': session
@@ -2597,7 +2605,7 @@ class DownloaderBridgeAPI:
         """Resumes downloading the remaining items from an interrupted playlist session."""
         session_info = self.get_unfinished_playlist_session()
         if not session_info.get('has_session'):
-            return {'success': False, 'error': 'لا توجد جلسة قائمة تشغيل محفوظة للاستئناف.'}
+            return {'success': False, 'resumed': False, 'error': 'لا توجد جلسة قائمة تشغيل محفوظة للاستئناف.'}
 
         session = session_info['session']
         url = session.get('url')
@@ -2606,7 +2614,7 @@ class DownloaderBridgeAPI:
 
         if not url or not remaining:
             self.discard_unfinished_playlist_session()
-            return {'success': False, 'error': 'بيانات الجلسة غير مكتملة.'}
+            return {'success': False, 'resumed': False, 'error': 'بيانات الجلسة غير مكتملة.'}
 
         # Configure download option to target ONLY remaining indices
         resume_opt = dict(option)
@@ -2619,8 +2627,11 @@ class DownloaderBridgeAPI:
 
         _log.info(f"Resuming playlist '{session.get('title')}' with {len(remaining)} remaining items: {remaining}")
         res = self.start_download(url, resume_opt, browser_cookies=resume_opt.get('cookies', 'none'))
+        started = bool(res.get('started'))
         return {
-            'success': bool(res.get('started')),
+            'success': started,
+            'resumed': started,
+            'message': f"تم استئناف التنزيل بنجاح ({len(remaining)} مقطع متبقي)",
             'remaining_count': len(remaining),
             'total_count': session.get('total_count'),
             'completed_count': session.get('completed_count'),
@@ -2757,7 +2768,28 @@ class DownloaderBridgeAPI:
     # In-App YouTube Smart Browser with AdBlocker & IDM Download Sniffer
     # ================================================================
     def open_youtube_browser(self, start_url=None):
-        """Open the integrated Ad-Free YouTube Browser with IDM-style Floating Download Widget."""
+        """Open the integrated Ad-Free YouTube Browser with IDM-style Floating Download Widget (Single Instance)."""
+        if getattr(self, '_youtube_browser_win', None) is not None:
+            try:
+                self._youtube_browser_win.restore()
+                self._youtube_browser_win.show()
+                if start_url:
+                    self._youtube_browser_win.load_url(start_url)
+                try:
+                    import ctypes
+                    user32 = ctypes.windll.user32
+                    hwnd = user32.FindWindowW(None, 'متصفح YouTube الذكي - SDN Downloader (بدون إعلانات + تحميل فوري)')
+                    if hwnd:
+                        user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+                        user32.SetForegroundWindow(hwnd)
+                        user32.BringWindowToTop(hwnd)
+                except Exception:
+                    pass
+                return {'success': True, 'already_open': True}
+            except Exception as ex:
+                _log.debug(f"Focusing YouTube browser failed, reopening: {ex}")
+                self._youtube_browser_win = None
+
         threading.Thread(target=self._run_youtube_browser, args=(start_url,), daemon=True).start()
         return {'success': True}
 
@@ -2783,6 +2815,13 @@ class DownloaderBridgeAPI:
             def on_closed():
                 is_closed[0] = True
                 self._youtube_browser_win = None
+                if getattr(self, '_main_hidden_by_user', False) and getattr(self, '_window', None):
+                    self._main_hidden_by_user = False
+                    try:
+                        self._window.show()
+                        self._window.restore()
+                    except Exception:
+                        pass
 
             def on_loaded():
                 try:
@@ -2931,12 +2970,55 @@ class DownloaderBridgeAPI:
         last_item_idx = [0]
 
         def run_direct_dl():
+            playlist_session = None
+            if is_pl or option.get('is_playlist'):
+                p_items = list(option.get('playlist_items') or [])
+                total_cnt = int(option.get('playlist_count') or len(p_items) or 0)
+                playlist_session = {
+                    'url': url,
+                    'title': option.get('media_title') or title or 'قائمة تشغيل',
+                    'total_count': total_cnt,
+                    'completed_count': 0,
+                    'completed_indices': [],
+                    'remaining_indices': p_items if p_items else [],
+                    'option': option,
+                    'status': 'in_progress',
+                    'save_dir': self.save_dir,
+                    'timestamp': time.time()
+                }
+                self._save_playlist_session(playlist_session)
+
+            def on_playlist_item_complete(p_idx, item_title, file_path):
+                if playlist_session and p_idx is not None:
+                    try:
+                        idx = int(p_idx)
+                        if idx not in playlist_session['completed_indices']:
+                            playlist_session['completed_indices'].append(idx)
+                        if idx in playlist_session['remaining_indices']:
+                            playlist_session['remaining_indices'].remove(idx)
+                        playlist_session['completed_count'] = len(playlist_session['completed_indices'])
+                        playlist_session['remaining_count'] = len(playlist_session['remaining_indices'])
+                        playlist_session['timestamp'] = time.time()
+                        self._save_playlist_session(playlist_session)
+                    except Exception as ex:
+                        _log.debug(f"Quick DL session item update note: {ex}")
+
             def progress_cb(p_data):
+                if playlist_session and p_data.get('playlist_count'):
+                    p_count = int(p_data['playlist_count'])
+                    if p_count > playlist_session.get('total_count', 0):
+                        playlist_session['total_count'] = p_count
+                    completed = set(playlist_session.get('completed_indices', []))
+                    all_needed = {i for i in range(1, p_count + 1) if i not in completed}
+                    playlist_session['remaining_indices'] = sorted(list(all_needed))
+                    playlist_session['remaining_count'] = len(playlist_session['remaining_indices'])
+                    self._save_playlist_session(playlist_session)
+
                 if self._window:
                     try:
                         self._window.evaluate_js(f'updateProgress({json.dumps(p_data)})')
-                    except Exception:
-                        pass
+                    except Exception as ex:
+                        _log.debug(f"Direct DL progress evaluate_js error: {ex}")
 
                 pct = p_data.get('percent', 0)
                 p_idx = p_data.get('playlist_index')
@@ -2980,7 +3062,8 @@ class DownloaderBridgeAPI:
                     url, option, self.save_dir,
                     progress_callback=progress_cb,
                     status_callback=status_cb,
-                    browser_cookies=browser_cookies
+                    browser_cookies=browser_cookies,
+                    item_complete_callback=on_playlist_item_complete
                 )
 
                 downloaded_files = result.get('files') or []
@@ -3012,6 +3095,9 @@ class DownloaderBridgeAPI:
                         'date': time.strftime('%Y-%m-%dT%H:%M:%S%z'),
                     }
                     self.add_history(h_item)
+
+                if is_pl or option.get('is_playlist'):
+                    self.discard_unfinished_playlist_session()
 
                 if getattr(self, '_youtube_browser_win', None):
                     try:
@@ -3058,13 +3144,24 @@ class DownloaderBridgeAPI:
         return {'success': True}
 
     def load_url_in_main(self, url, auto_playlist_select=False):
-        """Send URL to main window input bar and fetch info."""
+        """Send URL to main window input bar, restore/unhide, bring to foreground, and fetch info."""
         if self._window:
+            self._main_hidden_by_user = False
             try:
-                self._window.restore()
                 self._window.show()
+                self._window.restore()
             except Exception:
                 pass
+            try:
+                import ctypes
+                user32 = ctypes.windll.user32
+                hwnd = user32.FindWindowW(None, "SDN")
+                if hwnd:
+                    user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+                    user32.SetForegroundWindow(hwnd)
+                    user32.BringWindowToTop(hwnd)
+            except Exception as e:
+                _log.debug(f"Bring to front error: {e}")
             safe_url = json.dumps(str(url))
             safe_auto = json.dumps(bool(auto_playlist_select))
             self._window.evaluate_js(f"if (window.onBrowserSendUrl) window.onBrowserSendUrl({safe_url}, {safe_auto});")
@@ -3121,12 +3218,11 @@ class DownloaderBridgeAPI:
                 p_count = int(p_data['playlist_count'])
                 if p_count > playlist_session.get('total_count', 0):
                     playlist_session['total_count'] = p_count
-                    if not playlist_session.get('remaining_indices'):
-                        playlist_session['remaining_indices'] = [
-                            i for i in range(1, p_count + 1)
-                            if i not in playlist_session.get('completed_indices', [])
-                        ]
-                    self._save_playlist_session(playlist_session)
+                completed = set(playlist_session.get('completed_indices', []))
+                all_needed = {i for i in range(1, p_count + 1) if i not in completed}
+                playlist_session['remaining_indices'] = sorted(list(all_needed))
+                playlist_session['remaining_count'] = len(playlist_session['remaining_indices'])
+                self._save_playlist_session(playlist_session)
             if self._window:
                 try:
                     self._window.evaluate_js(f'updateProgress({json.dumps(p_data)})')
@@ -3789,6 +3885,18 @@ def main():
         js_api=api
     )
     api.set_window(window)
+
+    def on_main_closing():
+        if getattr(api, '_youtube_browser_win', None) is not None:
+            try:
+                api._main_hidden_by_user = True
+                window.hide()
+                return False
+            except Exception:
+                pass
+        return True
+
+    window.events.closing += on_main_closing
     
     user_data_dir = os.path.join(os.environ.get('LOCALAPPDATA', os.path.expanduser('~')), 'SDN', 'WebView2_Data')
     os.makedirs(user_data_dir, exist_ok=True)

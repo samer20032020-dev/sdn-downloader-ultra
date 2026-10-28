@@ -1,6 +1,6 @@
 {
   "application": "SDN Downloader Ultra",
-  "version": "1.0.45",
+  "version": "1.0.46",
   "build_architecture": "win-x64",
   "runtime_components": [
     {
