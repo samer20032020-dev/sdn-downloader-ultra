@@ -410,11 +410,46 @@ class InstallerAPI:
             self._update_progress(65, short_msg)
             app_name = "SDN Downloader Ultra"
 
-            # Create Desktop Shortcut
-            if create_desktop:
-                desktop_folder = get_real_desktop()
-                shortcut_path = os.path.join(desktop_folder, f"{app_name}.lnk")
-                self._create_shortcut(dest_exe, shortcut_path, icon_path_for_lnk)
+            # Create / Update Desktop Shortcut (Prevent duplicate desktop icons)
+            desktop_folder = get_real_desktop()
+            possible_desktop_dirs = [
+                desktop_folder,
+                os.path.join(os.path.expanduser('~'), 'Desktop'),
+                os.path.join(os.path.expanduser('~'), 'OneDrive', 'Desktop'),
+                r'C:\Users\Public\Desktop'
+            ]
+            possible_names = [f"{app_name}.lnk", "SDN.lnk", "SDN Downloader.lnk", "SDN Downloader Ultra.lnk"]
+
+            existing_shortcuts = []
+            for d in set(possible_desktop_dirs):
+                if os.path.isdir(d):
+                    for n in possible_names:
+                        p = os.path.join(d, n)
+                        if os.path.isfile(p) and p not in existing_shortcuts:
+                            existing_shortcuts.append(p)
+
+            if self.is_update:
+                # Update mode: NEVER create a second desktop icon!
+                if existing_shortcuts:
+                    primary_shortcut = existing_shortcuts[0]
+                    self._create_shortcut(dest_exe, primary_shortcut, icon_path_for_lnk)
+                    for dup in existing_shortcuts[1:]:
+                        try:
+                            if os.path.abspath(dup) != os.path.abspath(primary_shortcut):
+                                os.remove(dup)
+                        except Exception:
+                            pass
+                # If no shortcut exists, do NOT create one (respect user choice)
+            else:
+                if create_desktop:
+                    primary_shortcut = os.path.join(desktop_folder, f"{app_name}.lnk")
+                    self._create_shortcut(dest_exe, primary_shortcut, icon_path_for_lnk)
+                    for dup in existing_shortcuts:
+                        try:
+                            if os.path.abspath(dup) != os.path.abspath(primary_shortcut):
+                                os.remove(dup)
+                        except Exception:
+                            pass
 
             # Create Start Menu Shortcuts
             start_menu = get_real_start_menu()
@@ -571,7 +606,7 @@ def main():
                     api.is_update = True
                     api.existing_version = ver
             
-            api._run_installation(create_desktop=True)
+            api._run_installation(create_desktop=not api.is_update)
             time.sleep(0.5)
             api.launch_app()
         except Exception:

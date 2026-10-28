@@ -41,6 +41,7 @@ def run_uninstall(install_dir, parent_pid=None):
     app_data = os.environ.get("APPDATA", "")
     shortcut_names = [
         "SDN Downloader Ultra.lnk",
+        "SDN.lnk",
         "إلغاء تثبيت SDN Downloader Ultra.lnk"
     ]
     shortcut_dirs = [

@@ -113,6 +113,22 @@ try {
         Get-ChildItem -LiteralPath $parentDir -File -Filter "WebView2Loader*.dll" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
     } catch {}
 
+    # Prevent duplicate desktop shortcuts after update
+    try {
+        $desktopLocations = @(
+            [System.IO.Path]::Combine($env:USERPROFILE, 'Desktop'),
+            [System.IO.Path]::Combine($env:USERPROFILE, 'OneDrive', 'Desktop'),
+            'C:\Users\Public\Desktop'
+        )
+        foreach ($loc in $desktopLocations) {
+            $oldShortcut = Join-Path $loc 'SDN.lnk'
+            $mainShortcut = Join-Path $loc 'SDN Downloader Ultra.lnk'
+            if ((Test-Path -LiteralPath $oldShortcut) -and (Test-Path -LiteralPath $mainShortcut)) {
+                Remove-Item -LiteralPath $oldShortcut -Force -ErrorAction SilentlyContinue
+            }
+        }
+    } catch {}
+
     Start-Sleep -Milliseconds 600
     Write-UpdateLog "Update installed at $TargetPath"
     Start-Process -FilePath $TargetPath -WorkingDirectory $parentDir
@@ -4178,6 +4194,7 @@ class DownloaderBridgeAPI:
             '/CLOSEAPPLICATIONS',
             '/RESTARTAPPLICATIONS',
             '/LANG=arabic',
+            '/MERGETASKS=!desktopicon',
             f'/DIR={target_dir}',
             f'/LOG={installer_log}',
         ]

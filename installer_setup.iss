@@ -1,6 +1,6 @@
 ; Script generated for Inno Setup - SDN Downloader Setup
-#define MyAppName "SDN"
-#define MyAppVersion "1.0.52"
+#define MyAppName "SDN Downloader Ultra"
+#define MyAppVersion "1.0.53"
 #define MyAppPublisher "SDN"
 #define MyAppExeName "SDN_Downloader_Standalone.exe"
 
@@ -26,7 +26,7 @@ Name: "arabic"; MessagesFile: "compiler:Languages\Arabic.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
 Source: "dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
@@ -36,6 +36,7 @@ Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [InstallDelete]
+Type: files; Name: "{autodesktop}\SDN.lnk"
 Type: files; Name: "{app}\python3*.dll"
 Type: files; Name: "{app}\vcruntime140*.dll"
 Type: files; Name: "{app}\msvcp140*.dll"
