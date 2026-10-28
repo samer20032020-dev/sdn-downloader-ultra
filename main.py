@@ -648,6 +648,10 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
             panel.style.background = 'rgba(59, 130, 246, 0.95)';
             panel.style.borderColor = '#60a5fa';
         }
+        if (window.updateSdnBrowserProgress) {
+            var initialCount = (mode === 'playlist_all') ? 50 : 1;
+            window.updateSdnBrowserProgress(0, 1, initialCount, '⚡ جاري الاتصال...', effectiveTitle);
+        }
         if (window.pywebview && window.pywebview.api && window.pywebview.api.download_url) {
             try {
                 window.pywebview.api.download_url(targetUrl, quality, mode, false, effectiveTitle);
@@ -1058,9 +1062,10 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
 
             var numPct = Math.max(0, Math.min(100, parseFloat(percent) || 0));
 
-            if (pCount && pCount > 1) {
+            var isPl = Boolean((pCount && pCount > 1) || (pIndex && pIndex > 1));
+            if (isPl) {
                 var curIdx = parseInt(pIndex) || 1;
-                var total = parseInt(pCount);
+                var total = parseInt(pCount) || (curIdx > 1 ? curIdx + 1 : 50);
                 var downloaded = Math.max(0, curIdx - 1);
                 var remaining = Math.max(0, total - downloaded);
                 var overallPct = Math.round(((downloaded + (numPct / 100)) / total) * 100);
@@ -1068,7 +1073,7 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
 
                 if (titleEl) titleEl.textContent = (itemTitle ? '🎵 ' + itemTitle : 'قائمة التشغيل (' + curIdx + '/' + total + ')');
                 if (speedEl) speedEl.textContent = speedStr ? speedStr + ' • ' : '';
-                if (pctEl) pctEl.textContent = overallPct + '% (' + Math.round(numPct) + '% للمقطع)';
+                if (pctEl) pctEl.textContent = overallPct + '%';
                 if (fillEl) {
                     fillEl.style.width = overallPct + '%';
                     fillEl.style.background = 'linear-gradient(90deg, #3b82f6, #06b6d4, #10b981)';
@@ -3200,7 +3205,7 @@ class DownloaderBridgeAPI:
                 'quality_tag': 'MP3',
                 'label': 'صوت MP3 (320kbps)',
                 'ext': 'mp3',
-                'format_id': 'bestaudio/best',
+                'format_id': 'bestaudio[ext=m4a]/bestaudio/best',
                 'media_title': title or 'مقطع صوتي',
                 'turbo': True
             }
@@ -3229,6 +3234,8 @@ class DownloaderBridgeAPI:
             option['playlist_mode'] = 'all'
             option['playlist_title'] = title or 'قائمة تشغيل'
             option['media_title'] = title or 'قائمة تشغيل'
+            if not option.get('playlist_count'):
+                option['playlist_count'] = 50
 
         if force:
             option['allow_duplicate'] = True
@@ -3275,9 +3282,9 @@ class DownloaderBridgeAPI:
                 c_num = completed_items_count[0]
                 total = playlist_session.get('total_count', 0) if playlist_session else 0
                 if total and total > 1:
-                    self._notify_browser_toast(f"✅ تم تنزيل {c_num} من {total}", 'success', filepath=file_path)
+                    self._notify_browser_toast(f"✅ تم تنزيل {c_num} من {total}", 'success')
                 else:
-                    self._notify_browser_toast(f"✅ تم تنزيل {c_num}", 'success', filepath=file_path)
+                    self._notify_browser_toast(f"✅ تم تنزيل {c_num}", 'success')
 
                 if playlist_session and p_idx is not None:
                     try:
@@ -3335,15 +3342,16 @@ class DownloaderBridgeAPI:
 
             def status_cb(msg):
                 clean_title = last_progress_info.get('item_title') or title or ''
-                p_idx = last_progress_info.get('playlist_index')
-                p_cnt = last_progress_info.get('playlist_count')
+                if msg and str(msg).startswith("🎵 "):
+                    msg_title = re.sub(r"^🎵\s*", "", str(msg))
+                    msg_title = re.sub(r"\s*\(\d+/\d+\)$", "", msg_title).strip()
+                    if msg_title:
+                        clean_title = msg_title
+                        last_progress_info['item_title'] = clean_title
+                p_idx = last_progress_info.get('playlist_index') or 1
+                p_cnt = last_progress_info.get('playlist_count') or (50 if (is_pl or option.get('is_playlist')) else 1)
 
-                friendly_msg = msg
-                if clean_title:
-                    pl_part = f" ({p_idx}/{p_cnt})" if (p_cnt and p_cnt > 1) else ""
-                    friendly_msg = f"🎵 {clean_title}{pl_part}"
-                elif not str(friendly_msg).startswith("🎵"):
-                    friendly_msg = "⚡ جاري التنزيل المباشر..."
+                friendly_msg = msg if msg else (f"🎵 {clean_title}" if clean_title else "⚡ جاري التنزيل المباشر...")
 
                 if self._window:
                     try:
@@ -3360,8 +3368,9 @@ class DownloaderBridgeAPI:
 
                 if getattr(self, '_youtube_browser_win', None):
                     try:
+                        calc_pct = round(((p_idx - 1 + 0.95) / p_cnt) * 100) if (p_cnt and p_cnt > 1) else 95
                         self._youtube_browser_win.evaluate_js(
-                            f"if (window.updateSdnBrowserProgress) window.updateSdnBrowserProgress(95, {json.dumps(p_idx)}, {json.dumps(p_cnt)}, '⚡ جاري الحفظ...', {json.dumps(clean_title)});"
+                            f"if (window.updateSdnBrowserProgress) window.updateSdnBrowserProgress({calc_pct}, {json.dumps(p_idx)}, {json.dumps(p_cnt)}, '⚡ معالجة سريعة', {json.dumps(clean_title)});"
                         )
                     except Exception:
                         pass
@@ -3425,7 +3434,7 @@ class DownloaderBridgeAPI:
 
                 if getattr(self, '_youtube_browser_win', None):
                     try:
-                        target_dir = result.get('directory') or self.save_dir
+                        target_dir = result.get('playlist_dir') or result.get('directory') or self.save_dir
                         item_count = len(downloaded_files)
                         if is_pl or option.get('is_playlist'):
                             done_msg = f"🎉 اكتمل تنزيل جميع المقاطع بنجاح ({item_count} مقطع)!"

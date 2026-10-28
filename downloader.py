@@ -809,7 +809,7 @@ def build_download_options() -> tuple[list[dict[str, Any]], list[dict[str, Any]]
     audio_options = [
         {
             "label": f"🎵 صوت MP3 بجودة {quality} kbps",
-            "format_id": "bestaudio/best",
+            "format_id": "bestaudio[ext=m4a]/bestaudio/best",
             "ext": "mp3",
             "type": "audio",
             "quality": str(quality),
@@ -865,11 +865,16 @@ class MediaDownloader:
 
     def cancel(self) -> bool:
         self._cancel_event.set()
+        import socket
+        try:
+            socket.setdefaulttimeout(0.5)
+        except Exception:
+            pass
         try:
             if os.name == "nt":
-                subprocess.run(["taskkill", "/F", "/T", "/IM", "ffmpeg.exe"], capture_output=True, timeout=2)
+                subprocess.run(["taskkill", "/F", "/T", "/IM", "ffmpeg.exe"], capture_output=True, timeout=1)
             else:
-                subprocess.run(["pkill", "-9", "-f", "ffmpeg"], capture_output=True, timeout=2)
+                subprocess.run(["pkill", "-9", "-f", "ffmpeg"], capture_output=True, timeout=1)
         except Exception:
             pass
         return True
@@ -1105,7 +1110,7 @@ class MediaDownloader:
     ) -> dict[str, Any]:
         is_audio = option.get("type") == "audio"
         is_playlist = bool(option.get("is_playlist"))
-        format_id = option.get("format_id") or ("bestaudio/best" if is_audio else _video_selector(None))
+        format_id = option.get("format_id") or ("bestaudio[ext=m4a]/bestaudio/best" if is_audio else _video_selector(None))
         output_ext = str(option.get("ext") or ("mp3" if is_audio else "mp4")).lower()
         quality_tag = _safe_quality_tag(option)
         run_token = f"{datetime.now().strftime('%Y%m%d-%H%M%S-%f')[:-3]}-{uuid.uuid4().hex[:6]}"
@@ -1126,14 +1131,18 @@ class MediaDownloader:
             clean_pl = re.sub(r'\s+', ' ', clean_pl)[:80].strip('. ')
             if not clean_pl or clean_pl.lower() in ("none", "playlist", "قائمة تشغيل", "فيديو", "صوت"):
                 clean_pl = "قائمة تشغيل"
-            folder_tmpl = f"%(playlist_title|{clean_pl}).120B"
+            target_save_dir = os.path.join(save_dir, clean_pl)
+            try:
+                os.makedirs(target_save_dir, exist_ok=True)
+            except OSError:
+                target_save_dir = save_dir
 
             template = os.path.join(
-                save_dir,
-                folder_tmpl,
+                target_save_dir,
                 f"%(playlist_index,autonumber)03d - %(title).160B [%(id)s] [{quality_tag}].%(ext)s",
             )
         else:
+            target_save_dir = save_dir
             template = os.path.join(
                 save_dir,
                 f"%(title).180B [%(id)s] [{quality_tag}] [{run_token}].%(ext)s",
@@ -1152,6 +1161,8 @@ class MediaDownloader:
         if not allow_duplicate and os.path.isdir(save_dir):
             try:
                 scan_targets = [save_dir]
+                if is_playlist and target_save_dir != save_dir and os.path.isdir(target_save_dir):
+                    scan_targets.append(target_save_dir)
                 with os.scandir(save_dir) as top_it:
                     for entry in top_it:
                         if entry.is_dir():
@@ -1188,6 +1199,8 @@ class MediaDownloader:
         newly_lock = threading.Lock()
 
         def item_duplicate_filter(info_candidate: dict[str, Any], *, incomplete: bool = False) -> str | None:
+            if self._cancel_event.is_set():
+                raise DownloadCancelled("Download cancelled by user")
             if allow_duplicate:
                 return None
             vid = info_candidate.get("id")
@@ -1239,12 +1252,14 @@ class MediaDownloader:
             status = data.get("status")
             info_dict = data.get("info_dict") or {}
             playlist_index = int(info_dict.get("playlist_index") or 1)
-            playlist_total = int(
+            raw_entries = (
                 info_dict.get("n_entries")
                 or info_dict.get("playlist_count")
                 or requested_count
-                or 1
             )
+            if not raw_entries and is_playlist:
+                raw_entries = int(option.get("playlist_count") or 50)
+            playlist_total = int(raw_entries or 1)
             if selected_indices:
                 try:
                     playlist_position = selected_indices.index(playlist_index) + 1
@@ -1311,11 +1326,28 @@ class MediaDownloader:
             cur_item_t = info_dict.get("title") or ""
             p_idx = (info_dict.get("playlist_index") or playlist_position) if is_playlist else 1
 
-            if pp_status == "started" and status_callback:
-                if is_playlist and playlist_total > 0:
-                    status_callback(f"🎵 {cur_item_t} ({p_idx}/{playlist_total})" if cur_item_t else f"🎵 مقطع {p_idx} من {playlist_total}")
-                else:
-                    status_callback(f"🎵 {cur_item_t}" if cur_item_t else "🎵 جاري المعالجة السريعة...")
+            if pp_status == "started":
+                if status_callback:
+                    if is_playlist and playlist_total > 0:
+                        status_callback(f"🎵 {cur_item_t} ({p_idx}/{playlist_total})" if cur_item_t else f"🎵 مقطع {p_idx} من {playlist_total}")
+                    else:
+                        status_callback(f"🎵 {cur_item_t}" if cur_item_t else "🎵 جاري المعالجة السريعة...")
+                if progress_callback:
+                    overall_percent = ((p_idx - 1 + 0.95) / playlist_total * 100) if (is_playlist and playlist_total > 0) else 95.0
+                    progress_callback(
+                        {
+                            "status": "processing",
+                            "percent": max(0.0, min(overall_percent, 99.0)),
+                            "item_percent": 95.0,
+                            "speed_str": f"مقطع {p_idx} من {playlist_total}" if (is_playlist and playlist_total > 1) else "⚡ معالجة سريعة",
+                            "downloaded_str": "",
+                            "total_str": "",
+                            "eta_str": "",
+                            "playlist_index": p_idx if is_playlist else None,
+                            "playlist_count": playlist_total if is_playlist else None,
+                            "item_title": cur_item_t,
+                        }
+                    )
 
             elif pp_status == "finished":
                 captured_fp = info_dict.get("filepath") or info_dict.get("_filename")
@@ -1340,7 +1372,11 @@ class MediaDownloader:
                 "match_filter": item_duplicate_filter,
                 "progress_hooks": [ydl_progress_hook],
                 "postprocessor_hooks": [postprocessor_hook],
-                "postprocessor_args": {"ffmpeg": ["-nostdin", "-threads", "0"]},
+                "postprocessor_args": {
+                    "ExtractAudio": ["-nostdin", "-threads", "0"],
+                    "FFmpegExtractAudio": ["-nostdin", "-threads", "0"],
+                    "default": ["-nostdin", "-threads", "0"],
+                },
                 "quiet": True,
                 "no_warnings": True,
                 "ffmpeg_location": self.ffmpeg_path,
@@ -1398,7 +1434,8 @@ class MediaDownloader:
             if codec == "mp3":
                 extract_audio["preferredquality"] = str(option.get("quality") or "320")
             postprocessors.append(extract_audio)
-            postprocessors.append({"key": "FFmpegMetadata", "add_metadata": True})
+            if not is_playlist:
+                postprocessors.append({"key": "FFmpegMetadata", "add_metadata": True})
         else:
             ydl_options["merge_output_format"] = "mp4"
             postprocessors.append({"key": "FFmpegMetadata", "add_metadata": True})
@@ -1565,7 +1602,7 @@ class MediaDownloader:
         actual_skipped = [p for p in skipped_duplicate_files if os.path.isfile(p)]
         actual_new = [p for p in final_files if p not in actual_skipped]
 
-        directory = os.path.dirname(final_files[0]) if (is_playlist and final_files) else save_dir
+        directory = target_save_dir if is_playlist else (os.path.dirname(final_files[0]) if final_files else save_dir)
         file_items = [
             {
                 "filepath": path,
@@ -1583,6 +1620,7 @@ class MediaDownloader:
             "new_count": len(actual_new),
             "skipped_count": len(actual_skipped),
             "directory": directory,
+            "playlist_dir": target_save_dir if is_playlist else None,
             "is_playlist": is_playlist,
             "media_type": "audio" if is_audio else "video",
             "quality_tag": quality_tag,
