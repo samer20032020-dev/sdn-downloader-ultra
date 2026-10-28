@@ -576,8 +576,20 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
     function triggerDirectDownload(url, quality, mode, label, title) {
         var effectiveTitle = title || getVideoTitle();
         showToast('⏳ جاري التحقق من التنزيل المباشر (' + label + ')...', 'info');
+        var txt = document.getElementById('sdnPanelText');
+        var panel = document.getElementById('sdn-idm-panel');
+        if (txt) txt.textContent = '⏳ جاري بدء التنزيل...';
+        if (panel) {
+            panel.style.background = 'rgba(59, 130, 246, 0.95)';
+            panel.style.borderColor = '#60a5fa';
+        }
         if (window.pywebview && window.pywebview.api && window.pywebview.api.download_url) {
-            window.pywebview.api.download_url(url, quality, mode, false, effectiveTitle);
+            try {
+                window.pywebview.api.download_url(url, quality, mode, false, effectiveTitle);
+            } catch (err) {
+                showToast('❌ تعذر إرسال أمر التنزيل: ' + err, 'error');
+                if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress();
+            }
         }
     }
 
@@ -917,6 +929,47 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
 
         panel.style.display = 'inline-flex';
     }
+
+    window.updateSdnBrowserProgress = function(percent, pIndex, pCount, speedStr, itemTitle) {
+        var panel = document.getElementById('sdn-idm-panel');
+        var txt = document.getElementById('sdnPanelText');
+        if (txt) {
+            var roundPct = Math.round(percent || 0);
+            if (pIndex && pCount) {
+                txt.textContent = '📥 (' + pIndex + '/' + pCount + ') ' + roundPct + '%' + (speedStr ? ' • ' + speedStr : '');
+            } else {
+                txt.textContent = '📥 تنزيل: ' + roundPct + '%' + (speedStr ? ' • ' + speedStr : '');
+            }
+        }
+        if (panel) {
+            panel.style.background = 'rgba(16, 185, 129, 0.95)';
+            panel.style.borderColor = '#34d399';
+            panel.style.boxShadow = '0 0 16px rgba(52, 211, 153, 0.6)';
+        }
+    };
+
+    window.resetSdnBrowserProgress = function(doneMsg) {
+        var panel = document.getElementById('sdn-idm-panel');
+        var txt = document.getElementById('sdnPanelText');
+        if (txt && doneMsg) {
+            txt.textContent = doneMsg;
+        }
+        if (panel) {
+            panel.style.background = 'rgba(52, 211, 153, 0.95)';
+            panel.style.borderColor = '#10b981';
+        }
+        setTimeout(function() {
+            if (panel) {
+                panel.style.background = 'rgba(20, 20, 24, 0.92)';
+                panel.style.borderColor = 'rgba(255, 255, 255, 0.18)';
+                panel.style.boxShadow = '0 4px 18px rgba(0, 0, 0, 0.55)';
+            }
+            if (txt) {
+                var ctx = getMediaContext();
+                txt.textContent = ctx.isPlaylist ? 'تنزيل SDN (قائمة) ▾' : 'تنزيل SDN ▾';
+            }
+        }, 4000);
+    };
 
     // ================================================================
     // Ultra-Fast Zero-Delay Ad Defuser & Skipper
@@ -2181,6 +2234,10 @@ class DownloaderBridgeAPI:
                             'total_count': tot or hist_matches
                         }
 
+        # If checking a playlist and it was not a full duplicate, never fall through to single-video duplicate matching!
+        if is_pl:
+            return {'is_duplicate': False, 'matched_title': '', 'filepath': ''}
+
         def _norm_title(t):
             if not t:
                 return ""
@@ -2798,20 +2855,32 @@ class DownloaderBridgeAPI:
             self.load_url_in_main(url, auto_playlist_select=True)
             return {'success': True, 'mode': 'playlist_select'}
 
+        # Guard against concurrent download conflicts
+        if self.downloader and getattr(self.downloader, '_download_lock', None) and self.downloader._download_lock.locked():
+            self._notify_browser_toast("⚠️ هناك عملية تنزيل جارية بالفعل. يرجى الانتظار حتى تكتمل أو النقر على '🛑 إيقاف التنزيل الحالي'.", 'warning', is_downloading=True)
+            if getattr(self, '_youtube_browser_win', None):
+                try:
+                    self._youtube_browser_win.evaluate_js("if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress();")
+                except Exception:
+                    pass
+            return {'success': False, 'busy': True}
+
         is_audio = (str(quality).lower() == 'mp3' or 'audio' in str(quality).lower())
         target_type = 'audio' if is_audio else 'video'
+        is_pl = (mode == 'playlist_all') or ('list=' in url)
 
-        # Duplicate check before downloading:
-        if not force:
-            is_pl = (mode == 'playlist_all') or ('list=' in url)
-            dup_info = self.check_duplicate(url=url, title=title, target_type=target_type, is_playlist=is_pl)
+        # Duplicate check before downloading (only for single videos; playlists use item_duplicate_filter inside downloader):
+        if not force and not is_pl:
+            dup_info = self.check_duplicate(url=url, title=title, target_type=target_type, is_playlist=False)
             if dup_info.get('is_duplicate'):
                 format_name = 'صوت MP3' if is_audio else 'فيديو'
-                if dup_info.get('is_playlist'):
-                    msg = f"⚠️ هذه القائمة تم تنزيلها مسبقاً بصيغة ({format_name}) وهي موجودة بالفعل في جهازك!"
-                else:
-                    msg = f"⚠️ هذا المقطع تم تنزيله مسبقاً بصيغة ({format_name}) وهو موجود بالفعل في جهازك!"
+                msg = f"⚠️ هذا المقطع تم تنزيله مسبقاً بصيغة ({format_name}) وهو موجود بالفعل في جهازك!"
                 self._notify_browser_toast(msg, 'warning', is_dup=True, dup_url=url, quality=quality, mode=mode, title=title, filepath=dup_info.get('filepath'))
+                if getattr(self, '_youtube_browser_win', None):
+                    try:
+                        self._youtube_browser_win.evaluate_js("if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress();")
+                    except Exception:
+                        pass
                 return {'success': False, 'duplicate': True, 'msg': msg}
 
         if is_audio:
@@ -2844,16 +2913,19 @@ class DownloaderBridgeAPI:
                 'turbo': True
             }
 
-        if mode == 'playlist_all':
+        if is_pl or mode == 'playlist_all':
             option['is_playlist'] = True
             option['playlist_mode'] = 'all'
 
+        if force:
+            option['allow_duplicate'] = True
+
         folder_name = Path(self.save_dir).name or self.save_dir
         q_label = option.get('label') or str(quality)
-        if mode == 'playlist_all':
-            self._notify_browser_toast(f"🚀 بدأ تنزيل كامل قائمة التشغيل ({q_label}) إلى مجلد: {folder_name}...", 'info')
+        if option.get('is_playlist'):
+            self._notify_browser_toast(f"🚀 بدأ تنزيل كامل قائمة التشغيل ({q_label}) إلى مجلد: {folder_name}...", 'info', is_downloading=True)
         else:
-            self._notify_browser_toast(f"🚀 بدأ التنزيل المباشر ({q_label}) إلى: {folder_name}...", 'info')
+            self._notify_browser_toast(f"🚀 بدأ التنزيل المباشر ({q_label}) إلى: {folder_name}...", 'info', is_downloading=True)
 
         start_t = time.time()
         last_item_idx = [0]
@@ -2865,18 +2937,35 @@ class DownloaderBridgeAPI:
                         self._window.evaluate_js(f'updateProgress({json.dumps(p_data)})')
                     except Exception:
                         pass
-                if mode == 'playlist_all':
-                    p_idx = p_data.get('playlist_index')
-                    p_cnt = p_data.get('playlist_count')
+
+                pct = p_data.get('percent', 0)
+                p_idx = p_data.get('playlist_index')
+                p_cnt = p_data.get('playlist_count')
+                spd = p_data.get('speed_str', '')
+                it_title = p_data.get('item_title') or (f"مقطع {p_idx}" if p_idx else "")
+
+                if getattr(self, '_youtube_browser_win', None):
+                    try:
+                        self._youtube_browser_win.evaluate_js(
+                            f"if (window.updateSdnBrowserProgress) window.updateSdnBrowserProgress({json.dumps(pct)}, {json.dumps(p_idx)}, {json.dumps(p_cnt)}, {json.dumps(spd)}, {json.dumps(it_title)});"
+                        )
+                    except Exception:
+                        pass
+
+                if option.get('is_playlist'):
                     if p_idx and p_cnt and p_idx != last_item_idx[0]:
                         last_item_idx[0] = p_idx
-                        it_title = p_data.get('item_title') or f"مقطع {p_idx}"
-                        self._notify_browser_toast(f"📥 جاري تنزيل ({p_idx}/{p_cnt}): {it_title[:32]}...", 'info')
+                        self._notify_browser_toast(f"📥 جاري تنزيل ({p_idx}/{p_cnt}): {it_title[:32]}...", 'info', is_downloading=True)
 
             def status_cb(msg):
                 if self._window:
                     try:
                         self._window.evaluate_js(f'updateProgress({json.dumps({"status": "processing", "msg": msg})})')
+                    except Exception:
+                        pass
+                if getattr(self, '_youtube_browser_win', None):
+                    try:
+                        self._notify_browser_toast(msg, 'info', is_downloading=True)
                     except Exception:
                         pass
 
@@ -2924,6 +3013,12 @@ class DownloaderBridgeAPI:
                     }
                     self.add_history(h_item)
 
+                if getattr(self, '_youtube_browser_win', None):
+                    try:
+                        self._youtube_browser_win.evaluate_js("if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress('✅ اكتمل التنزيل بنجاح');")
+                    except Exception:
+                        pass
+
                 if len(downloaded_files) > 1 or option.get('is_playlist'):
                     first_fp = downloaded_files[0].get('filepath') if downloaded_files else self.save_dir
                     self._notify_browser_toast(f"✅ تم اكتمال تنزيل كامل القائمة ({len(downloaded_files)} عنصر) بنجاح!", 'success', filepath=first_fp)
@@ -2953,6 +3048,11 @@ class DownloaderBridgeAPI:
             except Exception as e:
                 _log.error(f"Direct browser download failed: {e}")
                 self._notify_browser_toast(f"❌ خطأ أثناء التنزيل: {str(e)[:70]}", 'error')
+                if getattr(self, '_youtube_browser_win', None):
+                    try:
+                        self._youtube_browser_win.evaluate_js("if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress();")
+                    except Exception:
+                        pass
 
         threading.Thread(target=run_direct_dl, daemon=True).start()
         return {'success': True}
