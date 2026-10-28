@@ -423,7 +423,54 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
             '}',
             '.sdn-idm-menu-item:hover .sdn-menu-badge {',
             '   background: rgba(255, 255, 255, 0.15); color: #ffffff;',
-            '}'
+            '}',
+            '#sdn-bottom-dl-bar {',
+            '   position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);',
+            '   z-index: 2147483647; min-width: 380px; max-width: 620px; width: calc(100vw - 40px);',
+            '   background: rgba(15, 23, 42, 0.96);',
+            '   backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%);',
+            '   border: 1px solid rgba(59, 130, 246, 0.5); border-radius: 14px;',
+            '   padding: 11px 16px; box-shadow: 0 14px 40px rgba(0, 0, 0, 0.85), 0 0 25px rgba(59, 130, 246, 0.2);',
+            '   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;',
+            '   direction: rtl; color: #ffffff; display: none; flex-direction: column; gap: 8px;',
+            '   box-sizing: border-box; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);',
+            '}',
+            '.sdn-dl-bar-top {',
+            '   display: flex; align-items: center; justify-content: space-between; gap: 10px;',
+            '}',
+            '.sdn-dl-bar-title {',
+            '   font-size: 13px; font-weight: 700; color: #f1f5f9;',
+            '   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 65%;',
+            '}',
+            '.sdn-dl-bar-stats {',
+            '   font-size: 12px; font-weight: 700; color: #38bdf8;',
+            '   display: flex; align-items: center; gap: 8px; white-space: nowrap;',
+            '}',
+            '.sdn-dl-bar-progress-container {',
+            '   width: 100%; height: 7px; background: rgba(255, 255, 255, 0.12);',
+            '   border-radius: 4px; overflow: hidden; position: relative;',
+            '}',
+            '.sdn-dl-bar-progress-fill {',
+            '   height: 100%; width: 0%;',
+            '   background: linear-gradient(90deg, #3b82f6, #06b6d4, #10b981);',
+            '   border-radius: 4px; transition: width 0.2s ease;',
+            '}',
+            '.sdn-dl-bar-bottom {',
+            '   display: flex; align-items: center; justify-content: space-between; gap: 10px;',
+            '   font-size: 11.5px; color: #cbd5e1;',
+            '}',
+            '.sdn-dl-bar-counter {',
+            '   font-weight: 600; color: #f8fafc; display: flex; align-items: center; gap: 6px;',
+            '}',
+            '.sdn-dl-bar-actions {',
+            '   display: flex; align-items: center; gap: 6px;',
+            '}',
+            '.sdn-dl-btn-cancel {',
+            '   background: #ef4444; color: #ffffff; border: none; border-radius: 6px;',
+            '   padding: 3px 10px; font-size: 11.5px; font-weight: 700; cursor: pointer;',
+            '   box-shadow: 0 2px 8px rgba(239, 68, 68, 0.35); transition: background 0.15s;',
+            '}',
+            '.sdn-dl-btn-cancel:hover { background: #dc2626; }'
         ].join(' ');
         parent.appendChild(style);
     }
@@ -933,7 +980,96 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
         panel.style.display = 'inline-flex';
     }
 
+    function ensureBottomBar() {
+        var bar = document.getElementById('sdn-bottom-dl-bar');
+        if (!bar) {
+            var parent = document.body || document.documentElement;
+            if (!parent) return null;
+            bar = createEl('div', 'sdn-bottom-dl-bar');
+            bar.innerHTML = [
+                '<div class="sdn-dl-bar-top">',
+                '  <div class="sdn-dl-bar-title" id="sdnBarTitle">⚡ جاري التحضير...</div>',
+                '  <div class="sdn-dl-bar-stats"><span id="sdnBarSpeed"></span><span id="sdnBarPct">0%</span></div>',
+                '</div>',
+                '<div class="sdn-dl-bar-progress-container">',
+                '  <div class="sdn-dl-bar-progress-fill" id="sdnBarFill"></div>',
+                '</div>',
+                '<div class="sdn-dl-bar-bottom">',
+                '  <div class="sdn-dl-bar-counter" id="sdnBarCounter">⚡ جاري الاتصال بالخادم...</div>',
+                '  <div class="sdn-dl-bar-actions" id="sdnBarActions">',
+                '    <button class="sdn-dl-btn-cancel" id="sdnBarCancelBtn">🛑 إيقاف</button>',
+                '  </div>',
+                '</div>'
+            ].join('');
+            parent.appendChild(bar);
+
+            var cancelBtn = document.getElementById('sdnBarCancelBtn');
+            if (cancelBtn) {
+                cancelBtn.onclick = function(e) {
+                    e.stopPropagation();
+                    if (window.pywebview && window.pywebview.api && window.pywebview.api.cancel_download) {
+                        window.pywebview.api.cancel_download();
+                        var counter = document.getElementById('sdnBarCounter');
+                        if (counter) counter.textContent = '🛑 تم طلب إيقاف وإلغاء التنزيل...';
+                        cancelBtn.disabled = true;
+                        cancelBtn.style.opacity = '0.5';
+                    }
+                };
+            }
+        }
+        return bar;
+    }
+
     window.updateSdnBrowserProgress = function(percent, pIndex, pCount, speedStr, itemTitle) {
+        var bar = ensureBottomBar();
+        if (bar) {
+            bar.style.display = 'flex';
+            bar.style.borderColor = 'rgba(59, 130, 246, 0.6)';
+            bar.style.boxShadow = '0 14px 40px rgba(0, 0, 0, 0.85), 0 0 25px rgba(59, 130, 246, 0.25)';
+
+            var titleEl = document.getElementById('sdnBarTitle');
+            var speedEl = document.getElementById('sdnBarSpeed');
+            var pctEl = document.getElementById('sdnBarPct');
+            var fillEl = document.getElementById('sdnBarFill');
+            var counterEl = document.getElementById('sdnBarCounter');
+            var cancelBtn = document.getElementById('sdnBarCancelBtn');
+
+            if (cancelBtn) {
+                cancelBtn.disabled = false;
+                cancelBtn.style.opacity = '1';
+                cancelBtn.style.display = 'inline-flex';
+            }
+
+            var numPct = Math.max(0, Math.min(100, parseFloat(percent) || 0));
+
+            if (pCount && pCount > 1) {
+                var curIdx = parseInt(pIndex) || 1;
+                var total = parseInt(pCount);
+                var downloaded = Math.max(0, curIdx - 1);
+                var remaining = Math.max(0, total - downloaded);
+                var overallPct = Math.round(((downloaded + (numPct / 100)) / total) * 100);
+                overallPct = Math.max(0, Math.min(100, overallPct));
+
+                if (titleEl) titleEl.textContent = (itemTitle ? '🎵 ' + itemTitle : 'قائمة التشغيل (' + curIdx + '/' + total + ')');
+                if (speedEl) speedEl.textContent = speedStr ? speedStr + ' • ' : '';
+                if (pctEl) pctEl.textContent = overallPct + '% (' + Math.round(numPct) + '% للمقطع)';
+                if (fillEl) {
+                    fillEl.style.width = overallPct + '%';
+                    fillEl.style.background = 'linear-gradient(90deg, #3b82f6, #06b6d4, #10b981)';
+                }
+                if (counterEl) counterEl.textContent = 'تم تنزيل: ' + downloaded + ' من ' + total + ' مقطع | المتبقي: ' + remaining + ' مقطع';
+            } else {
+                if (titleEl) titleEl.textContent = (itemTitle ? '📥 ' + itemTitle : 'جاري التنزيل المباشر...');
+                if (speedEl) speedEl.textContent = speedStr ? speedStr + ' • ' : '';
+                if (pctEl) pctEl.textContent = Math.round(numPct) + '%';
+                if (fillEl) {
+                    fillEl.style.width = numPct + '%';
+                    fillEl.style.background = 'linear-gradient(90deg, #3b82f6, #06b6d4, #10b981)';
+                }
+                if (counterEl) counterEl.textContent = 'جاري التنزيل والمعالجة الفورية...';
+            }
+        }
+
         var panel = document.getElementById('sdn-idm-panel');
         var txt = document.getElementById('sdnPanelText');
         if (txt) {
@@ -951,7 +1087,64 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
         }
     };
 
-    window.resetSdnBrowserProgress = function(doneMsg) {
+    window.resetSdnBrowserProgress = function(doneMsg, folderPath) {
+        var bar = document.getElementById('sdn-bottom-dl-bar');
+        if (bar) {
+            var titleEl = document.getElementById('sdnBarTitle');
+            var speedEl = document.getElementById('sdnBarSpeed');
+            var pctEl = document.getElementById('sdnBarPct');
+            var fillEl = document.getElementById('sdnBarFill');
+            var counterEl = document.getElementById('sdnBarCounter');
+            var actionsEl = document.getElementById('sdnBarActions');
+
+            if (doneMsg && doneMsg.indexOf('🛑') === -1 && doneMsg.indexOf('❌') === -1) {
+                bar.style.borderColor = 'rgba(16, 185, 129, 0.7)';
+                bar.style.boxShadow = '0 14px 40px rgba(0, 0, 0, 0.85), 0 0 25px rgba(16, 185, 129, 0.4)';
+                if (titleEl) titleEl.textContent = doneMsg;
+                if (speedEl) speedEl.textContent = '';
+                if (pctEl) pctEl.textContent = '100% 🎉';
+                if (fillEl) {
+                    fillEl.style.width = '100%';
+                    fillEl.style.background = '#10b981';
+                }
+                if (counterEl) counterEl.textContent = '🎉 اكتمل التنزيل بنجاح وتم حفظ الملفات في المجلد!';
+
+                if (actionsEl) {
+                    actionsEl.innerHTML = '';
+                    var openBtn = createEl('button', '', 'background:#10b981; color:#ffffff; border:none; border-radius:6px; padding:4px 12px; font-size:11.5px; font-weight:700; cursor:pointer;', '📁 فتح المجلد');
+                    openBtn.onclick = function(e) {
+                        e.stopPropagation();
+                        if (window.pywebview && window.pywebview.api && window.pywebview.api.open_folder) {
+                            window.pywebview.api.open_folder(folderPath || null);
+                        }
+                    };
+                    actionsEl.appendChild(openBtn);
+
+                    var closeBtn = createEl('button', '', 'background:rgba(255,255,255,0.18); color:#ffffff; border:none; border-radius:6px; padding:4px 9px; font-size:11.5px; font-weight:700; cursor:pointer; margin-right:4px;', '✕');
+                    closeBtn.onclick = function(e) {
+                        e.stopPropagation();
+                        bar.style.display = 'none';
+                    };
+                    actionsEl.appendChild(closeBtn);
+                }
+
+                clearTimeout(window.__sdn_bar_timer);
+                window.__sdn_bar_timer = setTimeout(function() {
+                    if (bar) bar.style.display = 'none';
+                }, 8000);
+            } else if (doneMsg) {
+                bar.style.borderColor = 'rgba(239, 68, 68, 0.7)';
+                if (titleEl) titleEl.textContent = doneMsg;
+                if (counterEl) counterEl.textContent = 'تم إيقاف أو إلغاء التنزيل.';
+                clearTimeout(window.__sdn_bar_timer);
+                window.__sdn_bar_timer = setTimeout(function() {
+                    if (bar) bar.style.display = 'none';
+                }, 4000);
+            } else {
+                bar.style.display = 'none';
+            }
+        }
+
         var panel = document.getElementById('sdn-idm-panel');
         var txt = document.getElementById('sdnPanelText');
         if (txt && doneMsg) {
@@ -3007,6 +3200,8 @@ class DownloaderBridgeAPI:
         if is_pl or mode == 'playlist_all':
             option['is_playlist'] = True
             option['playlist_mode'] = 'all'
+            option['playlist_title'] = title or 'قائمة تشغيل'
+            option['media_title'] = title or 'قائمة تشغيل'
 
         if force:
             option['allow_duplicate'] = True
@@ -3022,14 +3217,6 @@ class DownloaderBridgeAPI:
         last_item_idx = [0]
 
         def run_direct_dl():
-            status_cb("⚡ جاري الاتصال بالخادم وتجهيز البث...")
-            if getattr(self, '_youtube_browser_win', None):
-                try:
-                    self._youtube_browser_win.evaluate_js(
-                        "if (window.updateSdnBrowserProgress) window.updateSdnBrowserProgress(0, null, null, '⚡ جاري الاتصال...', 'جاري التحضير...');"
-                    )
-                except Exception:
-                    pass
             playlist_session = None
             if is_pl or option.get('is_playlist'):
                 p_items = list(option.get('playlist_items') or [])
@@ -3112,6 +3299,14 @@ class DownloaderBridgeAPI:
                         pass
 
             try:
+                status_cb("⚡ جاري الاتصال بالخادم وتجهيز البث...")
+                if getattr(self, '_youtube_browser_win', None):
+                    try:
+                        self._youtube_browser_win.evaluate_js(
+                            "if (window.updateSdnBrowserProgress) window.updateSdnBrowserProgress(0, null, null, '⚡ جاري الاتصال...', 'جاري التحضير...');"
+                        )
+                    except Exception:
+                        pass
                 if not self.downloader:
                     from downloader import MediaDownloader
                     self.downloader = MediaDownloader()
@@ -3161,7 +3356,16 @@ class DownloaderBridgeAPI:
 
                 if getattr(self, '_youtube_browser_win', None):
                     try:
-                        self._youtube_browser_win.evaluate_js("if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress('✅ اكتمل التنزيل بنجاح');")
+                        target_dir = result.get('directory') or self.save_dir
+                        item_count = len(downloaded_files)
+                        if is_pl or option.get('is_playlist'):
+                            done_msg = f"🎉 اكتمل تنزيل جميع المقاطع بنجاح ({item_count} مقطع)!"
+                        else:
+                            first_name = Path(downloaded_files[0].get('filepath') if downloaded_files else '').stem or media_title
+                            done_msg = f"✅ اكتمل تنزيل: {first_name[:35]} بنجاح!"
+                        self._youtube_browser_win.evaluate_js(
+                            f"if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress({json.dumps(done_msg)}, {json.dumps(target_dir)});"
+                        )
                     except Exception:
                         pass
 

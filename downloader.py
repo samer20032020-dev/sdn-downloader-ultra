@@ -1114,10 +1114,17 @@ class MediaDownloader:
         selected_indices.sort()
 
         if is_playlist:
+            raw_pl = str(option.get("playlist_title") or option.get("media_title") or "").strip()
+            clean_pl = re.sub(r'[\(\)\|%\[\]<>\:"/\\?*\n\r\t]', '_', raw_pl).strip()
+            clean_pl = re.sub(r'\s+', ' ', clean_pl)[:80].strip('. ')
+            if not clean_pl or clean_pl.lower() in ("none", "playlist", "قائمة تشغيل", "فيديو", "صوت"):
+                clean_pl = "قائمة تشغيل"
+            folder_tmpl = f"%(playlist_title|{clean_pl}).120B"
+
             template = os.path.join(
                 save_dir,
-                "%(playlist_title|Playlist).120B",
-                f"%(playlist_index)03d - %(title).160B [%(id)s] [{quality_tag}].%(ext)s",
+                folder_tmpl,
+                f"%(playlist_index,autonumber)03d - %(title).160B [%(id)s] [{quality_tag}].%(ext)s",
             )
         else:
             template = os.path.join(
