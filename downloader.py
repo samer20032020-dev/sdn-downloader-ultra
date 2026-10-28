@@ -373,16 +373,22 @@ def _common_ydl_options(proxy: str | None = None) -> dict[str, Any]:
         "quiet": True,
         "no_warnings": True,
         "noprogress": True,
-        "socket_timeout": 15,
-        "retries": 10,
-        "fragment_retries": 10,
-        "extractor_retries": 5,
-        "file_access_retries": 5,
+        "socket_timeout": 10,
+        "retries": 3,
+        "fragment_retries": 5,
+        "extractor_retries": 2,
+        "file_access_retries": 3,
         "concurrent_fragment_downloads": 8,
         "continuedl": True,
         "windowsfilenames": True,
         "http_chunk_size": 10485760,
         "buffersize": 1024 * 512,
+        "extract_flat": "in_playlist",
+        "extractor_args": {
+            "youtube": {
+                "player_skip": ["configs"]
+            }
+        },
     }
     if proxy and proxy.strip():
         options["proxy"] = proxy.strip()
@@ -1132,23 +1138,34 @@ class MediaDownloader:
         existing_disk_titles: dict[str, str] = {}
         if not allow_duplicate and os.path.isdir(save_dir):
             try:
-                for root, _, files in os.walk(save_dir):
-                    for fname in files:
-                        ext = os.path.splitext(fname)[1].lower()
-                        if ext in target_exts:
-                            full_p = os.path.join(root, fname)
-                            try:
-                                if os.path.getsize(full_p) > 1024:
-                                    m = re.search(r'\[([a-zA-Z0-9_-]{11})\]', fname)
-                                    if m:
-                                        existing_disk_items[m.group(1)] = full_p
-                                    clean_stem = re.sub(r'^\d+\s*-\s*', '', os.path.splitext(fname)[0])
-                                    clean_stem = re.sub(r'\[.*?\]', '', clean_stem).strip().lower()
-                                    clean_key = "".join(c for c in clean_stem if c.isalnum())
-                                    if clean_key:
-                                        existing_disk_titles[clean_key] = full_p
-                            except OSError:
-                                pass
+                scan_targets = [save_dir]
+                with os.scandir(save_dir) as top_it:
+                    for entry in top_it:
+                        if entry.is_dir():
+                            scan_targets.append(entry.path)
+                for s_dir in scan_targets:
+                    try:
+                        with os.scandir(s_dir) as it:
+                            for entry in it:
+                                if entry.is_file():
+                                    fname = entry.name
+                                    ext = os.path.splitext(fname)[1].lower()
+                                    if ext in target_exts:
+                                        full_p = entry.path
+                                        try:
+                                            if entry.stat().st_size > 1024:
+                                                m = re.search(r'\[([a-zA-Z0-9_-]{11})\]', fname)
+                                                if m:
+                                                    existing_disk_items[m.group(1)] = full_p
+                                                clean_stem = re.sub(r'^\d+\s*-\s*', '', os.path.splitext(fname)[0])
+                                                clean_stem = re.sub(r'\[.*?\]', '', clean_stem).strip().lower()
+                                                clean_key = "".join(c for c in clean_stem if c.isalnum())
+                                                if clean_key:
+                                                    existing_disk_titles[clean_key] = full_p
+                                        except OSError:
+                                            pass
+                    except OSError:
+                        pass
             except Exception as e:
                 _log.debug(f"Failed scanning existing disk items: {e}")
 
@@ -1408,6 +1425,9 @@ class MediaDownloader:
                         pass
             except Exception:
                 pass
+
+        if status_callback:
+            status_callback("⚡ جاري جلب البث وبدء التنزيل السريع...")
 
         try:
             with yt_dlp.YoutubeDL(ydl_options) as ydl:

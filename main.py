@@ -575,17 +575,19 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
 
     function triggerDirectDownload(url, quality, mode, label, title) {
         var effectiveTitle = title || getVideoTitle();
-        showToast('⏳ جاري التحقق من التنزيل المباشر (' + label + ')...', 'info');
+        var ctx = getMediaContext();
+        var targetUrl = (mode === 'single' && ctx && ctx.singleUrl) ? ctx.singleUrl : url;
+        showToast('⚡ جاري التحقق وبدء التنزيل (' + label + ')...', 'info');
         var txt = document.getElementById('sdnPanelText');
         var panel = document.getElementById('sdn-idm-panel');
-        if (txt) txt.textContent = '⏳ جاري بدء التنزيل...';
+        if (txt) txt.textContent = '⚡ جاري بدء التنزيل...';
         if (panel) {
             panel.style.background = 'rgba(59, 130, 246, 0.95)';
             panel.style.borderColor = '#60a5fa';
         }
         if (window.pywebview && window.pywebview.api && window.pywebview.api.download_url) {
             try {
-                window.pywebview.api.download_url(url, quality, mode, false, effectiveTitle);
+                window.pywebview.api.download_url(targetUrl, quality, mode, false, effectiveTitle);
             } catch (err) {
                 showToast('❌ تعذر إرسال أمر التنزيل: ' + err, 'error');
                 if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress();
@@ -669,19 +671,19 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
         } else {
             addSectionHeader('اختر الجودة للتنزيل المباشر:');
             addItem('فيديو 1080p Full HD (MP4)', '1080p', function() {
-                triggerDirectDownload(ctx.fullUrl, '1080p', 'single', '1080p Full HD', curTitle);
+                triggerDirectDownload(ctx.singleUrl || ctx.fullUrl, '1080p', 'single', '1080p Full HD', curTitle);
             });
             addItem('فيديو 720p HD (MP4)', '720p', function() {
-                triggerDirectDownload(ctx.fullUrl, '720p', 'single', '720p HD', curTitle);
+                triggerDirectDownload(ctx.singleUrl || ctx.fullUrl, '720p', 'single', '720p HD', curTitle);
             });
             addItem('أفضل جودة تلقائياً (Best)', 'Best', function() {
-                triggerDirectDownload(ctx.fullUrl, 'best', 'single', 'أفضل جودة', curTitle);
+                triggerDirectDownload(ctx.singleUrl || ctx.fullUrl, 'best', 'single', 'أفضل جودة', curTitle);
             });
             addItem('فيديو 480p SD (حجم خفيف)', '480p', function() {
-                triggerDirectDownload(ctx.fullUrl, '480p', 'single', '480p SD', curTitle);
+                triggerDirectDownload(ctx.singleUrl || ctx.fullUrl, '480p', 'single', '480p SD', curTitle);
             });
             addItem('استخراج الصوت MP3 (عالي النقاء)', 'MP3', function() {
-                triggerDirectDownload(ctx.fullUrl, 'mp3', 'single', 'صوت MP3', curTitle);
+                triggerDirectDownload(ctx.singleUrl || ctx.fullUrl, 'mp3', 'single', 'صوت MP3', curTitle);
             });
         }
 
@@ -703,7 +705,8 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
 
         addItem('فتح وتعديل الرابط في محرك SDN', '↗', function() {
             if (window.pywebview && window.pywebview.api && window.pywebview.api.send_to_main) {
-                window.pywebview.api.send_to_main(ctx.fullUrl, false);
+                var targetUrl = (ctx.isWatch && !ctx.isPlaylistPage) ? (ctx.singleUrl || ctx.fullUrl) : ctx.fullUrl;
+                window.pywebview.api.send_to_main(targetUrl, false);
                 showToast('✅ تم فتح الرابط في شاشة SDN الرئيسية', 'success');
             }
         });
@@ -2906,7 +2909,12 @@ class DownloaderBridgeAPI:
 
         is_audio = (str(quality).lower() == 'mp3' or 'audio' in str(quality).lower())
         target_type = 'audio' if is_audio else 'video'
-        is_pl = (mode == 'playlist_all') or ('list=' in url)
+        is_pl = (mode == 'playlist_all')
+
+        # If downloading a single video/audio, clean the URL so mix/radio playlist params are discarded
+        if mode == 'single' or not is_pl:
+            from downloader import clean_url
+            url = clean_url(url, keep_mix_playlist=False)
 
         # Duplicate check before downloading (only for single videos; playlists use item_duplicate_filter inside downloader):
         if not force and not is_pl:
@@ -2970,6 +2978,14 @@ class DownloaderBridgeAPI:
         last_item_idx = [0]
 
         def run_direct_dl():
+            status_cb("⚡ جاري الاتصال بالخادم وتجهيز البث...")
+            if getattr(self, '_youtube_browser_win', None):
+                try:
+                    self._youtube_browser_win.evaluate_js(
+                        "if (window.updateSdnBrowserProgress) window.updateSdnBrowserProgress(0, null, null, '⚡ جاري الاتصال...', 'جاري التحضير...');"
+                    )
+                except Exception:
+                    pass
             playlist_session = None
             if is_pl or option.get('is_playlist'):
                 p_items = list(option.get('playlist_items') or [])
@@ -3155,7 +3171,11 @@ class DownloaderBridgeAPI:
             try:
                 import ctypes
                 user32 = ctypes.windll.user32
-                hwnd = user32.FindWindowW(None, "SDN")
+                hwnd = 0
+                if hasattr(self._window, 'native') and hasattr(self._window.native, 'Handle'):
+                    hwnd = int(self._window.native.Handle)
+                if not hwnd:
+                    hwnd = user32.FindWindowW(None, "SDN")
                 if hwnd:
                     user32.ShowWindow(hwnd, 9)  # SW_RESTORE
                     user32.SetForegroundWindow(hwnd)
@@ -3164,7 +3184,15 @@ class DownloaderBridgeAPI:
                 _log.debug(f"Bring to front error: {e}")
             safe_url = json.dumps(str(url))
             safe_auto = json.dumps(bool(auto_playlist_select))
-            self._window.evaluate_js(f"if (window.onBrowserSendUrl) window.onBrowserSendUrl({safe_url}, {safe_auto});")
+            def _push():
+                for delay in (0.0, 0.12, 0.3):
+                    if delay > 0:
+                        time.sleep(delay)
+                    try:
+                        self._window.evaluate_js(f"if (window.onBrowserSendUrl) window.onBrowserSendUrl({safe_url}, {safe_auto});")
+                    except Exception as ex:
+                        _log.debug(f"Push to main error: {ex}")
+            threading.Thread(target=_push, daemon=True).start()
         return {'success': True}
 
     def _async_download(self, url, option, browser_cookies):
