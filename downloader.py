@@ -1257,9 +1257,10 @@ class MediaDownloader:
                     capture_new_path(raw_fn)
                     if status_callback:
                         status_callback("اكتمل تنزيل المسار، جاري تحضير المعالجة...")
-                    if item_complete_callback and is_playlist and not postprocessors:
+                    if item_complete_callback and not postprocessors:
                         try:
-                            item_complete_callback(playlist_position, info_dict.get("title") or "", raw_fn)
+                            p_pos = playlist_position if is_playlist else 1
+                            item_complete_callback(p_pos, info_dict.get("title") or "", raw_fn)
                         except Exception:
                             pass
                 return
@@ -1315,9 +1316,9 @@ class MediaDownloader:
                 capture_new_path(captured_fp)
                 if status_callback:
                     status_callback("⚙️ اكتملت المعالجة، جاري حفظ وتجهيز الملف...")
-                if item_complete_callback and is_playlist:
+                if item_complete_callback:
                     try:
-                        p_idx = info_dict.get("playlist_index") or playlist_position
+                        p_idx = (info_dict.get("playlist_index") or playlist_position) if is_playlist else 1
                         item_complete_callback(p_idx, info_dict.get("title") or "", captured_fp)
                     except Exception:
                         pass

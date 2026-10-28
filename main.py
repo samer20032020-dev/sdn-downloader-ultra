@@ -3209,9 +3209,9 @@ class DownloaderBridgeAPI:
         folder_name = Path(self.save_dir).name or self.save_dir
         q_label = option.get('label') or str(quality)
         if option.get('is_playlist'):
-            self._notify_browser_toast(f"🚀 بدأ تنزيل كامل قائمة التشغيل ({q_label}) إلى مجلد: {folder_name}...", 'info', is_downloading=True)
+            self._notify_browser_toast(f"🚀 بدأ تنزيل كامل قائمة التشغيل ({q_label})...", 'info')
         else:
-            self._notify_browser_toast(f"🚀 بدأ التنزيل المباشر ({q_label}) إلى: {folder_name}...", 'info', is_downloading=True)
+            self._notify_browser_toast(f"🚀 بدأ التنزيل المباشر ({q_label})...", 'info')
 
         start_t = time.time()
         last_item_idx = [0]
@@ -3235,7 +3235,23 @@ class DownloaderBridgeAPI:
                 }
                 self._save_playlist_session(playlist_session)
 
+            completed_seen = set()
+            completed_items_count = [0]
+
             def on_playlist_item_complete(p_idx, item_title, file_path):
+                key = (p_idx, file_path) if file_path else p_idx
+                if key in completed_seen:
+                    return
+                completed_seen.add(key)
+
+                completed_items_count[0] += 1
+                c_num = completed_items_count[0]
+                total = playlist_session.get('total_count', 0) if playlist_session else 0
+                if total and total > 1:
+                    self._notify_browser_toast(f"✅ تم تنزيل {c_num} من {total}", 'success', filepath=file_path)
+                else:
+                    self._notify_browser_toast(f"✅ تم تنزيل {c_num}", 'success', filepath=file_path)
+
                 if playlist_session and p_idx is not None:
                     try:
                         idx = int(p_idx)
@@ -3281,22 +3297,13 @@ class DownloaderBridgeAPI:
                     except Exception:
                         pass
 
-                if option.get('is_playlist'):
-                    if p_idx and p_cnt and p_idx != last_item_idx[0]:
-                        last_item_idx[0] = p_idx
-                        self._notify_browser_toast(f"📥 جاري تنزيل ({p_idx}/{p_cnt}): {it_title[:32]}...", 'info', is_downloading=True)
-
             def status_cb(msg):
                 if self._window:
                     try:
                         self._window.evaluate_js(f'updateProgress({json.dumps({"status": "processing", "msg": msg})})')
                     except Exception:
                         pass
-                if getattr(self, '_youtube_browser_win', None):
-                    try:
-                        self._notify_browser_toast(msg, 'info', is_downloading=True)
-                    except Exception:
-                        pass
+                # Do NOT spam browser with internal FFmpeg/processing toasts
 
             try:
                 status_cb("⚡ جاري الاتصال بالخادم وتجهيز البث...")
