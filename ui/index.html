@@ -2476,7 +2476,7 @@ body.light-theme .youtube-account-row {
       <!-- Update Header Button -->
       <button id="headerUpdateBtn" onclick="onHeaderUpdateClick()" class="update-header-btn" title="فحص التحديثات" style="display:none;">
         <i class="fas fa-cog" id="updateHeaderIcon"></i>
-        <span id="updateHeaderTxt">v1.0.50</span>
+        <span id="updateHeaderTxt">v1.0.52</span>
       </button>
     </div>
   </header>
@@ -4882,22 +4882,36 @@ function updateProgress(p) {
   } else if (p.status === 'processing') {
     card.style.display = 'flex';
     card.style.flexDirection = 'column';
-    const msg = p.msg || '⚙️ جاري معالجة ودمج الملف عبر FFmpeg...';
-    const isPostProcess = msg.includes('دمج') || msg.includes('استخراج') || msg.includes('تحويل') || msg.includes('FFmpeg') || msg.includes('حفظ') || msg.includes('الغلاف');
+    const msg = (p.msg || '').trim();
+    let rawTitle = p.item_title || p.title || '';
+    if (!rawTitle && msg.startsWith('🎵')) {
+      rawTitle = msg.replace(/^🎵\s*/, '').replace(/\s*\(\d+\/\d+\)$/, '').trim();
+    }
     if (fill) {
       fill.classList.add('processing');
       fill.style.background = '';
-      fill.style.width = isPostProcess ? '95%' : '15%';
+      fill.style.width = '95%';
     }
     if (pct) {
-      pct.innerHTML = isPostProcess
-        ? '<i class="fa-solid fa-gear fa-spin" style="margin-left:4px;"></i> 95%'
-        : '<i class="fa-solid fa-circle-notch fa-spin" style="margin-left:4px;"></i> 10%';
+      pct.innerHTML = '<i class="fa-solid fa-bolt fa-spin" style="margin-left:4px;"></i> 95%';
     }
-    if (stat) stat.innerText = msg;
-    if (speed) speed.innerText = isPostProcess ? '⚡ معالجة نشطة' : '⚡ جاري الاتصال';
-    if (sizes) sizes.innerText = isPostProcess ? '⚙️ دمج وتجهيز الحاوية...' : '🌐 تهيئة البث المباشر...';
-    if (eta) eta.innerText = isPostProcess ? 'يرجى الانتظار، جاري حفظ الملف النهائي...' : 'جاري بدء التنزيل...';
+    const hasPl = Boolean(p.playlist_count && p.playlist_count > 1);
+    const plIdx = p.playlist_index || 1;
+    const plCnt = p.playlist_count || 1;
+    const plText = hasPl ? ` (${plIdx}/${plCnt})` : '';
+
+    if (stat) {
+      if (rawTitle) {
+        stat.innerText = `🎵 ${rawTitle}${plText}`;
+      } else if (msg) {
+        stat.innerText = msg;
+      } else {
+        stat.innerText = '⚡ جاري التحضير السريع...';
+      }
+    }
+    if (speed) speed.innerText = hasPl ? `مقطع ${plIdx} من ${plCnt}` : '⚡ معالجة سريعة';
+    if (sizes) sizes.innerText = hasPl ? `تم تنزيل: ${Math.max(0, plIdx - 1)} من ${plCnt}` : (rawTitle ? `🎵 ${rawTitle}` : '');
+    if (eta) eta.innerText = hasPl ? `المتبقي: ${Math.max(0, plCnt - plIdx)} مقطع` : '';
 
   } else if (p.status === 'complete') {
     setDownloadActive(false);
@@ -5528,7 +5542,8 @@ document.getElementById('dlBtn').addEventListener('click', async () => {
   const sizes = document.getElementById('progSizes');
   const eta = document.getElementById('progEta');
   if (pct) pct.innerText = '0%';
-  if (stat) stat.innerText = '⬇️ جاري التجهيز والبدء...';
+  const activeTitle = gData?.title || '';
+  if (stat) stat.innerText = activeTitle ? ('🎵 ' + activeTitle) : '⬇️ بدء التنزيل...';
   if (speed) speed.innerText = '';
   if (sizes) sizes.innerText = '';
   if (eta) eta.innerText = '';
@@ -5645,9 +5660,31 @@ document.getElementById('dlBtn').addEventListener('click', async () => {
   }
 });
 
+window.handleDownloadCancelled = function() {
+  setDownloadActive(false);
+  const card = document.getElementById('progCard');
+  const stat = document.getElementById('progStatus');
+  const fill = document.getElementById('progFill');
+  const speed = document.getElementById('progSpeed');
+  const sizes = document.getElementById('progSizes');
+  const eta = document.getElementById('progEta');
+  if (stat) stat.innerText = '🛑 تم إيقاف التنزيل فورياً';
+  if (fill) {
+    fill.classList.remove('processing');
+    fill.style.background = '#ef4444';
+  }
+  if (speed) speed.innerText = '';
+  if (sizes) sizes.innerText = '';
+  if (eta) eta.innerText = '';
+  toast('🛑 تم إيقاف التنزيل فورياً بنجاح');
+  setTimeout(() => {
+    if (!gDownloadActive && card) card.style.display = 'none';
+  }, 1000);
+};
+
 document.getElementById('cancelDlBtn')?.addEventListener('click', () => {
   if (!gDownloadActive) return;
-  toast('⏹️ جاري إلغاء التنزيل...');
+  window.handleDownloadCancelled();
   if (window.pywebview?.api?.cancel_download) {
     window.pywebview.api.cancel_download();
   } else if (window.androidInterface?.cancelDownload) {
@@ -6010,7 +6047,7 @@ function incrementDlCounter() {
   num.style.animation = 'dlBadgeBump 0.35s ease';
 }
 
-let CURRENT_VERSION = '1.0.50';
+let CURRENT_VERSION = '1.0.52';
 let gLatestReleaseUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
 let gLatestReleasePage = gLatestReleaseUrl;
 let gLatestAssetUrl = '';

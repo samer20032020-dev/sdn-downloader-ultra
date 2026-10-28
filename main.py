@@ -624,10 +624,10 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
         var effectiveTitle = title || getVideoTitle();
         var ctx = getMediaContext();
         var targetUrl = (mode === 'single' && ctx && ctx.singleUrl) ? ctx.singleUrl : url;
-        showToast('⚡ جاري التحقق وبدء التنزيل (' + label + ')...', 'info');
+        showToast('⚡ بدء تنزيل: ' + (effectiveTitle ? (effectiveTitle.length > 30 ? effectiveTitle.slice(0, 30) + '...' : effectiveTitle) : label), 'info');
         var txt = document.getElementById('sdnPanelText');
         var panel = document.getElementById('sdn-idm-panel');
-        if (txt) txt.textContent = '⚡ جاري بدء التنزيل...';
+        if (txt) txt.textContent = effectiveTitle ? ('🎵 ' + (effectiveTitle.length > 20 ? effectiveTitle.slice(0, 20) + '...' : effectiveTitle)) : '⚡ بدء التنزيل...';
         if (panel) {
             panel.style.background = 'rgba(59, 130, 246, 0.95)';
             panel.style.borderColor = '#60a5fa';
@@ -738,9 +738,10 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
         menu.appendChild(div);
 
         addItem('🛑 إيقاف التنزيل الحالي', 'إيقاف', function() {
+            if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress('🛑 تم إيقاف التنزيل فورياً');
             if (window.pywebview && window.pywebview.api && window.pywebview.api.cancel_download) {
                 window.pywebview.api.cancel_download();
-                showToast('🛑 تم إرسال أمر إيقاف التنزيل...', 'info');
+                showToast('🛑 تم إيقاف التنزيل فورياً', 'info');
             }
         });
 
@@ -1007,10 +1008,9 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
             if (cancelBtn) {
                 cancelBtn.onclick = function(e) {
                     e.stopPropagation();
+                    if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress('🛑 تم إيقاف التنزيل فورياً');
                     if (window.pywebview && window.pywebview.api && window.pywebview.api.cancel_download) {
                         window.pywebview.api.cancel_download();
-                        var counter = document.getElementById('sdnBarCounter');
-                        if (counter) counter.textContent = '🛑 تم طلب إيقاف وإلغاء التنزيل...';
                         cancelBtn.disabled = true;
                         cancelBtn.style.opacity = '0.5';
                     }
@@ -1075,9 +1075,11 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
         if (txt) {
             var roundPct = Math.round(percent || 0);
             if (pIndex && pCount) {
-                txt.textContent = '📥 (' + pIndex + '/' + pCount + ') ' + roundPct + '%' + (speedStr ? ' • ' + speedStr : '');
+                var shortT = itemTitle ? ('🎵 ' + (itemTitle.length > 15 ? itemTitle.slice(0, 15) + '..' : itemTitle) + ' ') : '';
+                txt.textContent = shortT + '(' + pIndex + '/' + pCount + ') ' + roundPct + '%';
             } else {
-                txt.textContent = '📥 تنزيل: ' + roundPct + '%' + (speedStr ? ' • ' + speedStr : '');
+                var shortT = itemTitle ? ('🎵 ' + (itemTitle.length > 20 ? itemTitle.slice(0, 20) + '..' : itemTitle) + ' ') : '📥 ';
+                txt.textContent = shortT + roundPct + '%';
             }
         }
         if (panel) {
@@ -2720,9 +2722,18 @@ class DownloaderBridgeAPI:
     def cancel_download(self):
         if self.downloader:
             self.downloader.cancel()
-            _log.info("Download cancellation requested")
-            return {'cancelled': True}
-        return {'cancelled': False}
+        _log.info("Download cancellation requested")
+        if self._window:
+            try:
+                self._window.evaluate_js("if (window.handleDownloadCancelled) window.handleDownloadCancelled();")
+            except Exception:
+                pass
+        if getattr(self, '_youtube_browser_win', None):
+            try:
+                self._youtube_browser_win.evaluate_js("if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress('🛑 تم إيقاف التنزيل');")
+            except Exception:
+                pass
+        return {'cancelled': True}
 
     # ================================================================
     # Playlist Session Persistence & Automatic Resumption System
@@ -3266,7 +3277,16 @@ class DownloaderBridgeAPI:
                     except Exception as ex:
                         _log.debug(f"Quick DL session item update note: {ex}")
 
+            last_progress_info = {'item_title': title or '', 'playlist_index': 1, 'playlist_count': option.get('playlist_count')}
+
             def progress_cb(p_data):
+                if p_data.get('item_title'):
+                    last_progress_info['item_title'] = p_data['item_title']
+                if p_data.get('playlist_index'):
+                    last_progress_info['playlist_index'] = p_data['playlist_index']
+                if p_data.get('playlist_count'):
+                    last_progress_info['playlist_count'] = p_data['playlist_count']
+
                 if playlist_session and p_data.get('playlist_count'):
                     p_count = int(p_data['playlist_count'])
                     if p_count > playlist_session.get('total_count', 0):
@@ -3298,19 +3318,45 @@ class DownloaderBridgeAPI:
                         pass
 
             def status_cb(msg):
+                clean_title = last_progress_info.get('item_title') or title or ''
+                p_idx = last_progress_info.get('playlist_index')
+                p_cnt = last_progress_info.get('playlist_count')
+
+                friendly_msg = msg
+                if clean_title:
+                    pl_part = f" ({p_idx}/{p_cnt})" if (p_cnt and p_cnt > 1) else ""
+                    friendly_msg = f"🎵 {clean_title}{pl_part}"
+                elif not str(friendly_msg).startswith("🎵"):
+                    friendly_msg = "⚡ جاري التنزيل المباشر..."
+
                 if self._window:
                     try:
-                        self._window.evaluate_js(f'updateProgress({json.dumps({"status": "processing", "msg": msg})})')
+                        payload = {
+                            'status': 'processing',
+                            'msg': friendly_msg,
+                            'item_title': clean_title,
+                            'playlist_index': p_idx,
+                            'playlist_count': p_cnt
+                        }
+                        self._window.evaluate_js(f'updateProgress({json.dumps(payload)})')
                     except Exception:
                         pass
-                # Do NOT spam browser with internal FFmpeg/processing toasts
 
-            try:
-                status_cb("⚡ جاري الاتصال بالخادم وتجهيز البث...")
                 if getattr(self, '_youtube_browser_win', None):
                     try:
                         self._youtube_browser_win.evaluate_js(
-                            "if (window.updateSdnBrowserProgress) window.updateSdnBrowserProgress(0, null, null, '⚡ جاري الاتصال...', 'جاري التحضير...');"
+                            f"if (window.updateSdnBrowserProgress) window.updateSdnBrowserProgress(95, {json.dumps(p_idx)}, {json.dumps(p_cnt)}, '⚡ جاري الحفظ...', {json.dumps(clean_title)});"
+                        )
+                    except Exception:
+                        pass
+
+            try:
+                init_title = title or option.get('media_title') or ''
+                status_cb(f"🎵 {init_title}" if init_title else "⚡ جاري بدء التنزيل السريع...")
+                if getattr(self, '_youtube_browser_win', None):
+                    try:
+                        self._youtube_browser_win.evaluate_js(
+                            f"if (window.updateSdnBrowserProgress) window.updateSdnBrowserProgress(0, 1, {json.dumps(option.get('playlist_count'))}, '⚡ جاري الاتصال...', {json.dumps(init_title or 'جاري التحضير...')});"
                         )
                     except Exception:
                         pass
@@ -3540,7 +3586,16 @@ class DownloaderBridgeAPI:
                 except Exception as ex:
                     _log.debug(f"Session item update exception: {ex}")
 
+        last_progress_info = {'item_title': option.get('media_title') or option.get('title') or '', 'playlist_index': 1, 'playlist_count': option.get('playlist_count')}
+
         def progress_callback(p_data):
+            if p_data.get('item_title'):
+                last_progress_info['item_title'] = p_data['item_title']
+            if p_data.get('playlist_index'):
+                last_progress_info['playlist_index'] = p_data['playlist_index']
+            if p_data.get('playlist_count'):
+                last_progress_info['playlist_count'] = p_data['playlist_count']
+
             if playlist_session and p_data.get('playlist_count'):
                 p_count = int(p_data['playlist_count'])
                 if p_count > playlist_session.get('total_count', 0):
@@ -3557,9 +3612,26 @@ class DownloaderBridgeAPI:
                     _log.debug(f"Progress evaluate_js error: {ex}")
 
         def status_callback(msg):
+            clean_title = last_progress_info.get('item_title') or option.get('media_title') or option.get('title') or ''
+            p_idx = last_progress_info.get('playlist_index')
+            p_cnt = last_progress_info.get('playlist_count')
+
+            friendly_msg = msg
+            if clean_title:
+                pl_part = f" ({p_idx}/{p_cnt})" if (p_cnt and p_cnt > 1) else ""
+                friendly_msg = f"🎵 {clean_title}{pl_part}"
+            elif not str(friendly_msg).startswith("🎵"):
+                friendly_msg = "⚡ جاري التنزيل المباشر..."
+
             if self._window:
                 try:
-                    payload = {'status': 'processing', 'msg': msg}
+                    payload = {
+                        'status': 'processing',
+                        'msg': friendly_msg,
+                        'item_title': clean_title,
+                        'playlist_index': p_idx,
+                        'playlist_count': p_cnt
+                    }
                     self._window.evaluate_js(f'updateProgress({json.dumps(payload)})')
                 except Exception as ex:
                     _log.debug(f"Status evaluate_js error: {ex}")

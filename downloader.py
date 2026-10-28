@@ -865,6 +865,13 @@ class MediaDownloader:
 
     def cancel(self) -> bool:
         self._cancel_event.set()
+        try:
+            if os.name == "nt":
+                subprocess.run(["taskkill", "/F", "/T", "/IM", "ffmpeg.exe"], capture_output=True, timeout=2)
+            else:
+                subprocess.run(["pkill", "-9", "-f", "ffmpeg"], capture_output=True, timeout=2)
+        except Exception:
+            pass
         return True
 
     def fetch_info(
@@ -1256,7 +1263,11 @@ class MediaDownloader:
                     capture_path(raw_fn)
                     capture_new_path(raw_fn)
                     if status_callback:
-                        status_callback("اكتمل تنزيل المسار، جاري تحضير المعالجة...")
+                        cur_t = info_dict.get("title") or ""
+                        if is_playlist and playlist_total > 0:
+                            status_callback(f"🎵 {cur_t} ({playlist_position}/{playlist_total})" if cur_t else f"🎵 مقطع {playlist_position} من {playlist_total}")
+                        else:
+                            status_callback(f"🎵 {cur_t}" if cur_t else "🎵 جاري المعالجة السريعة...")
                     if item_complete_callback and not postprocessors:
                         try:
                             p_pos = playlist_position if is_playlist else 1
@@ -1296,30 +1307,28 @@ class MediaDownloader:
             if self._cancel_event.is_set():
                 raise DownloadCancelled("Download cancelled by user")
             pp_status = data.get("status")
-            pp_name = str(data.get("postprocessor") or "")
+            info_dict = data.get("info_dict") or {}
+            cur_item_t = info_dict.get("title") or ""
+            p_idx = (info_dict.get("playlist_index") or playlist_position) if is_playlist else 1
+
             if pp_status == "started" and status_callback:
-                pp_lower = pp_name.lower()
-                if "merg" in pp_lower:
-                    status_callback("⚙️ جاري دمج مسارات الفيديو والصوت عبر FFmpeg...")
-                elif "audio" in pp_lower:
-                    status_callback("⚙️ جاري استخراج وتحويل مسار الصوت عبر FFmpeg...")
-                elif "meta" in pp_lower:
-                    status_callback("⚙️ جاري إضافة الغلاف والبيانات الوصفية...")
-                elif "fixup" in pp_lower or "remux" in pp_lower:
-                    status_callback("⚙️ جاري ضبط حاوية الوسائط (Remux)...")
+                if is_playlist and playlist_total > 0:
+                    status_callback(f"🎵 {cur_item_t} ({p_idx}/{playlist_total})" if cur_item_t else f"🎵 مقطع {p_idx} من {playlist_total}")
                 else:
-                    status_callback("⚙️ جاري معالجة ودمج الملف عبر FFmpeg...")
+                    status_callback(f"🎵 {cur_item_t}" if cur_item_t else "🎵 جاري المعالجة السريعة...")
+
             elif pp_status == "finished":
-                info_dict = data.get("info_dict") or {}
                 captured_fp = info_dict.get("filepath") or info_dict.get("_filename")
                 capture_path(captured_fp)
                 capture_new_path(captured_fp)
                 if status_callback:
-                    status_callback("⚙️ اكتملت المعالجة، جاري حفظ وتجهيز الملف...")
+                    if is_playlist and playlist_total > 0:
+                        status_callback(f"🎵 {cur_item_t} ({p_idx}/{playlist_total})" if cur_item_t else f"🎵 مقطع {p_idx} من {playlist_total}")
+                    else:
+                        status_callback(f"🎵 {cur_item_t}" if cur_item_t else "🎵 اكتمل التجهيز")
                 if item_complete_callback:
                     try:
-                        p_idx = (info_dict.get("playlist_index") or playlist_position) if is_playlist else 1
-                        item_complete_callback(p_idx, info_dict.get("title") or "", captured_fp)
+                        item_complete_callback(p_idx, cur_item_t, captured_fp)
                     except Exception:
                         pass
 
@@ -1433,8 +1442,12 @@ class MediaDownloader:
             except Exception:
                 pass
 
+        m_title = option.get("media_title") or option.get("title") or ""
         if status_callback:
-            status_callback("⚡ جاري جلب البث وبدء التنزيل السريع...")
+            if m_title:
+                status_callback(f"🎵 {m_title}")
+            else:
+                status_callback("⚡ جاري الاتصال وبدء التنزيل السريع...")
 
         try:
             with yt_dlp.YoutubeDL(ydl_options) as ydl:
