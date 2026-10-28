@@ -2294,7 +2294,7 @@ body.light-theme .youtube-account-row {
 </div>
 
 <!-- RESUME PLAYLIST DOWNLOAD MODAL -->
-<div class="modal-overlay" id="resumePlaylistModal" style="display:none; z-index:10000;">
+<div class="modal-overlay" id="resumePlaylistModal" style="display:none; z-index:100000;">
   <div class="modal-card" style="text-align:center; max-width:440px; padding:28px 24px; position:relative; border-radius:24px; border:1px solid rgba(56,189,248,0.25); box-shadow:0 20px 50px rgba(0,0,0,0.6), 0 0 30px rgba(56,189,248,0.15);">
     <div style="font-size:3rem; margin-bottom:12px; display:inline-block; filter:drop-shadow(0 0 16px rgba(56,189,248,0.4));">📋</div>
     <h3 style="font-size:1.25rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">استئناف تنزيل القائمة</h3>
@@ -2476,7 +2476,7 @@ body.light-theme .youtube-account-row {
       <!-- Update Header Button -->
       <button id="headerUpdateBtn" onclick="onHeaderUpdateClick()" class="update-header-btn" title="فحص التحديثات" style="display:none;">
         <i class="fas fa-cog" id="updateHeaderIcon"></i>
-        <span id="updateHeaderTxt">v1.0.47</span>
+        <span id="updateHeaderTxt">v1.0.48</span>
       </button>
     </div>
   </header>
@@ -4881,17 +4881,23 @@ function updateProgress(p) {
 
   } else if (p.status === 'processing') {
     card.style.display = 'flex';
-      card.style.flexDirection = 'column';
+    card.style.flexDirection = 'column';
+    const msg = p.msg || '⚙️ جاري معالجة ودمج الملف عبر FFmpeg...';
+    const isPostProcess = msg.includes('دمج') || msg.includes('استخراج') || msg.includes('تحويل') || msg.includes('FFmpeg') || msg.includes('حفظ') || msg.includes('الغلاف');
     if (fill) {
       fill.classList.add('processing');
       fill.style.background = '';
-      fill.style.width = '95%';
+      fill.style.width = isPostProcess ? '95%' : '15%';
     }
-    if (pct)  pct.innerHTML  = '<i class="fa-solid fa-gear fa-spin" style="margin-left:4px;"></i> 95%';
-    if (stat) stat.innerText = p.msg || '⚙️ جاري معالجة ودمج الملف عبر FFmpeg...';
-    if (speed) speed.innerText = '⚡ معالجة نشطة';
-    if (sizes) sizes.innerText = '⚙️ دمج وتجهيز الحاوية...';
-    if (eta)   eta.innerText = 'يرجى الانتظار، جاري حفظ الملف النهائي...';
+    if (pct) {
+      pct.innerHTML = isPostProcess
+        ? '<i class="fa-solid fa-gear fa-spin" style="margin-left:4px;"></i> 95%'
+        : '<i class="fa-solid fa-circle-notch fa-spin" style="margin-left:4px;"></i> 10%';
+    }
+    if (stat) stat.innerText = msg;
+    if (speed) speed.innerText = isPostProcess ? '⚡ معالجة نشطة' : '⚡ جاري الاتصال';
+    if (sizes) sizes.innerText = isPostProcess ? '⚙️ دمج وتجهيز الحاوية...' : '🌐 تهيئة البث المباشر...';
+    if (eta) eta.innerText = isPostProcess ? 'يرجى الانتظار، جاري حفظ الملف النهائي...' : 'جاري بدء التنزيل...';
 
   } else if (p.status === 'complete') {
     setDownloadActive(false);
@@ -4944,9 +4950,12 @@ function updateProgress(p) {
       );
     }
 
-    // Refresh history UI from backend storage (~/.sdn_history.json)
+    // Refresh history UI and Audio Library from backend storage
     if (typeof refreshHistoryUI === 'function') {
       refreshHistoryUI();
+    }
+    if (typeof refreshAudioPlaylist === 'function') {
+      refreshAudioPlaylist();
     }
 
     // 2) Auto-sync any downloaded files (audio and video) directly into Music/Media Library
@@ -4979,7 +4988,7 @@ function updateProgress(p) {
       if (document.hidden || (document.hasFocus && !document.hasFocus())) {
         if ('Notification' in window && Notification.permission === 'granted') {
           new Notification('SDN Downloader Ultra', {
-            body: p.count > 1 ? `🎉 اكتمل تنزيل ${p.count} ملفات بنجاح!` : `🎉 اكتمل تنزيل: ${summaryTitle}`,
+            body: p.count > 1 ? `🎉 اكتمل تنزيل ${p.count} ملفات بنجاح!` : `🎉 اكتمل تنزيل: ${title}`,
             icon: 'app_icon.ico',
             silent: true
           });
@@ -5857,6 +5866,17 @@ function refreshHistoryUI() {
 }
 window.refreshHistoryUI = refreshHistoryUI;
 
+window.addEventListener('focus', () => {
+  if (typeof refreshHistoryUI === 'function') refreshHistoryUI();
+  if (typeof refreshAudioPlaylist === 'function') refreshAudioPlaylist();
+});
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    if (typeof refreshHistoryUI === 'function') refreshHistoryUI();
+    if (typeof refreshAudioPlaylist === 'function') refreshAudioPlaylist();
+  }
+});
+
 window.onHistoryFileStateChange = function(states) {
   if (!states || typeof states !== 'object') return;
 
@@ -5990,7 +6010,7 @@ function incrementDlCounter() {
   num.style.animation = 'dlBadgeBump 0.35s ease';
 }
 
-let CURRENT_VERSION = '1.0.47';
+let CURRENT_VERSION = '1.0.48';
 let gLatestReleaseUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
 let gLatestReleasePage = gLatestReleaseUrl;
 let gLatestAssetUrl = '';

@@ -2572,16 +2572,17 @@ class DownloaderBridgeAPI:
         session = self._load_playlist_session()
         if session:
             rem = session.get('remaining_indices') or []
-            comp = session.get('completed_indices') or []
+            comp = session.get('completed_indices') or session.get('completed_items') or []
             total = session.get('total_count') or session.get('playlist_count') or 0
-            if not rem and total > len(comp):
-                completed_set = set(comp)
+            comp_cnt = len(comp) if comp else int(session.get('completed_count') or 0)
+            if not rem and total > comp_cnt:
+                completed_set = set(comp if not isinstance(comp[0] if comp else 0, dict) else [x.get('index') for x in comp])
                 rem = [i for i in range(1, total + 1) if i not in completed_set]
                 session['remaining_indices'] = rem
             status = session.get('status', 'in_progress')
             if len(rem) > 0 and status in ('in_progress', 'paused', 'interrupted'):
-                session['total_count'] = total if total > 0 else (len(comp) + len(rem))
-                session['completed_count'] = len(comp)
+                session['total_count'] = total if total > 0 else (comp_cnt + len(rem))
+                session['completed_count'] = comp_cnt
                 session['remaining_count'] = len(rem)
                 session['playlist_title'] = session.get('playlist_title') or session.get('title') or 'قائمة تشغيل'
                 opt = session.get('option') or {}
@@ -2771,28 +2772,69 @@ class DownloaderBridgeAPI:
     # In-App YouTube Smart Browser with AdBlocker & IDM Download Sniffer
     # ================================================================
     def open_youtube_browser(self, start_url=None):
-        """Open the integrated Ad-Free YouTube Browser with IDM-style Floating Download Widget (Single Instance)."""
-        if getattr(self, '_youtube_browser_win', None) is not None:
-            try:
-                self._youtube_browser_win.restore()
-                self._youtube_browser_win.show()
-                if start_url:
-                    self._youtube_browser_win.load_url(start_url)
-                try:
-                    import ctypes
-                    user32 = ctypes.windll.user32
-                    hwnd = user32.FindWindowW(None, 'متصفح YouTube الذكي - SDN Downloader (بدون إعلانات + تحميل فوري)')
-                    if hwnd:
-                        user32.ShowWindow(hwnd, 9)  # SW_RESTORE
-                        user32.SetForegroundWindow(hwnd)
-                        user32.BringWindowToTop(hwnd)
-                except Exception:
-                    pass
-                return {'success': True, 'already_open': True}
-            except Exception as ex:
-                _log.debug(f"Focusing YouTube browser failed, reopening: {ex}")
-                self._youtube_browser_win = None
+        """Open the integrated Ad-Free YouTube Browser with IDM-style Floating Download Widget (Strict Single Instance)."""
+        if getattr(self, '_youtube_browser_opening', False):
+            return {'success': True, 'already_open': True}
 
+        win = getattr(self, '_youtube_browser_win', None)
+        if win is not None:
+            form = getattr(win, 'native', None)
+            is_alive = True
+            try:
+                if form is not None and hasattr(form, 'IsDisposed') and form.IsDisposed:
+                    is_alive = False
+            except Exception:
+                pass
+
+            if is_alive:
+                try:
+                    if form is not None:
+                        try:
+                            from System.Windows.Forms import FormWindowState, MethodInvoker
+                            def _act_yt():
+                                form.Visible = True
+                                if form.WindowState == FormWindowState.Minimized:
+                                    form.WindowState = FormWindowState.Normal
+                                form.Show()
+                                form.Activate()
+                                form.BringToFront()
+                            if form.InvokeRequired:
+                                form.BeginInvoke(MethodInvoker(_act_yt))
+                            else:
+                                _act_yt()
+                        except Exception:
+                            pass
+
+                    win.restore()
+                    win.show()
+                    if start_url:
+                        win.load_url(start_url)
+                    try:
+                        import ctypes
+                        user32 = ctypes.windll.user32
+                        hwnd = 0
+                        if form is not None and hasattr(form, 'Handle'):
+                            try:
+                                hwnd = int(form.Handle.ToInt64())
+                            except Exception:
+                                hwnd = 0
+                        if not hwnd:
+                            hwnd = user32.FindWindowW(None, 'متصفح YouTube الذكي - SDN Downloader (بدون إعلانات + تحميل فوري)')
+                        if hwnd:
+                            user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+                            user32.ShowWindow(hwnd, 5)  # SW_SHOW
+                            user32.SetForegroundWindow(hwnd)
+                            user32.BringWindowToTop(hwnd)
+                            if hasattr(user32, 'SwitchToThisWindow'):
+                                user32.SwitchToThisWindow(hwnd, True)
+                    except Exception:
+                        pass
+                    return {'success': True, 'already_open': True}
+                except Exception as ex:
+                    _log.debug(f"Focusing existing YouTube browser failed, reopening: {ex}")
+                    self._youtube_browser_win = None
+
+        self._youtube_browser_opening = True
         threading.Thread(target=self._run_youtube_browser, args=(start_url,), daemon=True).start()
         return {'success': True}
 
@@ -2812,12 +2854,14 @@ class DownloaderBridgeAPI:
                 js_api=bridge
             )
             self._youtube_browser_win = browser_win
+            self._youtube_browser_opening = False
 
             is_closed = [False]
 
             def on_closed():
                 is_closed[0] = True
                 self._youtube_browser_win = None
+                self._youtube_browser_opening = False
                 if getattr(self, '_main_hidden_by_user', False) and getattr(self, '_window', None):
                     self._main_hidden_by_user = False
                     try:
@@ -3163,33 +3207,77 @@ class DownloaderBridgeAPI:
         """Send URL to main window input bar, restore/unhide, bring to foreground, and fetch info."""
         if self._window:
             self._main_hidden_by_user = False
+            form = getattr(self._window, 'native', None)
+
+            # 1. Direct WinForms restoration
+            if form is not None:
+                try:
+                    from System.Windows.Forms import FormWindowState, MethodInvoker
+                    def _do_restore():
+                        try:
+                            form.Visible = True
+                            if form.WindowState == FormWindowState.Minimized:
+                                form.WindowState = FormWindowState.Normal
+                            form.Show()
+                            form.Activate()
+                            form.BringToFront()
+                        except Exception:
+                            pass
+                    if form.InvokeRequired:
+                        form.BeginInvoke(MethodInvoker(_do_restore))
+                    else:
+                        _do_restore()
+                except Exception as ex:
+                    _log.debug(f"Direct WinForms restore note: {ex}")
+
             try:
                 self._window.show()
                 self._window.restore()
             except Exception:
                 pass
+
+            # 2. Win32 foreground activation
             try:
                 import ctypes
                 user32 = ctypes.windll.user32
                 hwnd = 0
-                if hasattr(self._window, 'native') and hasattr(self._window.native, 'Handle'):
-                    hwnd = int(self._window.native.Handle)
+                if form is not None and hasattr(form, 'Handle'):
+                    try:
+                        hwnd = int(form.Handle.ToInt64())
+                    except Exception:
+                        try:
+                            hwnd = int(str(form.Handle))
+                        except Exception:
+                            hwnd = 0
                 if not hwnd:
                     hwnd = user32.FindWindowW(None, "SDN")
                 if hwnd:
                     user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+                    user32.ShowWindow(hwnd, 5)  # SW_SHOW
                     user32.SetForegroundWindow(hwnd)
                     user32.BringWindowToTop(hwnd)
+                    if hasattr(user32, 'SwitchToThisWindow'):
+                        user32.SwitchToThisWindow(hwnd, True)
             except Exception as e:
                 _log.debug(f"Bring to front error: {e}")
+
+            import json
             safe_url = json.dumps(str(url))
             safe_auto = json.dumps(bool(auto_playlist_select))
             def _push():
-                for delay in (0.0, 0.12, 0.3):
+                for delay in (0.05, 0.2, 0.45, 0.8, 1.3):
                     if delay > 0:
                         time.sleep(delay)
                     try:
-                        self._window.evaluate_js(f"if (window.onBrowserSendUrl) window.onBrowserSendUrl({safe_url}, {safe_auto});")
+                        js = f"""
+                        if (window.onBrowserSendUrl) {{
+                            window.onBrowserSendUrl({safe_url}, {safe_auto});
+                        }} else {{
+                            window.__pendingBrowserUrl = {safe_url};
+                            window.__pendingAutoPlaylist = {safe_auto};
+                        }}
+                        """
+                        self._window.evaluate_js(js)
                     except Exception as ex:
                         _log.debug(f"Push to main error: {ex}")
             threading.Thread(target=_push, daemon=True).start()

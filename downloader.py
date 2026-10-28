@@ -383,7 +383,6 @@ def _common_ydl_options(proxy: str | None = None) -> dict[str, Any]:
         "windowsfilenames": True,
         "http_chunk_size": 10485760,
         "buffersize": 1024 * 512,
-        "extract_flat": "in_playlist",
         "extractor_args": {
             "youtube": {
                 "player_skip": ["configs"]
