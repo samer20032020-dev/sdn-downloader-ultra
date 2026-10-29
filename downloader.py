@@ -1198,6 +1198,9 @@ class MediaDownloader:
         skipped_lock = threading.Lock()
         newly_lock = threading.Lock()
 
+        cur_pl_pos = [1]
+        cur_pl_total = [requested_count if requested_count > 0 else int(option.get("playlist_count") or (50 if is_playlist else 1))]
+
         def item_duplicate_filter(info_candidate: dict[str, Any], *, incomplete: bool = False) -> str | None:
             if self._cancel_event.is_set():
                 raise DownloadCancelled("Download cancelled by user")
@@ -1269,9 +1272,14 @@ class MediaDownloader:
             else:
                 playlist_position = min(playlist_index, playlist_total)
 
+            cur_pl_pos[0] = playlist_position
+            cur_pl_total[0] = playlist_total
+
             raw_fn = str(data.get("filename") or info_dict.get("filepath") or info_dict.get("_filename") or "")
-            ext = Path(raw_fn).suffix.lower()
-            is_media = ext in MEDIA_EXTENSIONS
+            clean_fn = re.sub(r'(\.part|\.ytdl|\.temp)$', '', raw_fn, flags=re.I)
+            clean_ext = Path(clean_fn).suffix.lower()
+            is_non_media = clean_ext in {'.srt', '.vtt', '.ass', '.lrc', '.jpg', '.jpeg', '.png', '.webp', '.json', '.description'}
+            is_media = (clean_ext in MEDIA_EXTENSIONS) or (not is_non_media)
 
             if status == "finished":
                 if is_media:
@@ -1324,27 +1332,28 @@ class MediaDownloader:
             pp_status = data.get("status")
             info_dict = data.get("info_dict") or {}
             cur_item_t = info_dict.get("title") or ""
-            p_idx = (info_dict.get("playlist_index") or playlist_position) if is_playlist else 1
+            p_idx = int(info_dict.get("playlist_index") or cur_pl_pos[0]) if is_playlist else 1
+            p_tot = cur_pl_total[0] if (is_playlist and cur_pl_total[0] > 0) else 1
 
             if pp_status == "started":
                 if status_callback:
-                    if is_playlist and playlist_total > 0:
-                        status_callback(f"🎵 {cur_item_t} ({p_idx}/{playlist_total})" if cur_item_t else f"🎵 مقطع {p_idx} من {playlist_total}")
+                    if is_playlist and p_tot > 0:
+                        status_callback(f"🎵 {cur_item_t} ({p_idx}/{p_tot})" if cur_item_t else f"🎵 مقطع {p_idx} من {p_tot}")
                     else:
                         status_callback(f"🎵 {cur_item_t}" if cur_item_t else "🎵 جاري المعالجة السريعة...")
                 if progress_callback:
-                    overall_percent = ((p_idx - 1 + 0.95) / playlist_total * 100) if (is_playlist and playlist_total > 0) else 95.0
+                    overall_percent = ((p_idx - 1 + 0.95) / p_tot * 100) if (is_playlist and p_tot > 0) else 95.0
                     progress_callback(
                         {
                             "status": "processing",
                             "percent": max(0.0, min(overall_percent, 99.0)),
                             "item_percent": 95.0,
-                            "speed_str": f"مقطع {p_idx} من {playlist_total}" if (is_playlist and playlist_total > 1) else "⚡ معالجة سريعة",
+                            "speed_str": f"مقطع {p_idx} من {p_tot}" if (is_playlist and p_tot > 1) else "⚡ معالجة سريعة",
                             "downloaded_str": "",
                             "total_str": "",
                             "eta_str": "",
                             "playlist_index": p_idx if is_playlist else None,
-                            "playlist_count": playlist_total if is_playlist else None,
+                            "playlist_count": p_tot if is_playlist else None,
                             "item_title": cur_item_t,
                         }
                     )
@@ -1354,8 +1363,8 @@ class MediaDownloader:
                 capture_path(captured_fp)
                 capture_new_path(captured_fp)
                 if status_callback:
-                    if is_playlist and playlist_total > 0:
-                        status_callback(f"🎵 {cur_item_t} ({p_idx}/{playlist_total})" if cur_item_t else f"🎵 مقطع {p_idx} من {playlist_total}")
+                    if is_playlist and p_tot > 0:
+                        status_callback(f"🎵 {cur_item_t} ({p_idx}/{p_tot})" if cur_item_t else f"🎵 مقطع {p_idx} من {p_tot}")
                     else:
                         status_callback(f"🎵 {cur_item_t}" if cur_item_t else "🎵 اكتمل التجهيز")
                 if item_complete_callback:
@@ -1372,11 +1381,7 @@ class MediaDownloader:
                 "match_filter": item_duplicate_filter,
                 "progress_hooks": [ydl_progress_hook],
                 "postprocessor_hooks": [postprocessor_hook],
-                "postprocessor_args": {
-                    "ExtractAudio": ["-nostdin", "-threads", "0"],
-                    "FFmpegExtractAudio": ["-nostdin", "-threads", "0"],
-                    "default": ["-nostdin", "-threads", "0"],
-                },
+                "postprocessor_args": ["-nostdin", "-threads", "0"],
                 "quiet": True,
                 "no_warnings": True,
                 "ffmpeg_location": self.ffmpeg_path,
@@ -1597,6 +1602,8 @@ class MediaDownloader:
                 self._trim_file(file_path, trim_start, trim_end)
 
         if not final_files:
+            if self._cancel_event.is_set():
+                raise DownloadCancelled("Download cancelled by user")
             raise RuntimeError("اكتمل الاستخراج لكن تعذر العثور على الملف النهائي.")
 
         actual_skipped = [p for p in skipped_duplicate_files if os.path.isfile(p)]

@@ -636,8 +636,18 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
         return titleEl ? titleEl.textContent.trim() : (document.title ? document.title.replace(/ - YouTube$/, '').trim() : '');
     }
 
-    function triggerDirectDownload(url, quality, mode, label, title) {
-        var effectiveTitle = title || getVideoTitle();
+    function getPlaylistTitle() {
+        var el = document.querySelector('ytd-playlist-panel-renderer #title, #header-description h3, .ytd-playlist-panel-renderer #header-description, ytd-playlist-header-renderer h1, #playlist-header #title');
+        if (el && el.textContent) {
+            var t = el.textContent.trim();
+            if (t && t.length > 1) return t;
+        }
+        return '';
+    }
+
+    function triggerDirectDownload(url, quality, mode, label, title, retries) {
+        retries = retries || 0;
+        var effectiveTitle = title || (mode === 'playlist_all' ? getPlaylistTitle() : '') || getVideoTitle();
         var ctx = getMediaContext();
         var targetUrl = (mode === 'single' && ctx && ctx.singleUrl) ? ctx.singleUrl : url;
         showToast('⚡ بدء تنزيل: ' + (effectiveTitle ? (effectiveTitle.length > 30 ? effectiveTitle.slice(0, 30) + '...' : effectiveTitle) : label), 'info');
@@ -652,14 +662,37 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
             var initialCount = (mode === 'playlist_all') ? 50 : 1;
             window.updateSdnBrowserProgress(0, 1, initialCount, '⚡ جاري الاتصال...', effectiveTitle);
         }
-        if (window.pywebview && window.pywebview.api && window.pywebview.api.download_url) {
-            try {
-                window.pywebview.api.download_url(targetUrl, quality, mode, false, effectiveTitle);
-            } catch (err) {
-                showToast('❌ تعذر إرسال أمر التنزيل: ' + err, 'error');
+
+        function executeCall() {
+            if (window.pywebview && window.pywebview.api && window.pywebview.api.download_url) {
+                try {
+                    var promise = window.pywebview.api.download_url(targetUrl, quality, mode, false, effectiveTitle);
+                    if (promise && typeof promise.then === 'function') {
+                        promise.then(function(res) {
+                            if (res && res.duplicate) {
+                                if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress();
+                            } else if (res && res.busy) {
+                                if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress();
+                            }
+                        }).catch(function(err) {
+                            showToast('❌ تعذر إرسال أمر التنزيل: ' + err, 'error');
+                            if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress();
+                        });
+                    }
+                } catch (err) {
+                    showToast('❌ تعذر إرسال أمر التنزيل: ' + err, 'error');
+                    if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress();
+                }
+            } else if (retries < 5) {
+                setTimeout(function() {
+                    triggerDirectDownload(url, quality, mode, label, title, retries + 1);
+                }, 300);
+            } else {
+                showToast('❌ تعذر الاتصال بمحرك التنزيل. يرجى إعادة تحميل الصفحة.', 'error');
                 if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress();
             }
         }
+        executeCall();
     }
 
     function populateMenu(ctx) {
@@ -722,12 +755,13 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
                 });
             }
 
+            var plTitle = getPlaylistTitle() || curTitle || 'قائمة تشغيل';
             addSectionHeader('قائمة التشغيل كاملة:');
             addItem('تحميل كامل القائمة فيديو', 'All Video', function() {
-                triggerDirectDownload(ctx.fullUrl, 'best', 'playlist_all', 'كامل قائمة التشغيل', curTitle);
+                triggerDirectDownload(ctx.fullUrl, 'best', 'playlist_all', 'كامل قائمة التشغيل', plTitle);
             });
             addItem('تحميل كامل القائمة MP3', 'All MP3', function() {
-                triggerDirectDownload(ctx.fullUrl, 'mp3', 'playlist_all', 'كامل القائمة MP3', curTitle);
+                triggerDirectDownload(ctx.fullUrl, 'mp3', 'playlist_all', 'كامل القائمة MP3', plTitle);
             });
             addItem('تحديد عناصر معينة مخصصة...', 'مخصص', function() {
                 showToast('📋 جاري فتح نافذة تحديد عناصر القائمة في SDN...', 'info');
@@ -1170,12 +1204,22 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
 
         var panel = document.getElementById('sdn-idm-panel');
         var txt = document.getElementById('sdnPanelText');
-        if (txt && doneMsg) {
-            txt.textContent = doneMsg;
+        if (txt) {
+            if (doneMsg) {
+                txt.textContent = doneMsg;
+            } else {
+                var ctxEarly = getMediaContext();
+                txt.textContent = ctxEarly.isPlaylist ? 'تنزيل SDN (قائمة) ▾' : 'تنزيل SDN ▾';
+            }
         }
         if (panel) {
-            panel.style.background = 'rgba(52, 211, 153, 0.95)';
-            panel.style.borderColor = '#10b981';
+            if (doneMsg && (doneMsg.indexOf('🛑') !== -1 || doneMsg.indexOf('❌') !== -1)) {
+                panel.style.background = 'rgba(239, 68, 68, 0.95)';
+                panel.style.borderColor = '#ef4444';
+            } else if (doneMsg) {
+                panel.style.background = 'rgba(52, 211, 153, 0.95)';
+                panel.style.borderColor = '#10b981';
+            }
         }
         setTimeout(function() {
             if (panel) {
@@ -1187,7 +1231,7 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
                 var ctx = getMediaContext();
                 txt.textContent = ctx.isPlaylist ? 'تنزيل SDN (قائمة) ▾' : 'تنزيل SDN ▾';
             }
-        }, 4000);
+        }, doneMsg ? 3500 : 200);
     };
 
     // ================================================================
