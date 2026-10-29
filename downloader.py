@@ -1126,12 +1126,14 @@ class MediaDownloader:
         selected_indices.sort()
 
         if is_playlist:
-            raw_pl = str(option.get("playlist_title") or option.get("media_title") or "").strip()
-            clean_pl = re.sub(r'[\(\)\|%\[\]<>\:"/\\?*\n\r\t]', '_', raw_pl).strip()
-            clean_pl = re.sub(r'\s+', ' ', clean_pl)[:80].strip('. ')
-            if not clean_pl or clean_pl.lower() in ("none", "playlist", "قائمة تشغيل", "فيديو", "صوت"):
-                clean_pl = "قائمة تشغيل"
-            target_save_dir = os.path.join(save_dir, clean_pl)
+            target_save_dir = option.get("playlist_dir")
+            if not target_save_dir:
+                raw_pl = str(option.get("playlist_title") or option.get("media_title") or "").strip()
+                clean_pl = re.sub(r'[<>:"/\\|?*\n\r\t]', '', raw_pl).strip().strip('.')
+                clean_pl = re.sub(r'\s+', ' ', clean_pl)[:80].strip()
+                if not clean_pl or clean_pl.lower() in ("none", "playlist", "قائمة تشغيل", "فيديو", "صوت"):
+                    clean_pl = "قائمة تشغيل"
+                target_save_dir = os.path.join(save_dir, clean_pl)
             try:
                 os.makedirs(target_save_dir, exist_ok=True)
             except OSError:
@@ -1200,6 +1202,41 @@ class MediaDownloader:
 
         cur_pl_pos = [1]
         cur_pl_total = [requested_count if requested_count > 0 else int(option.get("playlist_count") or (50 if is_playlist else 1))]
+        seen_track_ids: list[str] = []
+        track_lock = threading.Lock()
+
+        def _resolve_track_pos(info_dict: dict[str, Any]) -> tuple[int, int]:
+            if not is_playlist:
+                return (1, 1)
+            raw_id = info_dict.get("id") or info_dict.get("title") or info_dict.get("webpage_url") or ""
+            with track_lock:
+                if raw_id and raw_id not in seen_track_ids:
+                    seen_track_ids.append(raw_id)
+                pos = len(seen_track_ids) if seen_track_ids else 1
+
+            p_idx = info_dict.get("playlist_index")
+            if p_idx:
+                try:
+                    p_val = int(p_idx)
+                    if selected_indices and p_val in selected_indices:
+                        pos = selected_indices.index(p_val) + 1
+                    elif p_val > 0:
+                        pos = max(pos, p_val)
+                except Exception:
+                    pass
+
+            raw_tot = (
+                (len(selected_indices) if selected_indices else None)
+                or info_dict.get("n_entries")
+                or info_dict.get("playlist_count")
+                or requested_count
+                or option.get("playlist_count")
+                or 50
+            )
+            total = max(cur_pl_total[0], pos, int(raw_tot))
+            cur_pl_pos[0] = pos
+            cur_pl_total[0] = total
+            return (pos, total)
 
         def item_duplicate_filter(info_candidate: dict[str, Any], *, incomplete: bool = False) -> str | None:
             if self._cancel_event.is_set():
@@ -1254,26 +1291,7 @@ class MediaDownloader:
 
             status = data.get("status")
             info_dict = data.get("info_dict") or {}
-            playlist_index = int(info_dict.get("playlist_index") or 1)
-            raw_entries = (
-                info_dict.get("n_entries")
-                or info_dict.get("playlist_count")
-                or requested_count
-            )
-            if not raw_entries and is_playlist:
-                raw_entries = int(option.get("playlist_count") or 50)
-            playlist_total = int(raw_entries or 1)
-            if selected_indices:
-                try:
-                    playlist_position = selected_indices.index(playlist_index) + 1
-                except ValueError:
-                    playlist_position = min(playlist_index, len(selected_indices))
-                playlist_total = len(selected_indices)
-            else:
-                playlist_position = min(playlist_index, playlist_total)
-
-            cur_pl_pos[0] = playlist_position
-            cur_pl_total[0] = playlist_total
+            playlist_position, playlist_total = _resolve_track_pos(info_dict)
 
             raw_fn = str(data.get("filename") or info_dict.get("filepath") or info_dict.get("_filename") or "")
             clean_fn = re.sub(r'(\.part|\.ytdl|\.temp)$', '', raw_fn, flags=re.I)
@@ -1332,8 +1350,7 @@ class MediaDownloader:
             pp_status = data.get("status")
             info_dict = data.get("info_dict") or {}
             cur_item_t = info_dict.get("title") or ""
-            p_idx = int(info_dict.get("playlist_index") or cur_pl_pos[0]) if is_playlist else 1
-            p_tot = cur_pl_total[0] if (is_playlist and cur_pl_total[0] > 0) else 1
+            p_idx, p_tot = _resolve_track_pos(info_dict)
 
             if pp_status == "started":
                 if status_callback:
@@ -1381,7 +1398,7 @@ class MediaDownloader:
                 "match_filter": item_duplicate_filter,
                 "progress_hooks": [ydl_progress_hook],
                 "postprocessor_hooks": [postprocessor_hook],
-                "postprocessor_args": ["-nostdin", "-threads", "0"],
+                "postprocessor_args": ["-nostdin", "-threads", "0", "-compression_level", "0"],
                 "quiet": True,
                 "no_warnings": True,
                 "ffmpeg_location": self.ffmpeg_path,
@@ -1394,11 +1411,9 @@ class MediaDownloader:
         if selected_indices:
             ydl_options["playlist_items"] = ",".join(str(index) for index in selected_indices)
         elif is_playlist:
-            parsed_dl = urllib.parse.urlsplit(url)
-            dl_query = urllib.parse.parse_qs(parsed_dl.query)
-            dl_list = (dl_query.get("list") or [""])[0].upper()
-            if dl_list.startswith(("RD", "UL", "PU")):
-                ydl_options["playlistend"] = int(option.get("playlist_count") or 50)
+            p_end = int(option.get("playlist_count") or 50)
+            if p_end > 0:
+                ydl_options["playlistend"] = p_end
 
         if option.get("download_subtitles"):
             ydl_options["writesubtitles"] = True

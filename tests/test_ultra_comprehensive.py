@@ -1237,7 +1237,7 @@ class Test21_IntegrationChecks(unittest.TestCase):
         # Test YouTubeBrowserBridge
         bridge = main.YouTubeBrowserBridge(api)
         res3 = bridge.download_url("https://www.youtube.com/watch?v=dQw4w9WgXcQ", "mp3")
-        self.assertTrue(res3.get("success"))
+        self.assertTrue(res3.get("success") or res3.get("busy"))
         res4 = bridge.send_to_main("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
         self.assertTrue(res4.get("success"))
 

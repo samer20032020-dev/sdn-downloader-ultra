@@ -10,8 +10,8 @@ android {
         applicationId "com.sdn.downloader.ultra"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 10057
-        versionName "1.0.57"
+        versionCode 10058
+        versionName "1.0.58"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64'

@@ -1161,8 +1161,7 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
                 var total = parseInt(pCount) || (curIdx > 1 ? curIdx + 1 : 50);
                 var downloaded = Math.max(0, curIdx - 1);
                 var remaining = Math.max(0, total - downloaded);
-                var overallPct = Math.round(((downloaded + (numPct / 100)) / total) * 100);
-                overallPct = Math.max(0, Math.min(100, overallPct));
+                var overallPct = Math.max(1, Math.min(100, Math.round(numPct)));
 
                 if (titleEl) titleEl.textContent = (itemTitle ? '🎵 ' + itemTitle : 'قائمة التشغيل (' + curIdx + '/' + total + ')');
                 if (speedEl) speedEl.textContent = speedStr ? speedStr + ' • ' : '';
@@ -3432,13 +3431,14 @@ class DownloaderBridgeAPI:
 
             # Pre-create the dedicated folder on disk right away so the user immediately sees it!
             raw_pl = str(title or option.get('media_title') or 'قائمة تشغيل').strip()
-            clean_pl = re.sub(r'[\(\)\|%\[\]<>\:"/\\?*\n\r\t]', '_', raw_pl).strip()
-            clean_pl = re.sub(r'\s+', ' ', clean_pl)[:80].strip('. ')
+            clean_pl = re.sub(r'[<>:"/\\|?*\n\r\t]', '', raw_pl).strip().strip('.')
+            clean_pl = re.sub(r'\s+', ' ', clean_pl)[:80].strip()
             if not clean_pl or clean_pl.lower() in ("none", "playlist", "قائمة تشغيل", "فيديو", "صوت"):
                 clean_pl = "قائمة تشغيل"
             target_pl_folder = os.path.join(self.save_dir, clean_pl)
             try:
                 os.makedirs(target_pl_folder, exist_ok=True)
+                option['playlist_dir'] = target_pl_folder
                 _log.info(f"Pre-created playlist directory immediately: {target_pl_folder}")
             except Exception as _e_pl_dir:
                 _log.debug(f"Pre-create playlist dir note: {_e_pl_dir}")
@@ -3458,12 +3458,13 @@ class DownloaderBridgeAPI:
         if self._window:
             try:
                 initial_payload = {
-                    'status': 'processing',
+                    'status': 'downloading',
+                    'percent': 0.5,
+                    'speed_str': 'جاري البدء...',
                     'msg': f"🚀 بدء تنزيل: {active_title}",
                     'item_title': active_title,
                     'playlist_index': 1,
                     'playlist_count': option.get('playlist_count', 50) if (is_pl or option.get('is_playlist')) else 1,
-                    'percent': 0
                 }
                 self._window.evaluate_js(f'updateProgress({json.dumps(initial_payload)})')
             except Exception as ex:
@@ -3599,8 +3600,9 @@ class DownloaderBridgeAPI:
                 if getattr(self, '_youtube_browser_win', None):
                     try:
                         calc_pct = round(((p_idx - 1 + 0.95) / p_cnt) * 100) if (p_cnt and p_cnt > 1) else 95
+                        speed_txt = f"⚡ معالجة سريعة ({p_idx}/{p_cnt})" if (p_cnt and p_cnt > 1) else "⚡ معالجة سريعة"
                         self._youtube_browser_win.evaluate_js(
-                            f"if (window.updateSdnBrowserProgress) window.updateSdnBrowserProgress({calc_pct}, {json.dumps(p_idx)}, {json.dumps(p_cnt)}, '⚡ معالجة سريعة', {json.dumps(clean_title)});"
+                            f"if (window.updateSdnBrowserProgress) window.updateSdnBrowserProgress({calc_pct}, {json.dumps(p_idx)}, {json.dumps(p_cnt)}, {json.dumps(speed_txt)}, {json.dumps(clean_title)});"
                         )
                     except Exception:
                         pass
@@ -3621,8 +3623,9 @@ class DownloaderBridgeAPI:
 
                 browser_cookies = getattr(self, 'last_browser_cookies', 'none') or 'none'
 
+                download_target_dir = option.get('playlist_dir') if (is_pl or option.get('is_playlist')) else self.save_dir
                 result = self.downloader.download(
-                    url, option, self.save_dir,
+                    url, option, download_target_dir,
                     progress_callback=progress_cb,
                     status_callback=status_cb,
                     browser_cookies=browser_cookies,
