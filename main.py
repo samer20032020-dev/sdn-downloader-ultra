@@ -161,9 +161,14 @@ def _version_key(value):
     return tuple((numbers + [0, 0, 0, 0])[:4])
 
 
+_global_downloader_api = None
+
+
 class YouTubeBrowserBridge:
     def __init__(self, main_api):
+        global _global_downloader_api
         self.main_api = main_api
+        _global_downloader_api = main_api
 
     def download_url(self, url, quality="best", mode="single", force=False, title=None):
         return self.main_api.quick_download_from_browser(url, quality, mode, force, title)
@@ -201,23 +206,59 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
     // ================================================================
     function sdnCall(funcName, args) {
         args = args || [];
+        var params = { cmd: funcName };
+        if (funcName === 'download_url') {
+            params.url = args[0] || '';
+            params.quality = args[1] || 'best';
+            params.mode = args[2] || 'single';
+            params.force = args[3] ? '1' : '0';
+            params.title = args[4] || '';
+            params.cmd = 'download';
+        } else if (funcName === 'cancel_download') {
+            params.cmd = 'cancel';
+        } else if (funcName === 'send_to_main') {
+            params.url = args[0] || '';
+            params.auto = args[1] ? '1' : '0';
+            params.cmd = 'send_to_main';
+        } else if (funcName === 'open_folder') {
+            params.path = args[0] || '';
+            params.cmd = 'open_folder';
+        } else if (funcName === 'locate_file') {
+            params.path = args[0] || '';
+            params.cmd = 'locate_file';
+        }
+
+        // 1. Native virtual URL IPC (Immediate, CSP-safe, zero dependency)
+        try {
+            var qStr = Object.keys(params).map(function(k) {
+                return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
+            }).join('&');
+            var ipcUrl = 'https://sdn.internal/action?' + qStr + '&_t=' + Date.now();
+            if (typeof fetch === 'function') {
+                fetch(ipcUrl, { method: 'GET', mode: 'no-cors', cache: 'no-store' }).catch(function(){});
+            }
+            var img = new Image();
+            img.src = ipcUrl;
+        } catch (e) {
+            console.warn('Native sdn.internal IPC dispatch notice:', e);
+        }
+
+        // 2. Also dispatch via pywebview API if available
         if (window.pywebview && window.pywebview.api && typeof window.pywebview.api[funcName] === 'function' && !window.pywebview.api[funcName].__is_sdn_stub) {
             try {
-                return window.pywebview.api[funcName].apply(window.pywebview.api, args);
-            } catch (e) {
-                console.warn('Native pywebview call failed, using webview2 postMessage fallback:', e);
-            }
+                window.pywebview.api[funcName].apply(window.pywebview.api, args);
+            } catch (e) {}
         }
+
+        // 3. Also dispatch via WebView2 postMessage
         if (window.chrome && window.chrome.webview && typeof window.chrome.webview.postMessage === 'function') {
-            var callId = 'sdn_' + Math.random().toString(36).substring(2);
             try {
+                var callId = 'sdn_' + Math.random().toString(36).substring(2);
                 window.chrome.webview.postMessage([funcName, JSON.stringify(args), callId]);
-                return Promise.resolve({ success: true, via: 'native_webview2' });
-            } catch (err) {
-                console.error('chrome.webview.postMessage error:', err);
-            }
+            } catch (err) {}
         }
-        return Promise.reject(new Error('SDN communication bridge unavailable'));
+
+        return Promise.resolve({ success: true, via: 'native_sdn_ipc' });
     }
 
     if (!window.pywebview) window.pywebview = {};
@@ -712,14 +753,14 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
 
         sdnCall('download_url', [targetUrl, quality, mode, false, effectiveTitle])
             .then(function(res) {
-                if (res && (res.duplicate || res.busy)) {
-                    if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress();
+                if (res && res.duplicate) {
+                    if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress('⚠️ هذا المقطع تم تنزيله مسبقاً وهو موجود بجهازك');
+                } else if (res && res.busy) {
+                    if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress('⚠️ هناك عملية تنزيل جارية بالفعل، انتظر لحظات');
                 }
             })
             .catch(function(err) {
                 console.error('Download bridge error:', err);
-                showToast('❌ تعذر إرسال أمر التنزيل: ' + err, 'error');
-                if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress();
             });
     }
 
@@ -1518,9 +1559,79 @@ try:
 
     def _native_adblock_on_web_resource_request(self, sender, args):
         try:
-            uri = str(args.Request.Uri).lower()
+            raw_uri = str(args.Request.Uri)
+            uri_lower = raw_uri.lower()
+
+            if "sdn.internal" in uri_lower:
+                try:
+                    import urllib.parse
+                    parsed = urllib.parse.urlparse(raw_uri)
+                    q = urllib.parse.parse_qs(parsed.query)
+                    cmd = q.get('cmd', [''])[0]
+                    _log.info(f"Native sdn.internal IPC intercepted: cmd={cmd}")
+
+                    headers = (
+                        "Content-Type: application/json\r\n"
+                        "Access-Control-Allow-Origin: *\r\n"
+                        "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
+                        "Access-Control-Allow-Headers: *\r\n"
+                    )
+                    args.Response = sender.Environment.CreateWebResourceResponse(None, 200, "OK", headers)
+
+                    api = _global_downloader_api
+                    if api:
+                        if cmd == 'download':
+                            dl_url = q.get('url', [''])[0]
+                            dl_quality = q.get('quality', ['best'])[0]
+                            dl_mode = q.get('mode', ['single'])[0]
+                            dl_force = (q.get('force', ['0'])[0] == '1')
+                            dl_title = q.get('title', [''])[0]
+                            _log.info(f"Native IPC dispatching quick_download: url={dl_url}, quality={dl_quality}, mode={dl_mode}, title={dl_title}")
+                            threading.Thread(
+                                target=api.quick_download_from_browser,
+                                args=(dl_url, dl_quality, dl_mode, dl_force, dl_title),
+                                daemon=True,
+                                name="SDN-IPC-Download"
+                            ).start()
+                        elif cmd == 'cancel':
+                            _log.info("Native IPC dispatching cancel_download")
+                            threading.Thread(
+                                target=api.cancel_download,
+                                daemon=True,
+                                name="SDN-IPC-Cancel"
+                            ).start()
+                        elif cmd == 'send_to_main':
+                            dl_url = q.get('url', [''])[0]
+                            auto_pl = (q.get('auto', ['0'])[0] == '1')
+                            _log.info(f"Native IPC dispatching send_to_main: url={dl_url}")
+                            threading.Thread(
+                                target=api.load_url_in_main,
+                                args=(dl_url, auto_pl),
+                                daemon=True,
+                                name="SDN-IPC-SendMain"
+                            ).start()
+                        elif cmd == 'open_folder':
+                            folder_p = q.get('path', [None])[0]
+                            threading.Thread(
+                                target=api.open_folder,
+                                args=(folder_p,),
+                                daemon=True,
+                                name="SDN-IPC-OpenFolder"
+                            ).start()
+                        elif cmd == 'locate_file':
+                            file_p = q.get('path', [None])[0]
+                            threading.Thread(
+                                target=api.locate_file,
+                                args=(file_p,),
+                                daemon=True,
+                                name="SDN-IPC-Locate"
+                            ).start()
+                except Exception as _e_ipc:
+                    _log.error(f"Error handling sdn.internal IPC: {_e_ipc}")
+                return
+
             for pattern in _NATIVE_AD_DOMAINS:
-                if pattern in uri:
+                if pattern in uri_lower:
                     args.Response = sender.Environment.CreateWebResourceResponse(None, 204, 'No Content', '')
                     return
         except Exception:
@@ -1529,6 +1640,10 @@ try:
 
     def _custom_on_webview_ready(self, sender, args):
         if args.IsSuccess and sender.CoreWebView2:
+            try:
+                sender.CoreWebView2.WebMessageReceived += self.on_script_notify
+            except Exception:
+                pass
             try:
                 sender.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(YOUTUBE_IDM_ADBLOCK_SCRIPT)
             except Exception as _ex:
@@ -1825,6 +1940,8 @@ class DownloaderBridgeAPI:
         
         ExtensionHTTPHandler.bridge_api = self
         MediaHTTPHandler.bridge_api = self
+        global _global_downloader_api
+        _global_downloader_api = self
         
         _log.info(f"Bridge API initialized. Save dir: {self.save_dir}")
         
@@ -3313,6 +3430,19 @@ class DownloaderBridgeAPI:
             if not option.get('playlist_count'):
                 option['playlist_count'] = 50
 
+            # Pre-create the dedicated folder on disk right away so the user immediately sees it!
+            raw_pl = str(title or option.get('media_title') or 'قائمة تشغيل').strip()
+            clean_pl = re.sub(r'[\(\)\|%\[\]<>\:"/\\?*\n\r\t]', '_', raw_pl).strip()
+            clean_pl = re.sub(r'\s+', ' ', clean_pl)[:80].strip('. ')
+            if not clean_pl or clean_pl.lower() in ("none", "playlist", "قائمة تشغيل", "فيديو", "صوت"):
+                clean_pl = "قائمة تشغيل"
+            target_pl_folder = os.path.join(self.save_dir, clean_pl)
+            try:
+                os.makedirs(target_pl_folder, exist_ok=True)
+                _log.info(f"Pre-created playlist directory immediately: {target_pl_folder}")
+            except Exception as _e_pl_dir:
+                _log.debug(f"Pre-create playlist dir note: {_e_pl_dir}")
+
         if force:
             option['allow_duplicate'] = True
 
@@ -3322,6 +3452,30 @@ class DownloaderBridgeAPI:
             self._notify_browser_toast(f"🚀 بدأ تنزيل كامل قائمة التشغيل ({q_label})...", 'info')
         else:
             self._notify_browser_toast(f"🚀 بدأ التنزيل المباشر ({q_label})...", 'info')
+
+        # Immediately show active download card on main window and browser
+        active_title = title or option.get('media_title') or ('قائمة تشغيل' if is_pl else 'المقطع')
+        if self._window:
+            try:
+                initial_payload = {
+                    'status': 'processing',
+                    'msg': f"🚀 بدء تنزيل: {active_title}",
+                    'item_title': active_title,
+                    'playlist_index': 1,
+                    'playlist_count': option.get('playlist_count', 50) if (is_pl or option.get('is_playlist')) else 1,
+                    'percent': 0
+                }
+                self._window.evaluate_js(f'updateProgress({json.dumps(initial_payload)})')
+            except Exception as ex:
+                _log.debug(f"Initial main window progress note: {ex}")
+
+        if getattr(self, '_youtube_browser_win', None):
+            try:
+                self._youtube_browser_win.evaluate_js(
+                    f"if (window.updateSdnBrowserProgress) window.updateSdnBrowserProgress(0, 1, {json.dumps(option.get('playlist_count', 50))}, '⚡ جاري التحضير...', {json.dumps(active_title)});"
+                )
+            except Exception:
+                pass
 
         start_t = time.time()
         last_item_idx = [0]
