@@ -79,11 +79,13 @@ def get_ffmpeg_path() -> str:
         return candidate
 
     try:
-        import imageio_ffmpeg
-
-        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
-        if ffmpeg_exe and os.path.isfile(ffmpeg_exe):
-            return ffmpeg_exe
+        import importlib
+        imageio_ffmpeg = importlib.import_module("imageio_ffmpeg")
+        get_ffmpeg = getattr(imageio_ffmpeg, "get_ffmpeg_exe", None)
+        if callable(get_ffmpeg):
+            ffmpeg_exe = get_ffmpeg()
+            if ffmpeg_exe and os.path.isfile(ffmpeg_exe):
+                return ffmpeg_exe
     except Exception:
         pass
 
@@ -1398,7 +1400,10 @@ class MediaDownloader:
                 "match_filter": item_duplicate_filter,
                 "progress_hooks": [ydl_progress_hook],
                 "postprocessor_hooks": [postprocessor_hook],
-                "postprocessor_args": ["-nostdin", "-threads", "0", "-compression_level", "0"],
+                "postprocessor_args": {
+                    "FFmpegVideoConvertor": ["-nostdin", "-threads", "0"],
+                    "FFmpegExtractAudio": ["-compression_level", "0"],
+                },
                 "quiet": True,
                 "no_warnings": True,
                 "ffmpeg_location": self.ffmpeg_path,

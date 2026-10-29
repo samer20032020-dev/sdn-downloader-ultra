@@ -36,6 +36,9 @@ TRUSTED_UPDATE_HOSTS = {
     "github-releases.githubusercontent.com",
 }
 
+# رمز مصادقة سري لنقطة IPC الداخلية (يمنع الاستدعاء عن بعد غير المصرح به)
+_NATIVE_IPC_SECRET = secrets.token_urlsafe(32)
+
 
 def _release_asset_details(assets, asset_name):
     """Return normalized metadata for one exact GitHub release asset."""
@@ -1575,6 +1578,14 @@ try:
                         "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
                         "Access-Control-Allow-Headers: *\r\n"
                     )
+
+                    # التحقق من رمز المصادقة السري قبل تنفيذ أي أمر عبر IPC
+                    token = q.get('token', [''])[0]
+                    if not secrets.compare_digest(token, _NATIVE_IPC_SECRET):
+                        _log.warning("Native sdn.internal IPC rejected: invalid or missing auth token")
+                        args.Response = sender.Environment.CreateWebResourceResponse(None, 403, "Forbidden", "Invalid IPC token")
+                        return
+
                     args.Response = sender.Environment.CreateWebResourceResponse(None, 200, "OK", headers)
 
                     api = _global_downloader_api
@@ -3086,6 +3097,11 @@ class DownloaderBridgeAPI:
                 subprocess.Popen([sys.executable, os.path.abspath(__file__)], close_fds=True)
             _log.info("Restarting application for engine update")
             time.sleep(0.2)
+            try:
+                if self._window:
+                    self._window.destroy()
+            except Exception:
+                pass
             os._exit(0)
             return {'success': True}
         except Exception as e:
@@ -3183,7 +3199,7 @@ class DownloaderBridgeAPI:
         except Exception as e:
             _log.error(f"Failed to start YouTube login flow: {e}")
             if self._window:
-                self._window.evaluate_js(f"if (window.onYouTubeLoginComplete) window.onYouTubeLoginComplete(false, '{str(e)}');")
+                self._window.evaluate_js(f"if (window.onYouTubeLoginComplete) window.onYouTubeLoginComplete(false, {json.dumps(str(e))});")
 
     # ================================================================
     # In-App YouTube Smart Browser with AdBlocker & IDM Download Sniffer
@@ -3207,15 +3223,18 @@ class DownloaderBridgeAPI:
                 try:
                     if form is not None:
                         try:
-                            from System.Windows.Forms import FormWindowState, MethodInvoker
+                            import importlib
+                            winforms = importlib.import_module("System.Windows.Forms")
+                            FormWindowState = getattr(winforms, "FormWindowState", None)
+                            MethodInvoker = getattr(winforms, "MethodInvoker", None)
                             def _act_yt():
                                 form.Visible = True
-                                if form.WindowState == FormWindowState.Minimized:
+                                if FormWindowState and form.WindowState == FormWindowState.Minimized:
                                     form.WindowState = FormWindowState.Normal
                                 form.Show()
                                 form.Activate()
                                 form.BringToFront()
-                            if form.InvokeRequired:
+                            if MethodInvoker and getattr(form, "InvokeRequired", False):
                                 form.BeginInvoke(MethodInvoker(_act_yt))
                             else:
                                 _act_yt()
@@ -3727,18 +3746,21 @@ class DownloaderBridgeAPI:
             # 1. Direct WinForms restoration
             if form is not None:
                 try:
-                    from System.Windows.Forms import FormWindowState, MethodInvoker
+                    import importlib
+                    winforms = importlib.import_module("System.Windows.Forms")
+                    FormWindowState = getattr(winforms, "FormWindowState", None)
+                    MethodInvoker = getattr(winforms, "MethodInvoker", None)
                     def _do_restore():
                         try:
                             form.Visible = True
-                            if form.WindowState == FormWindowState.Minimized:
+                            if FormWindowState and form.WindowState == FormWindowState.Minimized:
                                 form.WindowState = FormWindowState.Normal
                             form.Show()
                             form.Activate()
                             form.BringToFront()
                         except Exception:
                             pass
-                    if form.InvokeRequired:
+                    if MethodInvoker and getattr(form, "InvokeRequired", False):
                         form.BeginInvoke(MethodInvoker(_do_restore))
                     else:
                         _do_restore()
@@ -4260,11 +4282,17 @@ class DownloaderBridgeAPI:
 
         try:
             parsed = urllib.parse.urlsplit(target_url)
-            if (
-                parsed.scheme != 'https'
-                or parsed.hostname not in {'github.com', 'www.github.com'}
-                or not target_url.lower().endswith('.exe')
-            ):
+            final_host = (parsed.hostname or '').lower()
+            is_trusted = (
+                parsed.scheme == 'https'
+                and (
+                    final_host in TRUSTED_UPDATE_HOSTS
+                    or final_host.endswith('.githubusercontent.com')
+                    or (final_host.endswith('.amazonaws.com') and 'github' in final_host)
+                )
+                and target_url.lower().endswith('.exe')
+            )
+            if not is_trusted:
                 return {'success': False, 'error': 'تم رفض رابط تحديث غير موثوق'}
         except Exception:
             return {'success': False, 'error': 'رابط التحديث غير صالح'}
@@ -4493,6 +4521,11 @@ class DownloaderBridgeAPI:
             self._update_restart_started = True
             _log.info(f"Closing SDN to apply {update_kind} update in the background")
             time.sleep(0.35)
+            try:
+                if self._window:
+                    self._window.destroy()
+            except Exception:
+                pass
             os._exit(0)
             return {'success': True}
         except Exception as e:

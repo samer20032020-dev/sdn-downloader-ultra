@@ -1,17 +1,39 @@
 {
-  "name": "SDN Downloader Ultra ⚡",
-  "short_name": "SDN Ultra",
-  "description": "تطبيق ومُنزّل الفيديوهات والصوتيات الفائق بدقة 4K لهواتف الأندرويد والكمبيوتر.",
+  "name": "SDN Downloader Ultra Mobile",
+  "short_name": "SDN Mobile",
+  "description": "أقوى برنامج تنزيل فيديوهات وموسيقى للهواتف - يعمل مباشرة في المتصفح",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#070914",
+  "background_color": "#060812",
   "theme_color": "#38bdf8",
+  "orientation": "portrait",
+  "scope": "./",
+  "lang": "ar",
+  "dir": "rtl",
+  "categories": ["productivity", "entertainment", "utilities"],
   "icons": [
     {
-      "src": "assets/app-icon-512.png",
+      "src": "icons/icon.svg",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "تنزيل سريع",
+      "short_name": "تنزيل",
+      "description": "ابدأ تنزيل فيديو أو صوت فوراً",
+      "url": "./index.html?tab=home",
+      "icons": [{ "src": "icons/icon.svg", "sizes": "512x512" }]
+    },
+    {
+      "name": "الموسيقى",
+      "short_name": "موسيقى",
+      "description": "افتح مكتبة الصوتيات والمشغل",
+      "url": "./index.html?tab=music",
+      "icons": [{ "src": "icons/icon.svg", "sizes": "512x512" }]
     }
   ]
 }
