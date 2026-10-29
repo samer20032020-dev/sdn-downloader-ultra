@@ -196,6 +196,64 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
     window.__sdn_ublock_installed = true;
 
     // ================================================================
+    // 0. Ultra-Reliable Native IPC Bridge (CSP & eval Safe)
+    // Directly connects to WebView2 native message host without new Function / eval
+    // ================================================================
+    function sdnCall(funcName, args) {
+        args = args || [];
+        if (window.pywebview && window.pywebview.api && typeof window.pywebview.api[funcName] === 'function' && !window.pywebview.api[funcName].__is_sdn_stub) {
+            try {
+                return window.pywebview.api[funcName].apply(window.pywebview.api, args);
+            } catch (e) {
+                console.warn('Native pywebview call failed, using webview2 postMessage fallback:', e);
+            }
+        }
+        if (window.chrome && window.chrome.webview && typeof window.chrome.webview.postMessage === 'function') {
+            var callId = 'sdn_' + Math.random().toString(36).substring(2);
+            try {
+                window.chrome.webview.postMessage([funcName, JSON.stringify(args), callId]);
+                return Promise.resolve({ success: true, via: 'native_webview2' });
+            } catch (err) {
+                console.error('chrome.webview.postMessage error:', err);
+            }
+        }
+        return Promise.reject(new Error('SDN communication bridge unavailable'));
+    }
+
+    if (!window.pywebview) window.pywebview = {};
+    if (!window.pywebview.api) window.pywebview.api = {};
+    if (!window.pywebview._returnValuesCallbacks) {
+        try {
+            window.pywebview._returnValuesCallbacks = new Proxy({}, {
+                get: function(target, prop) {
+                    if (!(prop in target)) {
+                        target[prop] = new Proxy({}, {
+                            get: function(t2, p2) {
+                                return function(val) {};
+                            }
+                        });
+                    }
+                    return target[prop];
+                }
+            });
+        } catch (e) {
+            window.pywebview._returnValuesCallbacks = {};
+        }
+    }
+
+    var _sdnBridgeFuncs = ['download_url', 'send_to_main', 'check_duplicate', 'cancel_download', 'delete_history_item', 'get_history_file_states', 'open_folder', 'locate_file'];
+    _sdnBridgeFuncs.forEach(function(fn) {
+        if (typeof window.pywebview.api[fn] !== 'function') {
+            var stub = function() {
+                var args = Array.prototype.slice.call(arguments);
+                return sdnCall(fn, args);
+            };
+            stub.__is_sdn_stub = true;
+            window.pywebview.api[fn] = stub;
+        }
+    });
+
+    // ================================================================
     // 1. uBlock Origin Engine: JSON Player Response Pruning / Defusing
     // Strips adPlacements, playerAds, and adSlots directly at the API level
     // This stops YouTube from ever queueing or attempting to play ads!
@@ -580,10 +638,8 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
             var cancelDlBtn = createEl('button', '', 'background:#ef4444; color:#ffffff; border:none; border-radius:14px; padding:4px 12px; font-size:12px; font-weight:700; cursor:pointer; margin-right:6px; white-space:nowrap; display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 8px rgba(239,68,68,0.4);', '🛑 إيقاف التنزيل');
             cancelDlBtn.onclick = function(e) {
                 e.stopPropagation();
-                if (window.pywebview && window.pywebview.api && window.pywebview.api.cancel_download) {
-                    window.pywebview.api.cancel_download();
-                    window.showSdnToast('🛑 جاري إيقاف وإلغاء التنزيل...', 'info');
-                }
+                sdnCall('cancel_download', []);
+                window.showSdnToast('🛑 جاري إيقاف وإلغاء التنزيل...', 'info');
             };
             t.appendChild(cancelDlBtn);
         }
@@ -594,9 +650,7 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
                 actionBtn.onclick = function(e) {
                     e.stopPropagation();
                     t.style.opacity = '0';
-                    if (window.pywebview && window.pywebview.api && window.pywebview.api.download_url) {
-                        window.pywebview.api.download_url(actionData.url, actionData.quality || 'best', actionData.mode || 'single', true, actionData.title || '');
-                    }
+                    sdnCall('download_url', [actionData.url, actionData.quality || 'best', actionData.mode || 'single', true, actionData.title || '']);
                 };
                 t.appendChild(actionBtn);
             }
@@ -604,13 +658,7 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
             var openFolderBtn = createEl('button', '', 'background:rgba(255,255,255,0.18); color:#ffffff; border:1px solid rgba(255,255,255,0.35); border-radius:14px; padding:4px 12px; font-size:12px; font-weight:700; cursor:pointer; margin-right:6px; white-space:nowrap; display:inline-flex; align-items:center; gap:4px;', '📁 فتح مجلد');
             openFolderBtn.onclick = function(e) {
                 e.stopPropagation();
-                if (window.pywebview && window.pywebview.api) {
-                    if (actionData.filepath && window.pywebview.api.locate_file) {
-                        window.pywebview.api.locate_file(actionData.filepath);
-                    } else if (window.pywebview.api.open_folder) {
-                        window.pywebview.api.open_folder(actionData.filepath || null);
-                    }
-                }
+                sdnCall(actionData.filepath ? 'locate_file' : 'open_folder', [actionData.filepath || null]);
             };
             t.appendChild(openFolderBtn);
         }
@@ -645,8 +693,7 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
         return '';
     }
 
-    function triggerDirectDownload(url, quality, mode, label, title, retries) {
-        retries = retries || 0;
+    function triggerDirectDownload(url, quality, mode, label, title) {
         var effectiveTitle = title || (mode === 'playlist_all' ? getPlaylistTitle() : '') || getVideoTitle();
         var ctx = getMediaContext();
         var targetUrl = (mode === 'single' && ctx && ctx.singleUrl) ? ctx.singleUrl : url;
@@ -660,39 +707,20 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
         }
         if (window.updateSdnBrowserProgress) {
             var initialCount = (mode === 'playlist_all') ? 50 : 1;
-            window.updateSdnBrowserProgress(0, 1, initialCount, '⚡ جاري الاتصال...', effectiveTitle);
+            window.updateSdnBrowserProgress(0, 1, initialCount, '⚡ جاري الاتصال بالمحرك...', effectiveTitle);
         }
 
-        function executeCall() {
-            if (window.pywebview && window.pywebview.api && window.pywebview.api.download_url) {
-                try {
-                    var promise = window.pywebview.api.download_url(targetUrl, quality, mode, false, effectiveTitle);
-                    if (promise && typeof promise.then === 'function') {
-                        promise.then(function(res) {
-                            if (res && res.duplicate) {
-                                if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress();
-                            } else if (res && res.busy) {
-                                if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress();
-                            }
-                        }).catch(function(err) {
-                            showToast('❌ تعذر إرسال أمر التنزيل: ' + err, 'error');
-                            if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress();
-                        });
-                    }
-                } catch (err) {
-                    showToast('❌ تعذر إرسال أمر التنزيل: ' + err, 'error');
+        sdnCall('download_url', [targetUrl, quality, mode, false, effectiveTitle])
+            .then(function(res) {
+                if (res && (res.duplicate || res.busy)) {
                     if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress();
                 }
-            } else if (retries < 5) {
-                setTimeout(function() {
-                    triggerDirectDownload(url, quality, mode, label, title, retries + 1);
-                }, 300);
-            } else {
-                showToast('❌ تعذر الاتصال بمحرك التنزيل. يرجى إعادة تحميل الصفحة.', 'error');
+            })
+            .catch(function(err) {
+                console.error('Download bridge error:', err);
+                showToast('❌ تعذر إرسال أمر التنزيل: ' + err, 'error');
                 if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress();
-            }
-        }
-        executeCall();
+            });
     }
 
     function populateMenu(ctx) {
@@ -765,9 +793,7 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
             });
             addItem('تحديد عناصر معينة مخصصة...', 'مخصص', function() {
                 showToast('📋 جاري فتح نافذة تحديد عناصر القائمة في SDN...', 'info');
-                if (window.pywebview && window.pywebview.api && window.pywebview.api.send_to_main) {
-                    window.pywebview.api.send_to_main(ctx.fullUrl, true);
-                }
+                sdnCall('send_to_main', [ctx.fullUrl, true]);
             });
         } else {
             addSectionHeader('اختر الجودة للتنزيل المباشر:');
@@ -793,24 +819,18 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
 
         addItem('🛑 إيقاف التنزيل الحالي', 'إيقاف', function() {
             if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress('🛑 تم إيقاف التنزيل فورياً');
-            if (window.pywebview && window.pywebview.api && window.pywebview.api.cancel_download) {
-                window.pywebview.api.cancel_download();
-                showToast('🛑 تم إيقاف التنزيل فورياً', 'info');
-            }
+            sdnCall('cancel_download', []);
+            showToast('🛑 تم إيقاف التنزيل فورياً', 'info');
         });
 
         addItem('📁 فتح مجلد التنزيلات', 'مجلد', function() {
-            if (window.pywebview && window.pywebview.api && window.pywebview.api.open_folder) {
-                window.pywebview.api.open_folder();
-            }
+            sdnCall('open_folder', []);
         });
 
         addItem('فتح وتعديل الرابط في محرك SDN', '↗', function() {
-            if (window.pywebview && window.pywebview.api && window.pywebview.api.send_to_main) {
-                var targetUrl = (ctx.isWatch && !ctx.isPlaylistPage) ? (ctx.singleUrl || ctx.fullUrl) : ctx.fullUrl;
-                window.pywebview.api.send_to_main(targetUrl, false);
-                showToast('✅ تم فتح الرابط في شاشة SDN الرئيسية', 'success');
-            }
+            var targetUrl = (ctx.isWatch && !ctx.isPlaylistPage) ? (ctx.singleUrl || ctx.fullUrl) : ctx.fullUrl;
+            sdnCall('send_to_main', [targetUrl, false]);
+            showToast('✅ تم فتح الرابط في شاشة SDN الرئيسية', 'success');
         });
     }
 
@@ -1063,11 +1083,9 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
                 cancelBtn.onclick = function(e) {
                     e.stopPropagation();
                     if (window.resetSdnBrowserProgress) window.resetSdnBrowserProgress('🛑 تم إيقاف التنزيل فورياً');
-                    if (window.pywebview && window.pywebview.api && window.pywebview.api.cancel_download) {
-                        window.pywebview.api.cancel_download();
-                        cancelBtn.disabled = true;
-                        cancelBtn.style.opacity = '0.5';
-                    }
+                    sdnCall('cancel_download', []);
+                    cancelBtn.disabled = true;
+                    cancelBtn.style.opacity = '0.5';
                 };
             }
         }
@@ -1171,9 +1189,7 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
                     var openBtn = createEl('button', '', 'background:#10b981; color:#ffffff; border:none; border-radius:6px; padding:4px 12px; font-size:11.5px; font-weight:700; cursor:pointer;', '📁 فتح المجلد');
                     openBtn.onclick = function(e) {
                         e.stopPropagation();
-                        if (window.pywebview && window.pywebview.api && window.pywebview.api.open_folder) {
-                            window.pywebview.api.open_folder(folderPath || null);
-                        }
+                        sdnCall('open_folder', [folderPath || null]);
                     };
                     actionsEl.appendChild(openBtn);
 
@@ -1334,6 +1350,22 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
             ensureStyles();
             var ctx = getMediaContext();
             ensureIdmPanel(ctx);
+
+            if (!window.pywebview) window.pywebview = {};
+            if (!window.pywebview.api) window.pywebview.api = {};
+            for (var _bi = 0; _bi < _sdnBridgeFuncs.length; _bi++) {
+                var _bfn = _sdnBridgeFuncs[_bi];
+                if (typeof window.pywebview.api[_bfn] !== 'function') {
+                    (function(fn) {
+                        var stub = function() {
+                            var args = Array.prototype.slice.call(arguments);
+                            return sdnCall(fn, args);
+                        };
+                        stub.__is_sdn_stub = true;
+                        window.pywebview.api[fn] = stub;
+                    })(_bfn);
+                }
+            }
 
             var old1 = document.getElementById('sdn-title-dl-bar');
             if (old1) old1.remove();
@@ -3640,7 +3672,32 @@ class DownloaderBridgeAPI:
                 }
                 self._save_playlist_session(playlist_session)
 
+        completed_seen = set()
+        completed_items_count = [0]
+
         def on_playlist_item_complete(p_idx, item_title, file_path):
+            key = (p_idx, file_path) if file_path else p_idx
+            if key in completed_seen:
+                return
+            completed_seen.add(key)
+
+            completed_items_count[0] += 1
+            c_num = completed_items_count[0]
+            total = playlist_session.get('total_count', 0) if playlist_session else 0
+
+            if total and total > 1:
+                item_toast = f"✅ تم تنزيل {c_num} من {total}"
+            else:
+                item_toast = f"✅ تم تنزيل {c_num}"
+
+            if self._window:
+                try:
+                    self._window.evaluate_js(f"toast({json.dumps(item_toast)}); if (window.incrementDlCounter) window.incrementDlCounter();")
+                except Exception:
+                    pass
+
+            self._notify_browser_toast(item_toast, 'success')
+
             if playlist_session and p_idx is not None:
                 try:
                     idx = int(p_idx)
