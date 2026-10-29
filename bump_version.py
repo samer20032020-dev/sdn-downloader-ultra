@@ -113,6 +113,16 @@ def update_installer_iss(new_version: str) -> None:
     print(f"  [✓] Updated installer_setup.iss -> {new_version}")
 
 
+def update_service_worker(new_version: str) -> None:
+    sw_file = ROOT / "www" / "service-worker.js"
+    if not sw_file.is_file():
+        return
+    text = sw_file.read_text(encoding="utf-8")
+    text = re.sub(r"const CACHE_NAME = 'sdn-mobile-v[\d\.]+'", f"const CACHE_NAME = 'sdn-mobile-v{new_version}'", text, count=1)
+    sw_file.write_text(text, encoding="utf-8")
+    print(f"  [✓] Updated www/service-worker.js -> v{new_version}")
+
+
 def update_metadata_json(new_version: str) -> None:
     meta_file = ROOT / "assets" / "_internal" / "metadata" / "components.json"
     if not meta_file.is_file():
@@ -176,6 +186,7 @@ def bump(mode: str = "patch", explicit: str | None = None) -> str:
     update_android_gradle(new_version)
     update_ui_index_html(new_version)
     update_mobile_index_html(new_version)
+    update_service_worker(new_version)
     update_installer_html(new_version)
     update_installer_iss(new_version)
     update_app_config(new_version)
