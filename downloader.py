@@ -291,6 +291,12 @@ def clean_url(url: str, keep_mix_playlist: bool = False) -> str:
                 return f"https://www.youtube.com/playlist?{urllib.parse.urlencode({'list': playlist_id})}"
 
             # Standard playlists (PL..., OLAK..., etc.)
+            if not keep_mix_playlist and video_id:
+                clean_query = {"v": video_id}
+                if "t" in query:
+                    clean_query["t"] = query["t"][0]
+                return f"https://www.youtube.com/watch?{urllib.parse.urlencode(clean_query)}"
+
             return urllib.parse.urlunsplit(
                 (
                     "https",
@@ -527,15 +533,10 @@ def _apply_cookies(options: dict[str, Any], browser_cookies: str | None) -> None
     session_path = get_youtube_session_cookie_path()
     has_session = os.path.isfile(session_path) and os.path.getsize(session_path) > 20
 
-    if cookie_source in ("no_cookies", "disabled", "off"):
+    if cookie_source in ("no_cookies", "disabled", "off", "none", "without_cookies"):
         return
 
-    if not cookie_source or cookie_source in ("none", "auto"):
-        if has_session:
-            options["cookiefile"] = session_path
-        return
-
-    if cookie_source == "youtube_login":
+    if not cookie_source or cookie_source in ("auto", "youtube_login", "saved_session"):
         if has_session:
             options["cookiefile"] = session_path
         return
@@ -1600,8 +1601,18 @@ class MediaDownloader:
                 for requested in entry.get("requested_downloads") or []:
                     capture_path(requested.get("filepath"))
 
-        final_files = [path for path in captured_files if os.path.isfile(path)]
-        if not final_files:
+        # Resolve any converted audio/video extensions (e.g., .m4a -> .mp3)
+        resolved_files: list[str] = []
+        for path in captured_files:
+            if os.path.isfile(path):
+                if path not in resolved_files:
+                    resolved_files.append(path)
+            else:
+                converted_candidate = os.path.splitext(path)[0] + "." + output_ext
+                if os.path.isfile(converted_candidate) and converted_candidate not in resolved_files:
+                    resolved_files.append(converted_candidate)
+
+        if not resolved_files:
             # Last fallback: inspect the returned info structure.
             info_entries = info.get("entries") if isinstance(info, dict) else None
             candidates = info_entries or [info]
@@ -1611,7 +1622,54 @@ class MediaDownloader:
                 capture_path(entry.get("filepath") or entry.get("_filename"))
                 for requested in entry.get("requested_downloads") or []:
                     capture_path(requested.get("filepath"))
-            final_files = [path for path in captured_files if os.path.isfile(path)]
+            for path in captured_files:
+                if os.path.isfile(path):
+                    if path not in resolved_files:
+                        resolved_files.append(path)
+                else:
+                    converted_candidate = os.path.splitext(path)[0] + "." + output_ext
+                    if os.path.isfile(converted_candidate) and converted_candidate not in resolved_files:
+                        resolved_files.append(converted_candidate)
+
+        if not resolved_files and os.path.isdir(target_save_dir):
+            try:
+                for fname in os.listdir(target_save_dir):
+                    f_path = os.path.join(target_save_dir, fname)
+                    if os.path.isfile(f_path) and Path(fname).suffix.lower() in MEDIA_EXTENSIONS:
+                        if f_path not in resolved_files and f_path not in skipped_duplicate_files:
+                            resolved_files.append(f_path)
+            except Exception:
+                pass
+
+        # Automatic recovery: If download yielded 0 files and cookies were used, retry clean without cookies
+        if not resolved_files and used_cookies and not self._cancel_event.is_set():
+            _log.warning("Download with cookies yielded 0 files. Retrying automatically without cookies...")
+            if status_callback:
+                status_callback("⚡ إعادة المحاولة التلقائية بدون كوكيز...")
+            try:
+                no_cookie_opts = dict(ydl_options)
+                no_cookie_opts.pop("cookiefile", None)
+                no_cookie_opts.pop("cookiesfrombrowser", None)
+                with yt_dlp.YoutubeDL(no_cookie_opts) as ydl_clean:
+                    info = ydl_clean.extract_info(url, download=True)
+                for path in captured_files:
+                    if os.path.isfile(path):
+                        if path not in resolved_files:
+                            resolved_files.append(path)
+                    else:
+                        converted_candidate = os.path.splitext(path)[0] + "." + output_ext
+                        if os.path.isfile(converted_candidate) and converted_candidate not in resolved_files:
+                            resolved_files.append(converted_candidate)
+                if not resolved_files and os.path.isdir(target_save_dir):
+                    for fname in os.listdir(target_save_dir):
+                        f_path = os.path.join(target_save_dir, fname)
+                        if os.path.isfile(f_path) and Path(fname).suffix.lower() in MEDIA_EXTENSIONS:
+                            if f_path not in resolved_files and f_path not in skipped_duplicate_files:
+                                resolved_files.append(f_path)
+            except Exception as _rec_err:
+                _log.debug(f"Recovery without cookies note: {_rec_err}")
+
+        final_files = resolved_files
 
         trim_start = option.get("trim_start")
         trim_end = option.get("trim_end")

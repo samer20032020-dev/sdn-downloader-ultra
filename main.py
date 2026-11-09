@@ -231,7 +231,28 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
             params.cmd = 'locate_file';
         }
 
-        // 1. Native virtual URL IPC (Immediate, CSP-safe, zero dependency)
+        // 1. Prefer pywebview API if available and not a stub (single direct call)
+        if (window.pywebview && window.pywebview.api && typeof window.pywebview.api[funcName] === 'function' && !window.pywebview.api[funcName].__is_sdn_stub) {
+            try {
+                var p = window.pywebview.api[funcName].apply(window.pywebview.api, args);
+                return Promise.resolve(p);
+            } catch (e) {
+                console.warn('pywebview.api dispatch failed, falling back:', e);
+            }
+        }
+
+        // 2. Direct WebView2 postMessage fallback (single dispatch)
+        if (window.chrome && window.chrome.webview && typeof window.chrome.webview.postMessage === 'function') {
+            try {
+                var callId = 'sdn_' + Math.random().toString(36).substring(2);
+                window.chrome.webview.postMessage([funcName, JSON.stringify(args), callId]);
+                return Promise.resolve({ success: true, via: 'post_message' });
+            } catch (err) {
+                console.warn('postMessage dispatch failed, falling back:', err);
+            }
+        }
+
+        // 3. Fallback: Native virtual URL IPC
         try {
             var qStr = Object.keys(params).map(function(k) {
                 return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
@@ -239,29 +260,15 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
             var ipcUrl = 'https://sdn.internal/action?' + qStr + '&_t=' + Date.now();
             if (typeof fetch === 'function') {
                 fetch(ipcUrl, { method: 'GET', mode: 'no-cors', cache: 'no-store' }).catch(function(){});
+            } else {
+                var img = new Image();
+                img.src = ipcUrl;
             }
-            var img = new Image();
-            img.src = ipcUrl;
+            return Promise.resolve({ success: true, via: 'native_sdn_ipc' });
         } catch (e) {
             console.warn('Native sdn.internal IPC dispatch notice:', e);
+            return Promise.resolve({ success: false, error: String(e) });
         }
-
-        // 2. Also dispatch via pywebview API if available
-        if (window.pywebview && window.pywebview.api && typeof window.pywebview.api[funcName] === 'function' && !window.pywebview.api[funcName].__is_sdn_stub) {
-            try {
-                window.pywebview.api[funcName].apply(window.pywebview.api, args);
-            } catch (e) {}
-        }
-
-        // 3. Also dispatch via WebView2 postMessage
-        if (window.chrome && window.chrome.webview && typeof window.chrome.webview.postMessage === 'function') {
-            try {
-                var callId = 'sdn_' + Math.random().toString(36).substring(2);
-                window.chrome.webview.postMessage([funcName, JSON.stringify(args), callId]);
-            } catch (err) {}
-        }
-
-        return Promise.resolve({ success: true, via: 'native_sdn_ipc' });
     }
 
     if (!window.pywebview) window.pywebview = {};
@@ -702,6 +709,9 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
             var openFolderBtn = createEl('button', '', 'background:rgba(255,255,255,0.18); color:#ffffff; border:1px solid rgba(255,255,255,0.35); border-radius:14px; padding:4px 12px; font-size:12px; font-weight:700; cursor:pointer; margin-right:6px; white-space:nowrap; display:inline-flex; align-items:center; gap:4px;', '📁 فتح مجلد');
             openFolderBtn.onclick = function(e) {
                 e.stopPropagation();
+                var now = Date.now();
+                if (window.__lastSdnOpenFolder && (now - window.__lastSdnOpenFolder < 1500)) return;
+                window.__lastSdnOpenFolder = now;
                 sdnCall(actionData.filepath ? 'locate_file' : 'open_folder', [actionData.filepath || null]);
             };
             t.appendChild(openFolderBtn);
@@ -868,6 +878,9 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
         });
 
         addItem('📁 فتح مجلد التنزيلات', 'مجلد', function() {
+            var now = Date.now();
+            if (window.__lastSdnOpenFolder && (now - window.__lastSdnOpenFolder < 1500)) return;
+            window.__lastSdnOpenFolder = now;
             sdnCall('open_folder', []);
         });
 
@@ -1650,10 +1663,6 @@ try:
 
     def _custom_on_webview_ready(self, sender, args):
         if args.IsSuccess and sender.CoreWebView2:
-            try:
-                sender.CoreWebView2.WebMessageReceived += self.on_script_notify
-            except Exception:
-                pass
             try:
                 sender.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(YOUTUBE_IDM_ADBLOCK_SCRIPT)
             except Exception as _ex:
@@ -2465,6 +2474,11 @@ class DownloaderBridgeAPI:
         return self.save_dir
 
     def open_folder(self, path=None):
+        now = time.time()
+        if hasattr(self, '_last_open_folder_time') and (now - self._last_open_folder_time < 1.5):
+            _log.debug("Debounced duplicate open_folder call")
+            return
+        self._last_open_folder_time = now
         target = path or self.save_dir
         try:
             if os.path.exists(target):
@@ -2479,6 +2493,11 @@ class DownloaderBridgeAPI:
             _log.warning(f"Failed to open folder: {e}")
 
     def locate_file(self, filepath):
+        now = time.time()
+        if hasattr(self, '_last_locate_file_time') and (now - self._last_locate_file_time < 1.5):
+            _log.debug("Debounced duplicate locate_file call")
+            return
+        self._last_locate_file_time = now
         try:
             if not filepath:
                 return self.open_folder()
@@ -3409,6 +3428,12 @@ class DownloaderBridgeAPI:
 
     def quick_download_from_browser(self, url, quality="best", mode="single", force=False, title=None):
         """Called from the in-app YouTube Browser to download directly in background without switching windows."""
+        now = time.time()
+        if hasattr(self, '_last_quick_download_time') and (now - self._last_quick_download_time < 0.8):
+            _log.info("Debounced rapid duplicate download_url call")
+            return {'success': True, 'debounced': True}
+        self._last_quick_download_time = now
+
         _log.info(f"Direct browser quick download: {url} (quality: {quality}, mode: {mode}, force: {force})")
 
         if mode == "playlist_select":
