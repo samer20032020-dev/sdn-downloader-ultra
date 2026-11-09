@@ -3153,7 +3153,28 @@ class DownloaderBridgeAPI:
             return {'success': False, 'error': str(e)}
 
     def start_youtube_login(self):
-        """Open a dedicated window for YouTube login and extract session cookies automatically."""
+        """Open a dedicated window for YouTube login and extract session cookies automatically (Strict Single Instance)."""
+        if getattr(self, '_youtube_login_opening', False):
+            return {'started': False, 'already_open': True}
+
+        win = getattr(self, '_youtube_login_win', None)
+        if win is not None:
+            form = getattr(win, 'native', None)
+            is_alive = True
+            try:
+                if form is not None and hasattr(form, 'IsDisposed') and form.IsDisposed:
+                    is_alive = False
+            except Exception:
+                pass
+            if is_alive:
+                try:
+                    win.restore()
+                    win.show()
+                except Exception:
+                    pass
+                return {'started': True, 'already_open': True}
+
+        self._youtube_login_opening = True
         threading.Thread(target=self._run_youtube_login_flow, daemon=True).start()
         return {'started': True}
 
@@ -3171,6 +3192,13 @@ class DownloaderBridgeAPI:
                 resizable=True,
                 background_color='#0f0f0f'
             )
+            self._youtube_login_win = login_win
+
+            def on_closed():
+                self._youtube_login_win = None
+                self._youtube_login_opening = False
+
+            login_win.events.closed += on_closed
 
             def monitor_cookies():
                 cookie_path = get_youtube_session_cookie_path()
@@ -3178,6 +3206,8 @@ class DownloaderBridgeAPI:
                 for _ in range(max_checks):
                     time.sleep(1.5)
                     try:
+                        if not getattr(self, '_youtube_login_win', None):
+                            break
                         cookies = login_win.get_cookies()
                         if not cookies:
                             continue
@@ -3188,18 +3218,26 @@ class DownloaderBridgeAPI:
                                     login_win.destroy()
                                 except Exception:
                                     pass
+                                self._youtube_login_win = None
+                                self._youtube_login_opening = False
                                 if self._window:
                                     self._window.evaluate_js("if (window.onYouTubeLoginComplete) window.onYouTubeLoginComplete(true);")
                                 return
                     except Exception:
                         break
+                self._youtube_login_win = None
+                self._youtube_login_opening = False
 
             threading.Thread(target=monitor_cookies, daemon=True).start()
 
         except Exception as e:
+            self._youtube_login_win = None
+            self._youtube_login_opening = False
             _log.error(f"Failed to start YouTube login flow: {e}")
             if self._window:
                 self._window.evaluate_js(f"if (window.onYouTubeLoginComplete) window.onYouTubeLoginComplete(false, {json.dumps(str(e))});")
+        finally:
+            self._youtube_login_opening = False
 
     # ================================================================
     # In-App YouTube Smart Browser with AdBlocker & IDM Download Sniffer

@@ -2477,7 +2477,7 @@ body.light-theme .youtube-account-row {
       <!-- Update Header Button -->
       <button id="headerUpdateBtn" onclick="onHeaderUpdateClick()" class="update-header-btn" title="فحص التحديثات" style="display:none;">
         <i class="fas fa-cog" id="updateHeaderIcon"></i>
-        <span id="updateHeaderTxt">v1.0.61</span>
+        <span id="updateHeaderTxt">v1.0.62</span>
       </button>
     </div>
   </header>
@@ -3349,19 +3349,33 @@ setTimeout(checkYouTubeLoginStatus, 400);
 setTimeout(checkYouTubeLoginStatus, 1500);
 setTimeout(checkUnfinishedPlaylistSession, 1000);
 
+let _youtubeLoginOpening = false;
 function startYouTubeLogin() {
+  if (_youtubeLoginOpening) {
+    return;
+  }
+  _youtubeLoginOpening = true;
+  setTimeout(() => { _youtubeLoginOpening = false; }, 3000);
+
   toast('🚀 جاري فتح نافذة تسجيل الدخول إلى YouTube...');
   if (window.pywebview?.api?.start_youtube_login) {
-    window.pywebview.api.start_youtube_login().catch(() => {
+    window.pywebview.api.start_youtube_login().then(res => {
+      if (res && res.already_open) {
+        toast('ℹ️ نافذة تسجيل الدخول مفتوحة بالفعل');
+      }
+    }).catch(() => {
+      _youtubeLoginOpening = false;
       toast('❌ تعذر فتح نافذة تسجيل الدخول');
     });
   } else if (window.androidInterface?.startYouTubeLogin) {
     try {
       window.androidInterface.startYouTubeLogin();
     } catch (_) {
+      _youtubeLoginOpening = false;
       toast('❌ تعذر فتح نافذة تسجيل الدخول على Android');
     }
   } else {
+    _youtubeLoginOpening = false;
     toast('⚠️ تسجيل الدخول متاح في تطبيق Windows و Android');
   }
 }
@@ -3382,6 +3396,7 @@ function logoutYouTube() {
 }
 
 window.onYouTubeLoginComplete = function(success, errMsg) {
+  _youtubeLoginOpening = false;
   if (success) {
     refreshYouTubeUI(true);
   } else if (errMsg) {
@@ -4517,8 +4532,6 @@ if (proxyInpEl) {
 }
 updateCookieFileUI();
 
-document.getElementById('youtubeLoginBtn')?.addEventListener('click', startYouTubeLogin);
-document.getElementById('youtubeLogoutBtn')?.addEventListener('click', logoutYouTube);
 checkYouTubeLoginStatus();
 
 /* ── yt-dlp Engine Update ── */
@@ -6052,7 +6065,7 @@ function incrementDlCounter() {
   num.style.animation = 'dlBadgeBump 0.35s ease';
 }
 
-let CURRENT_VERSION = '1.0.61';
+let CURRENT_VERSION = '1.0.62';
 let gLatestReleaseUrl = 'https://github.com/samer20032020-dev/sdn-downloader-ultra/releases/latest';
 let gLatestReleasePage = gLatestReleaseUrl;
 let gLatestAssetUrl = '';
