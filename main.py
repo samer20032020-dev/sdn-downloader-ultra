@@ -241,19 +241,11 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
             }
         }
 
-        // 2. Direct WebView2 postMessage fallback (single dispatch)
-        if (window.chrome && window.chrome.webview && typeof window.chrome.webview.postMessage === 'function') {
-            try {
-                var callId = 'sdn_' + Math.random().toString(36).substring(2);
-                window.chrome.webview.postMessage([funcName, JSON.stringify(args), callId]);
-                return Promise.resolve({ success: true, via: 'post_message' });
-            } catch (err) {
-                console.warn('postMessage dispatch failed, falling back:', err);
-            }
-        }
-
-        // 3. Fallback: Native virtual URL IPC
+        // 2. Reliable native virtual-URL IPC. The host WebResourceRequested handler
+        //    only accepts requests that carry the per-process auth token, so the
+        //    placeholder below is replaced with _NATIVE_IPC_SECRET before injection.
         try {
+            params.token = '__SDN_IPC_TOKEN__';
             var qStr = Object.keys(params).map(function(k) {
                 return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
             }).join('&');
@@ -1491,6 +1483,16 @@ YOUTUBE_IDM_ADBLOCK_SCRIPT = r"""
 """
 
 
+def _adblock_script() -> str:
+    """Return the injected browser script with the native IPC auth token filled in.
+
+    The ``sdn.internal`` virtual-URL handler rejects any request that does not
+    carry ``_NATIVE_IPC_SECRET``, so the ``__SDN_IPC_TOKEN__`` placeholder has to
+    be replaced before every injection point.
+    """
+    return YOUTUBE_IDM_ADBLOCK_SCRIPT.replace('__SDN_IPC_TOKEN__', _NATIVE_IPC_SECRET)
+
+
 # ============================================================
 # ULTRA LOGGING & DIAGNOSTICS
 # ============================================================
@@ -1664,7 +1666,7 @@ try:
     def _custom_on_webview_ready(self, sender, args):
         if args.IsSuccess and sender.CoreWebView2:
             try:
-                sender.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(YOUTUBE_IDM_ADBLOCK_SCRIPT)
+                sender.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(_adblock_script())
             except Exception as _ex:
                 _log.debug(f"DocumentCreatedAsync injection note: {_ex}")
         _orig_on_webview_ready(self, sender, args)
@@ -3365,7 +3367,7 @@ class DownloaderBridgeAPI:
 
             def on_loaded():
                 try:
-                    browser_win.evaluate_js(YOUTUBE_IDM_ADBLOCK_SCRIPT)
+                    browser_win.evaluate_js(_adblock_script())
                 except Exception as ex:
                     _log.debug(f"on_loaded injection note: {ex}")
 
@@ -3381,7 +3383,7 @@ class DownloaderBridgeAPI:
                 while not is_closed[0]:
                     try:
                         browser_win.evaluate_js(
-                            "if (!window.__sdn_ublock_installed) { " + YOUTUBE_IDM_ADBLOCK_SCRIPT + " } else { if (window.sdnLoopTick) { window.sdnLoopTick(); } else if (window.dismissAdsAndDialogs) { window.dismissAdsAndDialogs(); } }"
+                            "if (!window.__sdn_ublock_installed) { " + _adblock_script() + " } else { if (window.sdnLoopTick) { window.sdnLoopTick(); } else if (window.dismissAdsAndDialogs) { window.dismissAdsAndDialogs(); } }"
                         )
                     except Exception as e:
                         err = str(e).lower()

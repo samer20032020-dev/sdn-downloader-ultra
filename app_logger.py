@@ -13,7 +13,11 @@ from pathlib import Path
 
 # --- Configuration ---
 LOG_DIR = Path(os.path.expanduser("~")) / ".sdn_logs"
-LOG_DIR.mkdir(parents=True, exist_ok=True)
+try:
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+except OSError:
+    # A read-only home directory must not prevent the app from starting.
+    pass
 LOG_FILE = LOG_DIR / "sdn_app.log"
 LOG_MAX_BYTES = 5 * 1024 * 1024  # 5 MB
 LOG_BACKUP_COUNT = 3
@@ -35,16 +39,20 @@ def setup_logger(name: str = "SDN") -> logging.Logger:
         datefmt="%Y-%m-%d %H:%M:%S"
     )
     
-    # Rotating file handler
-    fh = logging.handlers.RotatingFileHandler(
-        LOG_FILE,
-        maxBytes=LOG_MAX_BYTES,
-        backupCount=LOG_BACKUP_COUNT,
-        encoding="utf-8"
-    )
-    fh.setLevel(logging.DEBUG)
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
+    # Rotating file handler (best-effort: a locked or unavailable log file must
+    # never crash the application or the test-suite imports).
+    try:
+        fh = logging.handlers.RotatingFileHandler(
+            LOG_FILE,
+            maxBytes=LOG_MAX_BYTES,
+            backupCount=LOG_BACKUP_COUNT,
+            encoding="utf-8"
+        )
+        fh.setLevel(logging.DEBUG)
+        fh.setFormatter(formatter)
+        logger.addHandler(fh)
+    except OSError as _log_file_error:
+        sys.stderr.write(f"[SDN] File logging unavailable ({_log_file_error}); using console only.\n")
     
     # Console handler (stderr only for warnings+)
     ch = logging.StreamHandler(sys.stderr)
