@@ -73,6 +73,12 @@ yarn-error.log*
 SDN_Update_*.exe
 ~$*
 
+# === Test & Scratch Artifacts ===
+scratch_*.py
+test_archive/
+test_dup_dl/
+testsprite_tests/
+
 # === Inno Setup Output ===
 Output/
 
